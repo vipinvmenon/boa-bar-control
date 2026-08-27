@@ -11,7 +11,7 @@
 begin;
 create extension if not exists pgtap;
 
-select plan(31);
+select plan(37);
 
 -- ---------------------------------------------------------------------------
 -- BAR-122 — anon holds nothing at all on any bar table.
@@ -75,6 +75,21 @@ select function_privs_are(
 -- blind count is defeated by reading the balance directly (docs/SECURITY.md).
 select table_privs_are('private', 'boa_bar_balance', 'authenticated', '{}'::text[], 'the balance projection is not client-readable');
 select table_privs_are('private', 'boa_bar_balance', 'anon', '{}'::text[], 'anon cannot reach the balance projection');
+
+-- ---------------------------------------------------------------------------
+-- ADR-013 — the command RPCs are the write path, and only staff may call them.
+-- ---------------------------------------------------------------------------
+-- The tables stay read-only (asserted above); these functions are how anything
+-- gets written. If anon could call them, the lockdown above would be pointless.
+
+select function_privs_are('public', 'boa_bar_submit_movement', array['jsonb'], 'anon', '{}'::text[], 'anon cannot post movements');
+select function_privs_are('public', 'boa_bar_submit_movement', array['jsonb'], 'authenticated', '{EXECUTE}'::text[], 'staff may post movements');
+
+select function_privs_are('public', 'boa_bar_create_docket', array['jsonb'], 'anon', '{}'::text[], 'anon cannot create dockets');
+select function_privs_are('public', 'boa_bar_create_docket', array['jsonb'], 'authenticated', '{EXECUTE}'::text[], 'staff may create dockets');
+
+select function_privs_are('public', 'boa_bar_accept_docket', array['jsonb'], 'anon', '{}'::text[], 'anon cannot accept dockets');
+select function_privs_are('public', 'boa_bar_accept_docket', array['jsonb'], 'authenticated', '{EXECUTE}'::text[], 'staff may accept dockets');
 
 select * from finish();
 rollback;

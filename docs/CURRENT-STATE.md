@@ -129,7 +129,7 @@ The design is now recovered to `references/design-source/`. See
 
 | Task | Title | State | Evidence / note |
 | --- | --- | --- | --- |
-| BAR-011 | Write policies | `[!]` | **Acceptance criteria now in question — see "Open design question" below.** Still no write path of any kind, so the app cannot write |
+| BAR-011 | Verify no table-level write grants | `[x]` | ADR-013 accepted. `privileges.test.sql` asserts `authenticated` holds SELECT only on all 13 tables and fails if a migration grants INSERT |
 | BAR-012 | `GRANT USAGE ON SCHEMA private` | `[x]` | `3c6acd9` — migration `202608270001`. USAGE + EXECUTE on the helper only; `private.boa_bar_balance` stays unreachable |
 | BAR-013 | Harden immutability | `[~]` | Row triggers exist on movement and movement_line. No TRUNCATE guard, no `ENABLE ALWAYS`, no `FORCE ROW LEVEL SECURITY` |
 | BAR-014 | `v_position` sums the ledger | `[ ]` | No views exist. `boa_bar_inventory_snapshot` reads the projection exclusively; nothing sums the ledger |
@@ -269,9 +269,27 @@ original audit.
 | 15 | **There is no QR scanner anywhere in the app** — so the acceptance side of two-party custody has no input device, while `vercel.json` already grants camera permission for the capability that was never built | BAR-136 |
 | 16 | **No alert reaches anyone.** Every alert is passive, existing only while someone holds the phone on the home screen. The warehouse never learns Bar 3 is 26 minutes from dry, and the bar has no way to ask | BAR-149 |
 
-## Open design question — BAR-011 vs BAR-155
+## Resolved — BAR-011 vs BAR-155
 
-**Raised 24 August. Needs a decision before BAR-011 starts.**
+**Decided 24 August: option 1, command RPCs.** Recorded as
+[DECISIONS.md](DECISIONS.md) ADR-013. `authenticated` holds no table-level write
+privilege on any `boa_bar_` table, ever; every write goes through a
+`SECURITY DEFINER` command RPC. BAR-011 became a test; the work moved to BAR-155.
+
+First two RPCs shipped in migration `202608270002` — `boa_bar_create_docket` and
+`boa_bar_accept_docket`. Custody is modelled in two `issue` legs through the
+venue's `in_transit` location: dispatch on create, receipt on accept. That is
+what makes spec §5's distinction possible — a shortfall sitting in `in_transit`
+means "never arrived", one appearing after the receipt leg means "disappeared
+after arrival". A single-leg model cannot tell those apart.
+
+The RPCs reject, with tests to follow in BAR-030: self-acceptance (BAR-147),
+double acceptance (BAR-134), accepting more than was issued (BAR-129), and an
+unexplained shortfall (BAR-058). Docket numbers are minted server-side under an
+advisory lock, replacing the client-side array-length scheme that let two devices
+mint the same id.
+
+**Original question, for the record:**
 
 BAR-011's acceptance criteria say: *"INSERT policies with `WITH CHECK` on dockets,
 docket lines, count sessions, count lines, POS imports and rows."*
