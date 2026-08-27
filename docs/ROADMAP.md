@@ -136,9 +136,9 @@ run once.** Do BAR-031 first, not last.
 
 | Task | Title | Owner | Acceptance |
 | --- | --- | --- | --- |
-| BAR-155 | Command RPCs as the atomic write path | claude | Every write spans two or more tables (movement + lines + projection; docket + lines; count session + lines) and must be atomic. One `SECURITY DEFINER` command RPC per use case, rather than table-level inserts from the client |
+| BAR-155 | **Command RPCs as the only write path** | claude | Per ADR-013 (accepted). One `SECURITY DEFINER` RPC per use case, each authorising including location scope, validating against the domain rules, writing all affected tables in one transaction, and idempotent on a client key. Order: docket create/accept (unblocks BAR-053 and the whole custody chain), then count submit, then POS post. This is now the largest single piece of M1 |
 | BAR-156 | Interim opening-stock bootstrap | claude | A script or RPC that loads the warehouse from a SKU list, so the system can be started before BAR-060's receipt screen exists. Unblocks every downstream milestone |
-| BAR-011 | Write policies for every table needing inserts | claude | INSERT policies with `WITH CHECK` on dockets, docket lines, count sessions, count lines, POS imports and rows; a test proves each |
+| BAR-011 | **Verify** no table-level write grants exist | claude | Per ADR-013, `authenticated` holds no INSERT/UPDATE/DELETE/TRUNCATE on any `boa_bar_` table. `supabase/tests/privileges.test.sql` asserts this and fails if a future migration grants one. **Done as a test, not a feature** — the write path itself is BAR-155 |
 | BAR-012 | `GRANT USAGE ON SCHEMA private TO authenticated` | claude | A policy-exercising test passes as `authenticated` (currently every policy would error) |
 | BAR-013 | Harden ledger immutability | claude | Triggers `ENABLE ALWAYS`; statement-level TRUNCATE guard; `FORCE ROW LEVEL SECURITY`; tests attempt UPDATE, DELETE and TRUNCATE and assert failure |
 | BAR-014 | `boa_bar_v_position` sums the ledger | claude | View derives position from `movement_line`, not from the projection; a test asserts equality with the projection |

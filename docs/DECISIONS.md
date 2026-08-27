@@ -21,7 +21,7 @@ Every ADR below carries a **Provenance** line saying exactly what backs it:
 - **MINE** — my inference or engineering opinion, with **no supporting statement
   in any file you gave me.** These are the ones to scrutinise.
 
-Five are yours. Two are mixed. Five are mine. The provenance line was added
+Five are yours. Two are mixed. Six are mine (ADR-013 added 24 Aug, accepted). The provenance line was added
 24 August 2026 after a fair challenge that the decisions were made on
 assumptions — which was correct for the five marked MINE.
 
@@ -360,6 +360,51 @@ that an agent believes it.
 
 **Reason.** A status file that can drift from reality will, and it then actively
 misleads the next agent.
+
+---
+
+## ADR-013 — All writes go through command RPCs; no table-level write grants
+
+**Status:** ACCEPTED by the user, 24 August 2026 · **Date:** 24 August 2026
+
+**Provenance: MINE, accepted by the user.** No source states this. It follows
+from spec §4's per-kind balance rules and §7's unmapped-SKU hard fail needing a
+single enforcement point, but the mechanism is my proposal and the user chose it
+over the alternative.
+
+**Context.** BAR-011 originally required "INSERT policies with `WITH CHECK`" on
+dockets, docket lines, count sessions, count lines and POS tables. Migration
+`202608270001` then granted no table-level write privilege at all, on the
+reasoning that writes go through `SECURITY DEFINER` RPCs which run as owner. The
+two positions are incompatible: if writes go through RPCs, an INSERT policy is
+not a missing feature but a hole, because it lets a client write while bypassing
+the RPC's validation.
+
+**Decision.** `authenticated` holds **no** INSERT, UPDATE, DELETE or TRUNCATE on
+any `boa_bar_` table, ever. Every write goes through one `SECURITY DEFINER`
+command RPC per use case, which:
+
+1. authenticates and authorises, including location scope,
+2. validates against the domain rules before writing,
+3. writes every affected table in a single transaction,
+4. is idempotent on a client-supplied key.
+
+**Rejected.** Table-level INSERT with `WITH CHECK` policies. It would force the
+validation in [DATA-MODEL.md](DATA-MODEL.md) — per-kind balance rules, the
+unmapped-POS-SKU hard fail, the count seal, short-acceptance bounds — to be
+duplicated across constraints and triggers instead of living in one place, and it
+gives no atomicity across the two-or-more tables every write touches.
+
+**Reason.** Every write in this system is multi-table: a movement is header plus
+lines plus projection; a docket is header plus lines plus an issue movement; a
+count is session plus lines plus a sealed position. A partial write is a
+corrupted ledger. `boa_bar_submit_movement` already works this way, so this makes
+the schema consistent rather than introducing a new pattern.
+
+**Consequence.** BAR-011 is rewritten as "verify no table-level write grants
+exist" and becomes a test rather than a feature. The implementation work moves to
+BAR-155. Any future migration granting INSERT to `authenticated` on a `boa_bar_`
+table is a defect, and `supabase/tests/privileges.test.sql` fails if one appears.
 
 ---
 
