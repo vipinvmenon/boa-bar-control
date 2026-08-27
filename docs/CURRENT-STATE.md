@@ -120,8 +120,8 @@ The design is now recovered to `references/design-source/`. See
 | BAR-004 | Agent instruction files | `[~]` | CLAUDE.md, AGENTS.md, .cursor/rules/ in progress |
 | BAR-005 | Archive contradicted documents | `[~]` | Old architecture archived to `docs/archive/` with a warning header. `docs/artifact-reconciliation.md` still to archive |
 | BAR-006 | CI pipeline | `[ ]` | No `.github/`, no CI. Every gate the old architecture claimed is enforced by nothing |
-| BAR-007 | Reference captures per screen | `[ ]` | `references/ui/` does not exist |
-| BAR-008 | Visual comparison harness | `[ ]` | — |
+| BAR-007 | Reference captures per screen | `[x]` | `f4cbae8` — all 22 captured from the approved design at 390×844@2x and **verified against the design's own screen-label caption**; plus `references/design-source/screens.json` |
+| BAR-008 | Visual comparison harness | `[x]` | `41c5b2e` — `pnpm test:visual`. Two-fixture-state anti-hardcoding gate. Flags `home` and `warehouse` as hardcoded, i.e. exactly the two screens the old QA passed. Pixel-diff vs `references/ui/` deferred per screen until each is rebuilt |
 | BAR-009 | `sw.ts` in typecheck and lint | `[ ]` | Currently excluded from both |
 | BAR-010 | Formatter and pre-commit | `[ ]` | — |
 
@@ -380,14 +380,35 @@ Recommended next: BAR-nnn
 **Completed since:** BAR-034/035/036/037 — the mechanical token pass, commit
 `bfdc1f4`. Verified in-browser on home, issue and more.
 
+**Completed since:** BAR-007 (`f4cbae8`) and BAR-008 (`41c5b2e`).
+
+**The gate's current reading** — `pnpm test:visual`:
+
+```
+22 screens in the design · 22 reference captures · 9 implemented routes
+5 reading the data layer · 2 legitimately static · 2 hardcoded · 13 missing
+```
+
+The 2 hardcoded are `home` and `warehouse` — the two `design-qa.md` declared
+"passed". The gate reproduces the original defect from a cold start, which is
+the strongest evidence it works.
+
 **Recommended next:** BAR-031 (a PostgreSQL to execute the migrations against —
 gates every M1 task), then BAR-011/BAR-012 (write policies and the `private`
 schema grant, without which the app cannot write at all).
 
-**M0 remaining:** BAR-006 CI is written but unproven (no remote yet); BAR-007
-reference captures, BAR-008 the two-fixture-state harness, BAR-009 sw.ts in
-typecheck/lint, BAR-010 formatter/hooks, BAR-153 checksums, BAR-154 the
+**M0 remaining:** BAR-006 CI is written but unproven (no remote yet); BAR-009
+sw.ts in typecheck/lint, BAR-010 formatter/hooks, BAR-153 checksums, BAR-154 the
 literal-ban lint rule.
+
+**Two findings from BAR-007, recorded so they are not rediscovered:**
+- `diff` is not a screen. It is the accept screen with `recvMode === 'diff'`.
+  There is no `screen === 'diff'` branch — hence 22 labels but 21 rendered
+  branches, and a `screenLabels` entry the design never displays.
+- `docket` has two entry points: "CREATE DOCKET & ISSUE" from review, and
+  "CONFIRM TRANSFER" from the control screen's proposed-transfer sheet
+  (`design-script.jsx:376`). The roadmap's issue → review → docket flow is only
+  one of them.
 
 ### Session — 24 August 2026 · Claude
 
