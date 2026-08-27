@@ -209,3 +209,71 @@ h1 { font: 400 31px/1 'Anton', sans-serif; letter-spacing: .035em; text-transfor
 .tone-gold  { color: var(--gold); }
 .tone-red   { color: var(--red); }
 .tone-muted { color: rgba(166,201,180,.62); }
+
+/* ---------------------------------------------------------------------------
+   BAR-061 — bar workspace. Values from design-markup.html:220-300.
+   --------------------------------------------------------------------------- */
+.bar-head { flex: none; padding: 10px 16px 12px; border-bottom: 1px solid rgba(166,201,180,.16); background: rgba(13,13,18,.55); backdrop-filter: blur(28px) saturate(160%); -webkit-backdrop-filter: blur(28px) saturate(160%); }
+.bar-head-top { display: flex; align-items: center; gap: 10px; }
+.bar-head-back { width: 36px; height: 36px; margin-left: -8px; flex: none; display: grid; place-items: center; border: 0; background: transparent; color: var(--sage); }
+.bar-head-ident { flex: 1; min-width: 0; }
+.bar-head-line { display: flex; align-items: center; gap: 10px; }
+.bar-head-name { font: 700 20px/1 'Oswald', sans-serif; letter-spacing: .16em; color: var(--bone); }
+.bar-head-live { display: flex; align-items: center; gap: 5px; color: var(--green); font: 600 10px/1 'Oswald', sans-serif; letter-spacing: .12em; }
+.bar-head-meta { margin-top: 4px; color: rgba(166,201,180,.68); font: 400 11px/1.3 'Archivo', sans-serif; }
+.bar-head-grid { margin-top: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; overflow: hidden; border: 1px solid rgba(166,201,180,.2); border-radius: 15px; background: rgba(242,239,226,.1); }
+.bar-head-cell { padding: 10px; background: var(--ink); display: grid; }
+.bar-head-cell span { color: rgba(166,201,180,.62); font: 500 9px/1 'Oswald', sans-serif; letter-spacing: .16em; text-transform: uppercase; }
+.bar-head-cell strong { margin-top: 6px; color: var(--bone); font: 600 20px/1 'Oswald', sans-serif; }
+.bar-body { gap: 14px; }
+
+/* The gold incoming-docket sheet. Its glow is how the design makes an
+   unaccepted docket impossible to miss on a phone in the dark. */
+.incoming-sheet { padding: 14px; border: 1px solid rgba(227,187,114,.55); border-radius: 18px; background: linear-gradient(160deg, rgba(227,187,114,.1) 0%, rgba(13,13,18,.92) 62%); backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%); box-shadow: 0 0 14px rgba(227,187,114,.18); }
+.incoming-top { display: flex; align-items: center; justify-content: space-between; }
+.incoming-eyebrow { color: var(--gold); font: 700 11px/1 'Oswald', sans-serif; letter-spacing: .2em; }
+.incoming-age { color: rgba(227,187,114,.8); font: 500 10px/1 'Oswald', sans-serif; letter-spacing: .1em; }
+.incoming-summary { margin-top: 10px; color: var(--bone); font: 600 16px/1.2 'Archivo', sans-serif; }
+.incoming-route { margin-top: 4px; color: rgba(166,201,180,.72); font: 400 12px/1.4 'Archivo', sans-serif; }
+.incoming-cta { width: 100%; height: 48px; margin-top: 12px; border: 0; border-radius: 14px; background: linear-gradient(180deg, #F2D69C 0%, #E3BB72 55%, #CDA45C 100%); color: var(--ink); font: 700 13px/1 'Oswald', sans-serif; letter-spacing: .14em; text-transform: uppercase; }
+
+.bar-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.bar-actions button { height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border: 1px solid rgba(166,201,180,.2); border-radius: 16px; background: rgba(27,27,36,.62); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); color: var(--sage); }
+.bar-actions span { font: 600 10px/1 'Oswald', sans-serif; letter-spacing: .1em; }
+
+.bar-inv-head { display: flex; align-items: center; justify-content: space-between; }
+.bar-inv-title { color: rgba(166,201,180,.72); font: 700 11px/1 'Oswald', sans-serif; letter-spacing: .2em; }
+.bar-inv-note { color: rgba(166,201,180,.5); font: 400 10px/1 'Oswald', sans-serif; letter-spacing: .1em; }
+.bar-inv-list { overflow: hidden; border: 1px solid rgba(166,201,180,.2); border-radius: 18px; backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%); box-shadow: inset 0 1px 0 rgba(242,239,226,.06), 0 12px 32px rgba(0,0,0,.4); }
+.bar-inv-row { width: 100%; padding: 13px 14px; display: flex; align-items: center; gap: 12px; text-align: left; border: 0; border-bottom: 1px solid rgba(166,201,180,.12); background: rgba(27,27,36,.72); }
+.bar-inv-row:last-child { border-bottom: 0; }
+.bar-inv-main { flex: 1; min-width: 0; }
+.bar-inv-main strong { display: block; color: var(--bone); font: 600 14px/1.2 'Archivo', sans-serif; }
+.bar-inv-main span { display: block; margin-top: 5px; color: rgba(166,201,180,.55); font: 400 11px/1.3 'Oswald', sans-serif; letter-spacing: .06em; }
+.bar-inv-qty { flex: none; text-align: right; }
+.bar-inv-qty strong { display: block; font: 600 15px/1 'Oswald', sans-serif; }
+.bar-inv-qty span { display: block; margin-top: 4px; color: rgba(166,201,180,.5); font: 400 10px/1 'Oswald', sans-serif; letter-spacing: .1em; }
+
+/* ---------------------------------------------------------------------------
+   BAR-089 — activity. Values from design-markup.html:888-921.
+   Edge-to-edge rows with a coloured kind-bar, NOT a dotted timeline. Five
+   filters, so Counts and Adjustments are reachable. Adjustments carry an AUDIT
+   badge and a tinted row.
+   --------------------------------------------------------------------------- */
+.activity-head { flex: none; padding: 12px 0 0; border-bottom: 1px solid rgba(166,201,180,.16); }
+.activity-head-row { display: flex; align-items: center; justify-content: space-between; padding: 0 16px; }
+.activity-filters { display: flex; gap: 8px; padding: 12px 16px; overflow-x: auto; scrollbar-width: none; }
+.activity-filters::-webkit-scrollbar { display: none; }
+.activity-filters button { flex: none; height: 36px; padding: 0 14px; border: 1px solid rgba(166,201,180,.22); border-radius: 999px; background: transparent; color: rgba(166,201,180,.8); font: 600 11px/1 'Oswald', sans-serif; letter-spacing: .1em; text-transform: uppercase; }
+.activity-filters button.active { border-color: var(--green); background: var(--green); color: var(--ink); }
+.activity-list { flex: 1; overflow-y: auto; scrollbar-width: none; padding-bottom: 24px; }
+.activity-list::-webkit-scrollbar { display: none; }
+.activity-row { width: 100%; padding: 14px 16px; display: flex; gap: 12px; text-align: left; border: 0; border-bottom: 1px solid rgba(166,201,180,.1); background: transparent; }
+.activity-row.flagged { background: rgba(255,74,61,.06); }
+.activity-row > time { width: 42px; flex: none; color: rgba(166,201,180,.65); font: 600 12px/1.3 'Oswald', sans-serif; letter-spacing: .04em; }
+.activity-row-body { flex: 1; min-width: 0; padding-left: 12px; border-left: 2px solid currentColor; }
+.activity-row-title { display: flex; align-items: center; gap: 8px; }
+.activity-row-title strong { color: var(--bone); font: 600 14px/1.2 'Archivo', sans-serif; }
+.activity-audit { flex: none; padding: 3px 5px; border: 1px solid var(--red); border-radius: 7px; color: var(--red); font: 700 9px/1 'Oswald', sans-serif; letter-spacing: .14em; }
+.activity-row-detail { margin-top: 4px; color: rgba(166,201,180,.72); font: 400 12px/1.45 'Archivo', sans-serif; }
+.activity-row-who { display: block; margin-top: 6px; color: rgba(166,201,180,.45); font: 400 10px/1.3 'Oswald', sans-serif; letter-spacing: .1em; }

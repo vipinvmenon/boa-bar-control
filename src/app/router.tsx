@@ -2,8 +2,8 @@ import { createRootRoute, createRoute, createRouter } from '@tanstack/react-rout
 import { AppShell } from './AppShell'
 import { BarsScreen } from '../screens/bars/BarsScreen'
 import { BarScreen } from '../screens/bar/BarScreen'
+import { ActivityScreen } from '../screens/activity/ActivityScreen'
 import {
-  ActivityScreen,
   CountScreen,
   DocketScreen,
   HomeScreen,

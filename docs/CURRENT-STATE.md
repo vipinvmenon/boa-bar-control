@@ -87,8 +87,8 @@ The design is now recovered to `references/design-source/`. See
 | `issue` | ISSUE STOCK | `[R]` | No case/bottle unit switch, no equivalence, no warehouse-after row, wrong presets |
 | `review` | REVIEW ISSUE | `[ ]` | Missing. Flow jumps straight to docket creation |
 | `docket` | DOCKET CREATED | `[R]` | Absorbs three other screens; loses identity treatment and footer; QR points at a non-existent route |
-| `bars` | BARS | `[R]` | Drops leads, count times, flags; invents decorative bars and Bar-3-only actions; cards are not links |
-| `bar` | BAR 3 | `[ ]` | **Missing.** No bar workspace exists — the screen the spec says "has to be excellent" |
+| `bars` | BARS | `[x]` | `b49768c` — rebuilt. Leads, count times and flags restored; decorative progress bars removed; cards tappable |
+| `bar` | BAR 3 | `[x]` | `b49768c`+ — built to the design: live header, category grid, gold incoming sheet, TOP-UP/WASTE/COUNT, ledger-derived inventory. Reads the repository |
 | `accept` | RECEIVE STOCK | `[ ]` | Missing. Acceptance bolted onto the docket screen |
 | `diff` | REPORT DIFFERENCE | `[R]` | Reduced to a three-option `<select>`; no required reason, no short-by feedback |
 | `received` | RECEIVED | `[ ]` | Missing. Replaced by a one-line success panel |
@@ -96,7 +96,7 @@ The design is now recovered to `references/design-source/`. See
 | `count` | MID-EVENT COUNT | `[R]` | **Pre-fills the expected figures.** No sequential progress, no partial capture |
 | `countDone` | COUNT SUBMITTED | `[ ]` | Missing. No witness, no seal |
 | `variance` | VARIANCE | `[ ]` | Missing. Design's per-SKU data replaced by invented category figures |
-| `activity` | ACTIVITY | `[R]` | 3 of 5 filters, so Count and Adjustment rows are unreachable; AUDIT flag dropped |
+| `activity` | ACTIVITY | `[x]` | rebuilt — all 5 filters, edge-to-edge rows with a kind-bar, AUDIT badge and tinted adjustment row |
 | `mv` | MOVEMENT | `[ ]` | Missing. Activity rows are not tappable |
 | `control` | CONTROL | `[ ]` | Missing entirely — the show-day board |
 | `cowork` | COWORK | `[ ]` | Missing. Entry point silently redirects to More |
@@ -104,7 +104,15 @@ The design is now recovered to `references/design-source/`. See
 | `reports` | REPORTS | `[R]` | Route repurposed into an invented variance page with fabricated `−2.1%`, `₹18.4K`, `94%` |
 | `rep` | REPORT | `[ ]` | Missing |
 
-**11 missing · 11 to rewrite · 0 acceptable.**
+**Was 11 missing · 11 to rewrite · 0 acceptable.** As of 24 August: 3 rebuilt to
+the design (`bars`, `bar`, `activity`), 12 still missing, 8 still to rewrite.
+
+The fidelity gate (`pnpm test:visual`) is the live measure:
+
+```
+22 in the design · 22 reference captures · 10 implemented routes
+6 reading the data layer · 2 legitimately static · 2 hardcoded · 12 missing
+```
 
 ---
 

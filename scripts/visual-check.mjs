@@ -40,7 +40,7 @@ const SCREENS = [
   { key: 'review', label: 'REVIEW ISSUE', route: null },
   { key: 'docket', label: 'DOCKET CREATED', route: null, note: 'route is /dockets/$id — needs a created docket' },
   { key: 'bars', label: 'BARS', route: '/bars' },
-  { key: 'bar', label: 'BAR 3', route: null },
+  { key: 'bar', label: 'BAR 3', route: '/bars/bar-3' },
   { key: 'accept', label: 'RECEIVE STOCK', route: null },
   { key: 'diff', label: 'REPORT DIFFERENCE', route: null },
   { key: 'received', label: 'RECEIVED', route: null },
