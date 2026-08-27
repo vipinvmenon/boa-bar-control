@@ -1,6 +1,6 @@
 # BOA Bar Control — Current State
 
-**Last updated: 24 August 2026** · Event: 10 October 2026 — **47 days out**
+**Last updated: 24 August 2026 (M0 in progress)** · Event: 10 October 2026 — **47 days out**
 
 This is the single handoff record. Read it first, before writing any code.
 
@@ -114,7 +114,7 @@ The design is now recovered to `references/design-source/`. See
 
 | Task | Title | State | Evidence / note |
 | --- | --- | --- | --- |
-| BAR-001 | Initialise git | `[!]` | **No git repository exists.** Blocks reviewable handoff. Task zero |
+| BAR-001 | Initialise git | `[x]` | Baseline commit `5c5345d` on `main`, 251 files. No remote configured |
 | BAR-002 | Recover the design source | `[x]` | `references/design-source/` — design-script.jsx, design-markup.html, template.html, spec.txt, embedded-logo.png |
 | BAR-003 | Canonical `/docs` set | `[~]` | PRODUCT, ARCHITECTURE, DESIGN-SYSTEM, DATA-MODEL, OFFLINE-SYNC, SECURITY, ROADMAP, DECISIONS, CURRENT-STATE written |
 | BAR-004 | Agent instruction files | `[~]` | CLAUDE.md, AGENTS.md, .cursor/rules/ in progress |
@@ -341,6 +341,44 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 24 August 2026 (later) · Claude
+
+**Completed:**
+- BAR-001 — `git init`, baseline commit `5c5345d` on `main`, 251 files, no remote.
+- ADR-009 **accepted by the user**: the mobile app design file wins over the
+  Ritual brand file. This unblocks BAR-036 — the design's soft 12–18 px radii are
+  correct and Ritual's sharp 2/4/8 px tokens do not apply to the app. The previous
+  3–7 px flow screens were the Ritual tokens applied to the wrong surface.
+- ADR-005 **deferred** to ~15 September at the user's request ("not sure"),
+  reframed as an operational question: tamper-proof vs bias-proof. Blocks nothing;
+  BAR-151 carries the spec §6 requirement in the meantime.
+- BAR-139, BAR-151, BAR-152 — commit `43036e8`. Demo mode can no longer
+  masquerade as live; blind count inputs start empty; invented operational
+  figures deleted. Gates pass; verified in-browser with no console errors.
+- Every ADR now carries a **Provenance** line. Five are quoted from the user's
+  files, two are mixed, five are the assistant's own inference — a distinction
+  that was missing and that the user was right to challenge.
+- Corrected a false claim: the PowerPoint does **not** show a light brand mode.
+  Slides 5–7 embed PNGs with alpha; the earlier renders flattened them onto
+  white. `image-5-1.png` shows the dark card rendering correctly. The deck is the
+  dark design. This error came from a sub-agent reading rendered PNGs instead of
+  the `.pptx`, and never reached any document.
+- BAR-152 scope corrected: the home alert figures are design sample data, not
+  invented, and were left in place.
+
+**Files changed:** `src/app/AppShell.tsx`, `src/lib/supabase.ts`,
+`src/styles.css`, `src/features/screens.tsx`, `.claude/launch.json`,
+`docs/DECISIONS.md`, `docs/DESIGN-SYSTEM.md`, `docs/ROADMAP.md`,
+`docs/CURRENT-STATE.md`
+
+**Architecture changes:** none. ADR-009 accepted, ADR-005 deferred.
+
+**Known issues:** `corepack enable` needs sudo on this machine — use
+`corepack pnpm <script>`. Migrations still never executed (BAR-031).
+
+**Recommended next:** BAR-034/035/036/037 (the mechanical token pass, now
+unblocked), then BAR-031.
 
 ### Session — 24 August 2026 · Claude
 
