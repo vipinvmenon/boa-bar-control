@@ -52,15 +52,21 @@ Everything downstream of it is either missing or must be rewritten. The schema i
 so dockets, counts and POS imports have no write path at all. The migrations have
 never been executed against PostgreSQL.
 
-The **UI is a stub, not a wrong implementation.** 10 route components stand in for
-a 22-screen design; 11 screens do not exist in any form. The screens that do
-exist mostly render hardcoded copies of the design's sample figures rather than
-reading the data layer.
+The **UI was a stub, not a wrong implementation** — 10 route components for a
+22-screen design, most rendering hardcoded copies of the design's sample figures.
+As of 24 August that is substantially addressed: 16 routes, 15 reading the data
+layer, 0 hardcoded, 6 screens still missing. See the gate output below.
 
-The **domain layer is dead code**: every function in `src/domain/` has zero call
-sites outside its own tests, so all 12 passing tests cover code that never runs.
+The **domain layer is still dead code**: every function in `src/domain/` has zero
+call sites outside its own tests, so all 12 passing tests cover code that never
+runs. The new screens read the repository, not the domain layer — wiring it is
+BAR-046 and still open.
 
-**Nothing in this repo has ever been run against a real database.**
+**The schema has now been executed** (BAR-031, PostgreSQL 17.6) and can be written
+to through command RPCs (ADR-013). What it still cannot do is prove its own
+behaviour: the pgTAP suite checks privileges and existence, not that the
+immutability triggers fire or that RLS yields correct per-role rows. That is
+BAR-030.
 
 ## Root cause
 
@@ -104,10 +110,10 @@ The design is now recovered to `references/design-source/`. See
 | `reports` | REPORTS | `[R]` | Route repurposed into an invented variance page with fabricated `−2.1%`, `₹18.4K`, `94%` |
 | `rep` | REPORT | `[ ]` | Missing |
 
-**Was 11 missing · 11 to rewrite · 0 acceptable.** As of 24 August: 3 rebuilt to
-the design (`bars`, `bar`, `activity`), 12 still missing, 8 still to rewrite.
+**Started as 11 missing · 11 to rewrite · 0 acceptable.**
 
-The fidelity gate (`pnpm test:visual`) is the live measure:
+The fidelity gate (`pnpm test:visual`) is the live measure — trust it over this
+prose, which is what drifts:
 
 ```
 22 in the design · 22 reference captures · 16 implemented routes
