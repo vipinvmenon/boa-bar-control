@@ -24,13 +24,44 @@ import { fileURLToPath } from 'node:url'
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const TESTS = path.join(ROOT, 'supabase', 'tests')
 
-const url = process.env.SUPABASE_DB_URL
+/**
+ * Resolve the connection string.
+ *
+ * Preferred: set only SUPABASE_DB_PASSWORD. `supabase link` already wrote the
+ * host and user to supabase/.temp/pooler-url (which contains no password), so
+ * the password is the only thing missing. Asking for one value rather than a
+ * whole URL removes the copy-paste class of error entirely.
+ *
+ * SUPABASE_DB_URL still works and takes precedence, for CI or a non-pooler host.
+ */
+function resolveUrl() {
+  if (process.env.SUPABASE_DB_URL) return process.env.SUPABASE_DB_URL
+
+  const password = process.env.SUPABASE_DB_PASSWORD
+  if (!password) return null
+
+  const poolerPath = path.join(ROOT, 'supabase', '.temp', 'pooler-url')
+  if (!fs.existsSync(poolerPath)) {
+    console.error('\nSUPABASE_DB_PASSWORD is set, but supabase/.temp/pooler-url is missing.')
+    console.error('Run `supabase link --project-ref <ref>` first, or set SUPABASE_DB_URL instead.\n')
+    process.exit(2)
+  }
+  const pooler = fs.readFileSync(poolerPath, 'utf8').trim()
+  // postgresql://user@host:port/db  ->  postgresql://user:password@host:port/db
+  return pooler.replace('@', `:${encodeURIComponent(password)}@`)
+}
+
+const url = resolveUrl()
 if (!url) {
-  console.error('\nSUPABASE_DB_URL is not set.\n')
-  console.error("  export SUPABASE_DB_URL='postgresql://postgres.<ref>:<password>@<host>:6543/postgres'")
-  console.error('  node scripts/db-test.mjs\n')
-  console.error('Dashboard -> Settings -> Database -> Connection string (pooler / Session mode).')
-  console.error('Never commit this value.\n')
+  console.error('\nNo database credentials found.\n')
+  console.error('Set just the password — the host comes from `supabase link`:\n')
+  console.error("  export SUPABASE_DB_PASSWORD='your-database-password'")
+  console.error('  pnpm test:db\n')
+  console.error('Get it from the dashboard: Settings -> Database -> Database password.')
+  console.error('(Reset it there if you no longer have it.)\n')
+  console.error('Type the password yourself rather than pasting an example — a literal')
+  console.error("placeholder produces 'getaddrinfo ENOTFOUND HOST'.\n")
+  console.error('Alternatively set a full SUPABASE_DB_URL. Never commit either value.\n')
   process.exit(2)
 }
 
