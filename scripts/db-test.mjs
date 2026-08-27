@@ -35,7 +35,24 @@ const TESTS = path.join(ROOT, 'supabase', 'tests')
  * SUPABASE_DB_URL still works and takes precedence, for CI or a non-pooler host.
  */
 function resolveUrl() {
-  if (process.env.SUPABASE_DB_URL) return process.env.SUPABASE_DB_URL
+  const explicit = process.env.SUPABASE_DB_URL
+  if (explicit) {
+    // A leftover placeholder URL from an earlier attempt silently wins over a
+    // correctly-set password, because this branch takes precedence. Catch it
+    // rather than emitting a confusing DNS error.
+    const placeholders = ['YOUR_PASSWORD', 'YOUR-PASSWORD', '<password>', '@HOST', '<host>', '[YOUR-PASSWORD]']
+    const hit = placeholders.find((p) => explicit.includes(p))
+    if (hit) {
+      console.error(`\nSUPABASE_DB_URL still contains the placeholder "${hit}".`)
+      console.error('It is set in this shell from an earlier attempt, and it takes precedence')
+      console.error('over SUPABASE_DB_PASSWORD, so your password is being ignored.\n')
+      console.error('  unset SUPABASE_DB_URL')
+      console.error("  export SUPABASE_DB_PASSWORD='your-database-password'")
+      console.error('  pnpm test:db\n')
+      process.exit(2)
+    }
+    return explicit
+  }
 
   const password = process.env.SUPABASE_DB_PASSWORD
   if (!password) return null
@@ -88,7 +105,28 @@ async function main() {
   }
 
   const client = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } })
-  await client.connect()
+  try {
+    await client.connect()
+  } catch (err) {
+    const msg = String(err.message ?? err)
+    console.error(`\nCould not connect: ${msg}\n`)
+    if (/ENOTFOUND|EAI_AGAIN/.test(msg)) {
+      console.error('The hostname did not resolve. If SUPABASE_DB_URL is set in this shell,')
+      console.error('it may still hold a placeholder — run `unset SUPABASE_DB_URL` and use')
+      console.error('SUPABASE_DB_PASSWORD instead.')
+    } else if (/password authentication failed|SASL|SCRAM/i.test(msg)) {
+      console.error('The password was rejected. This is the DATABASE password, not your')
+      console.error('Supabase account password. Reset it at Settings -> Database ->')
+      console.error('Database password, then export the new value.')
+    } else if (/ETIMEDOUT|ECONNREFUSED/.test(msg)) {
+      console.error('The host is unreachable — check network access to port 5432.')
+    } else if (/Tenant or user not found/i.test(msg)) {
+      console.error('The pooler rejected the username. supabase/.temp/pooler-url may be')
+      console.error('stale — re-run `supabase link --project-ref reehdtkcpgoilrpzmfai`.')
+    }
+    console.error('')
+    process.exit(1)
+  }
 
   const version = (await client.query('select version()')).rows[0].version
   console.log(`\nConnected: ${version.split(',')[0]}\n`)
