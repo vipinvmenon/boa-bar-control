@@ -1,6 +1,12 @@
+// BAR-034. The design uses Oswald 400/500/600/700 — 500 and 700 account for
+// most of its UI caps. `font-synthesis: none` is set globally in styles.css, so
+// an unloaded weight does not fall back gracefully: it silently renders at the
+// wrong weight. All four must be loaded.
 import '@fontsource/anton/400.css'
 import '@fontsource/oswald/400.css'
+import '@fontsource/oswald/500.css'
 import '@fontsource/oswald/600.css'
+import '@fontsource/oswald/700.css'
 import '@fontsource/archivo/400.css'
 import '@fontsource/archivo/600.css'
 import React from 'react'
