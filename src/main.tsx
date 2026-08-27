@@ -16,6 +16,7 @@ import { RouterProvider } from '@tanstack/react-router'
 import { registerSW } from 'virtual:pwa-register'
 import { router } from './app/router'
 import { DemoStoreProvider } from './lib/demo-store'
+import { RepositoryProvider } from './data/RepositoryProvider'
 import { startMovementSync } from './lib/offline-db'
 import { AuthProvider } from './lib/auth'
 import { AuthGate } from './features/AuthGate'
@@ -42,7 +43,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <AuthProvider>
         <AuthGate>
           <DemoStoreProvider>
-            <RouterProvider router={router} />
+            <RepositoryProvider>
+              <RouterProvider router={router} />
+            </RepositoryProvider>
           </DemoStoreProvider>
         </AuthGate>
       </AuthProvider>
