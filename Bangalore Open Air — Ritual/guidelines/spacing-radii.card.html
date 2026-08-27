@@ -1,0 +1,22 @@
+<!-- @dsCard group="Spacing" viewport="700x170" name="Radii & Borders" subtitle="Mostly sharp — spiky, not soft" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; background: var(--ink-black); padding: 18px 24px; font-family: var(--font-body);
+         display: flex; gap: 18px; align-items: center; }
+  .box { width: 88px; height: 88px; background: var(--smoke-charcoal); border: var(--border-2) solid var(--poison-green);
+         display: flex; align-items: flex-end; justify-content: center; box-shadow: var(--glow-green-sm); }
+  .t { font-size: 10px; color: var(--sage-bone); padding-bottom: 6px; letter-spacing: 0.04em; }
+</style>
+</head>
+<body>
+  <div class="box" style="border-radius:var(--radius-none)"><span class="t">none · 0</span></div>
+  <div class="box" style="border-radius:var(--radius-sm)"><span class="t">sm · 2</span></div>
+  <div class="box" style="border-radius:var(--radius-md)"><span class="t">md · 4</span></div>
+  <div class="box" style="border-radius:var(--radius-lg)"><span class="t">lg · 8</span></div>
+  <div class="box" style="border-radius:var(--radius-pill);width:120px"><span class="t">pill · tiers</span></div>
+</body>
+</html>

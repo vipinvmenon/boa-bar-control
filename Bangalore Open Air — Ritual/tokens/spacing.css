@@ -1,0 +1,33 @@
+/* Bangalore Open Air — Ritual :: Spacing & radii tokens
+ * Ritual layouts breathe — give the deity art air.
+ */
+:root {
+  /* --- Spacing scale (4px base) --- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+  --sp-9: 96px;
+  --sp-10: 128px;
+
+  /* --- Radii (mostly sharp — this brand is spiky, not soft) --- */
+  --radius-none: 0px;
+  --radius-sm: 2px;      /* stickers, tight chips */
+  --radius-md: 4px;      /* badges, buttons */
+  --radius-lg: 8px;      /* cards */
+  --radius-pill: 999px;  /* tier pills only */
+
+  /* --- Border widths --- */
+  --border-hair: 1px;
+  --border-1: 1.5px;
+  --border-2: 2px;
+  --border-3: 3px;      /* glow linework */
+
+  /* --- Ad safe zones (9:16 platform UI cutoffs) --- */
+  --safe-top: 220px;    /* Stories header / profile row */
+  --safe-bottom: 320px; /* caption, reply bar, action rail */
+}

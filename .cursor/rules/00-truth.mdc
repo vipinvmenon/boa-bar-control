@@ -1,0 +1,40 @@
+---
+description: Where the truth lives in this repository. Always applies.
+alwaysApply: true
+---
+
+# BOA Bar Control — read the docs before writing code
+
+Read `docs/CURRENT-STATE.md` first, every session, before anything else. It
+records what is done, what is broken, and what is next. The older status files
+(`PROJECT_STATUS.md`, `design-qa.md`) are stale and recorded milestones as
+complete that were not — do not trust them.
+
+`/docs` is canonical. This rules file does not restate the architecture, because
+three separate descriptions of this system is how the project broke once already.
+
+| File | Read it when |
+| --- | --- |
+| `docs/CURRENT-STATE.md` | Always, first |
+| `docs/ROADMAP.md` | To find the task ID and its acceptance criteria |
+| `docs/PRODUCT.md` | What we are building and why |
+| `docs/ARCHITECTURE.md` | Layering, structure, dependencies |
+| `docs/DATA-MODEL.md` | Schema, ledger, calculations |
+| `docs/DESIGN-SYSTEM.md` | Before any UI work |
+| `docs/OFFLINE-SYNC.md` | Offline, sync, outbox |
+| `docs/SECURITY.md` | Auth, RLS, roles, blind counting |
+| `docs/DECISIONS.md` | Decisions already made — do not relitigate |
+
+`references/design-source/` is the recovered approved design and the original
+specification. `design-script.jsx` is the interaction contract (22 screens),
+`design-markup.html` is the pixel contract, `spec.txt` is the domain contract.
+
+Do not build from `docs/archive/` — those documents are retained as evidence of
+what went wrong, not as guidance.
+
+## Role in this project
+
+Cursor is the everyday IDE pair: small fixes, exploring code, debugging, tests,
+and refactors contained within one module. Architecture, schema, offline/sync and
+the ledger belong to Claude. If a change crosses module boundaries or touches the
+schema, stop and hand it over.

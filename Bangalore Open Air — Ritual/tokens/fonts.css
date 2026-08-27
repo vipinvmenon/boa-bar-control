@@ -1,0 +1,11 @@
+/* Bangalore Open Air — Ritual :: Webfonts
+ * Google Fonts substitutions for the poster's bespoke lettering.
+ * FLAGGED: the poster's original hand-drawn wordmark is bespoke; these are
+ * the nearest system-safe matches. See readme.md "Type substitutions".
+ *   - Metal Mania  -> display wordmark (spiky blackened-metal gothic)
+ *   - Rye          -> eyebrow / western-varsity badge
+ *   - Anton        -> heavy condensed headline
+ *   - Oswald       -> condensed data line / UI caps
+ *   - Archivo      -> grotesque body
+ */
+@import url('https://fonts.googleapis.com/css2?family=Metal+Mania&family=Rye&family=Anton&family=Oswald:wght@400;500;600;700&family=Archivo:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');

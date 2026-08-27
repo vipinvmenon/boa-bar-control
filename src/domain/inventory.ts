@@ -1,0 +1,216 @@
+import { z } from 'zod'
+
+export const movementKinds = [
+  'receipt',
+  'issue',
+  'transfer',
+  'return',
+  'sale',
+  'comp',
+  'waste',
+  'adjustment',
+] as const
+
+export type MovementKind = (typeof movementKinds)[number]
+
+export type LocationKind =
+  | 'warehouse'
+  | 'bar'
+  | 'hospitality'
+  | 'lounge'
+  | 'in_transit'
+
+export type Unit = 'ml' | 'each'
+
+export type InventoryLine = {
+  id: string
+  movementId: string
+  skuId: string
+  locationId: string
+  containerDelta: number
+  mlDelta: number
+  valueDeltaMinor: number
+}
+
+export type InventoryMovement = {
+  id: string
+  idempotencyKey: string
+  kind: MovementKind
+  occurredAt: string
+  businessDate: string
+  fromLocationId?: string
+  toLocationId?: string
+  actorName: string
+  acceptedBy?: string
+  docketId?: string
+  reason?: string
+  reversesMovementId?: string
+  lines: InventoryLine[]
+}
+
+export type Position = {
+  skuId: string
+  locationId: string
+  containers: number
+  ml: number
+  valueMinor: number
+}
+
+export type VarianceBand = 'green' | 'amber' | 'red'
+
+export const movementInputSchema = z.object({
+  idempotencyKey: z.uuid(),
+  kind: z.enum(movementKinds),
+  occurredAt: z.iso.datetime(),
+  businessDate: z.iso.date(),
+  fromLocationId: z.string().optional(),
+  toLocationId: z.string().optional(),
+  actorName: z.string().min(1),
+  acceptedBy: z.string().optional(),
+  docketId: z.string().optional(),
+  reason: z.string().optional(),
+  reversesMovementId: z.string().optional(),
+  lines: z.array(
+    z.object({
+      id: z.string().min(1),
+      movementId: z.string().min(1),
+      skuId: z.string().min(1),
+      locationId: z.string().min(1),
+      containerDelta: z.number().int(),
+      mlDelta: z.number().int(),
+      valueDeltaMinor: z.number().int(),
+    }),
+  ).min(1),
+})
+
+export function derivePositions(movements: InventoryMovement[]): Position[] {
+  const positions = new Map<string, Position>()
+
+  for (const movement of movements) {
+    for (const line of movement.lines) {
+      const key = `${line.locationId}:${line.skuId}`
+      const existing = positions.get(key) ?? {
+        skuId: line.skuId,
+        locationId: line.locationId,
+        containers: 0,
+        ml: 0,
+        valueMinor: 0,
+      }
+      positions.set(key, {
+        ...existing,
+        containers: existing.containers + line.containerDelta,
+        ml: existing.ml + line.mlDelta,
+        valueMinor: existing.valueMinor + line.valueDeltaMinor,
+      })
+    }
+  }
+
+  return [...positions.values()].sort((a, b) =>
+    `${a.locationId}:${a.skuId}`.localeCompare(`${b.locationId}:${b.skuId}`),
+  )
+}
+
+export function applyIdempotently(
+  existing: InventoryMovement[],
+  incoming: InventoryMovement,
+): InventoryMovement[] {
+  if (existing.some((movement) => movement.idempotencyKey === incoming.idempotencyKey)) {
+    return existing
+  }
+  return [...existing, incoming]
+}
+
+export function reverseMovement(
+  movement: InventoryMovement,
+  input: { id: string; idempotencyKey: string; actorName: string; occurredAt: string },
+): InventoryMovement {
+  return {
+    id: input.id,
+    idempotencyKey: input.idempotencyKey,
+    kind: 'adjustment',
+    occurredAt: input.occurredAt,
+    businessDate: input.occurredAt.slice(0, 10),
+    actorName: input.actorName,
+    reason: `Reversal of ${movement.id}`,
+    reversesMovementId: movement.id,
+    lines: movement.lines.map((line, index) => ({
+      ...line,
+      id: `${input.id}:${index}`,
+      movementId: input.id,
+      containerDelta: -line.containerDelta,
+      mlDelta: -line.mlDelta,
+      valueDeltaMinor: -line.valueDeltaMinor,
+    })),
+  }
+}
+
+export function theoreticalClosing(input: {
+  openingMl: number
+  receivedMl: number
+  issuedOutMl: number
+  receivedInMl: number
+  soldMl: number
+  compedMl: number
+  wastedMl: number
+  returnedMl: number
+}): number {
+  return (
+    input.openingMl +
+    input.receivedMl -
+    input.issuedOutMl +
+    input.receivedInMl -
+    input.soldMl -
+    input.compedMl -
+    input.wastedMl -
+    input.returnedMl
+  )
+}
+
+export function variance(input: {
+  countedClosingMl: number
+  theoreticalClosingMl: number
+  throughputMl: number
+}): { varianceMl: number; variancePct: number | null } {
+  const varianceMl = input.countedClosingMl - input.theoreticalClosingMl
+  return {
+    varianceMl,
+    variancePct:
+      Math.abs(input.throughputMl) < 0.001
+        ? null
+        : (varianceMl / Math.abs(input.throughputMl)) * 100,
+  }
+}
+
+const tolerance: Record<string, [number, number]> = {
+  bottled_beer: [1, 3],
+  draught_beer: [8, 15],
+  spirits: [3, 8],
+  mixers: [2, 5],
+}
+
+export function varianceBand(category: string, percentage: number | null): VarianceBand {
+  if (percentage === null) return 'amber'
+  const [greenMax, amberMax] = tolerance[category] ?? [2, 5]
+  const absolute = Math.abs(percentage)
+  if (absolute <= greenMax) return 'green'
+  if (absolute <= amberMax) return 'amber'
+  return 'red'
+}
+
+export function mlFromGrossWeight(grossWeightG: number, tareWeightG: number): number {
+  return Math.max(0, Math.round(grossWeightG - tareWeightG))
+}
+
+export function weightedAverageCost(input: {
+  currentQuantity: number
+  currentValueMinor: number
+  receivedQuantity: number
+  receivedUnitCostMinor: number
+}): number | null {
+  const quantity = input.currentQuantity + input.receivedQuantity
+  if (quantity <= 0) return null
+  return Math.round(
+    (input.currentValueMinor + input.receivedQuantity * input.receivedUnitCostMinor) /
+      quantity,
+  )
+}

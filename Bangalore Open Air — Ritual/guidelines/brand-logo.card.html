@@ -1,0 +1,31 @@
+<!-- @dsCard group="Brand" viewport="700x220" name="Official Logo" subtitle="assets/boa-logo-2026.png — always use this, never a type rebuild" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; background: var(--ink-black); padding: 22px; font-family: var(--font-condensed);
+         display: flex; gap: 16px; }
+  .tile { flex: 1; border-radius: var(--radius-lg); border: 1px solid var(--line-hairline);
+          display: flex; align-items: center; justify-content: center; min-height: 160px; padding: 20px; position: relative; }
+  .cap { position: absolute; bottom: 8px; left: 12px; font-size: 10px; letter-spacing: 0.08em;
+         text-transform: uppercase; color: var(--sage-bone); }
+  img { width: 100%; max-width: 320px; height: auto; }
+</style>
+</head>
+<body>
+  <div class="tile" style="background:var(--ink-black)">
+    <img src="../assets/boa-logo-2026.png" alt="BOA" style="filter:drop-shadow(0 0 16px rgba(0,245,165,0.45))">
+    <span class="cap">On ink · with green glow</span>
+  </div>
+  <div class="tile" style="background:var(--smoke-charcoal)">
+    <img src="../assets/boa-logo-2026.png" alt="BOA">
+    <span class="cap">On charcoal panel</span>
+  </div>
+  <div class="tile" style="background:var(--surface-sunken)">
+    <img src="../assets/boa-logo-2026.png" alt="BOA" style="filter:grayscale(1) brightness(1.7) contrast(1.05)">
+    <span class="cap">Mono · busy photo bg</span>
+  </div>
+</body>
+</html>

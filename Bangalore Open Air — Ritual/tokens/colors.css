@@ -1,0 +1,42 @@
+/* Bangalore Open Air — Ritual :: Color tokens
+ * Signature combo to protect: poison-green + gold on ink-black.
+ * Never recolour outside this set.
+ */
+:root {
+  /* --- Base palette (exact poster hex) --- */
+  --ink-black: #0D0D12;       /* base background */
+  --smoke-charcoal: #1B1B24;  /* panels, cards, secondary surfaces */
+  --poison-green: #00F5A5;    /* PRIMARY — glows, key linework, active/hover */
+  --venom-green: #08B078;     /* mid-green fills, gradients into ink */
+  --sage-bone: #A6C9B4;       /* soft mint — illustration skin, muted text */
+  --ritual-gold: #E3BB72;     /* accent — headliners, dates/venue, CTA fills */
+  --deep-gold: #C0A060;       /* gold shadow / border */
+  --bone-white: #F2EFE2;      /* max-contrast text, skull whites */
+
+  /* --- Semantic surfaces --- */
+  --surface-base: var(--ink-black);
+  --surface-card: var(--smoke-charcoal);
+  --surface-raised: #24242f;      /* hovered card / raised panel */
+  --surface-sunken: #08080c;      /* deepest well behind glow */
+
+  /* --- Semantic text --- */
+  --text-strong: var(--bone-white);
+  --text-body: #D8D4C6;           /* bone-white dimmed for long copy */
+  --text-muted: var(--sage-bone);
+  --text-accent: var(--ritual-gold);
+  --text-primary: var(--poison-green);
+  --text-on-gold: var(--ink-black);
+  --text-on-green: var(--ink-black);
+
+  /* --- Semantic lines / borders --- */
+  --line-hairline: rgba(166, 201, 180, 0.16);  /* sage @ low alpha */
+  --line-green: var(--poison-green);
+  --line-gold: var(--deep-gold);
+
+  /* --- Green glow atmosphere (radial aura behind hero) --- */
+  --aura-green: rgba(0, 245, 165, 0.28);
+  --aura-green-soft: rgba(8, 176, 120, 0.16);
+
+  /* --- Focus --- */
+  --focus-ring: var(--poison-green);
+}

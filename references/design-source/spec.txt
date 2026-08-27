@@ -1,0 +1,277 @@
+
+Bar Inventory & Audit — feature brainstorm
+Bangalore Open Air 2026 · BITS Club · Saturday 10 October 2026 · four bars Written 20.08.2026. Nothing bar-related exists in the database today — this is a new module, prefix boa_bar_. 51 days out.
+
+0. The core insight
+Every festival bar system that fails does so for the same reason: it tries to store a stock level. Someone updates a number, someone else updates it again, the two disagree, and by 23:00 nobody can say whether 40 bottles walked or were never delivered.
+Store movements, never levels. Stock on hand is a derived figure, always. Append-only ledger, one row per physical event, position computed by summing. Same discipline as boa_sales_snapshots — and for the same reason: the moment two places can hold the truth, they will disagree at the worst possible time.
+The identity that must hold, per SKU, per location, per window:
+Opening + Received − Issued out + Received in − Sold − Comped − Wasted − Returned = Closing
+If it doesn't hold, that is the audit. Everything else in this document exists to make that line computable and to explain the residual.
+
+1. What has to be true at the end of 10 October
+Three different audiences want three different answers from the same ledger. Design for all three from the start, because retro-fitting one of them means re-counting.
+Audience
+Question
+Unit
+Excise
+Every bottle that entered the licenced premises is accounted for — sold, unsold, or empty
+Sealed containers, by excise category
+STOK / settlement
+How much product was actually depleted, and what does that cost or credit
+ml and containers, by SKU
+You
+Did we lose money, and where
+₹ and ml variance, by bar and by hour
+Excise counts bottles. Settlement counts volume. Theft shows up as the gap between the two. A system that only tracks one of them cannot produce the third.
+Get the excise return template before you design the report. Karnataka's temporary event licence dictates the format and the retention of empties — the licence conditions are the spec, not a guess. That is a question for whoever is filing the licence, and it should be asked this month, not in October.
+
+2. Locations and the physical flow
+Six location types, and the distinction between them is load-bearing:
+Supplier ──▶ WAREHOUSE (bond store, off-site or on-site lock-up)
+                 │
+                 ├──▶ BAR 1  ┐
+                 ├──▶ BAR 2  ├─ point of sale, cashless
+                 ├──▶ BAR 3  │
+                 ├──▶ BAR 4  ┘
+                 │
+                 ├──▶ HOSPITALITY (artist riders, green rooms) ── not a sale, ever
+                 └──▶ LOUNGES (Eddie's 50 cap, Promoter's 25 cap) ── inclusive? decide §16
+Hospitality depletion must never enter the sales variance. Carcass's dressing room fridge and Bar 3 are both stock leaving the warehouse, and if they land in the same bucket your variance is permanently wrong by whatever the bands drank. Separate movement type, separate report, and it reconciles against the hospitality rider — which already exists as data.
+Also model the back-bar vs under-bar split at each bar if you want it to be useful on the night: what is chilled and pourable now, versus what is in the crate behind. The run-out alarm (§9) depends on it.
+
+3. Units — the thing that breaks every version of this
+Store base ml on every movement, and container count alongside it. Derive neither from the other at read time; capture both at write time and let the ledger prove they agree.
+Each SKU carries:
+Field
+Example
+container_type
+bottle · can · keg · pouch
+ml_per_container
+650 · 330 · 500 · 750 · 30000
+units_per_case
+12 · 24 · 1
+tare_weight_g
+for weighing open bottles at close
+excise_category
+beer · IMFL · wine · imported
+is_supplied
+STOK free product vs purchased stock
+Then a serve table maps what the POS sells to what leaves the bottle:
+POS item
+SKU
+ml
+Beer — pint
+STOK draught
+500
+Beer — can
+STOK 500 can
+500
+Whisky — 30
+Old Monk / house
+30
+Whisky — 60
+Old Monk / house
+60
+Mixer
+Coke 300
+300
+This table is the entire bridge between money and volume. It is also the most likely place to introduce a silent error, so it needs a review step before show day and a test that every POS SKU appearing in the import has a mapping — an unmapped POS line must fail loudly, not default to zero ml. An unmapped item is invisible depletion and it will look exactly like theft.
+Planning yields, to be calibrated, not trusted:
+750 ml spirit bottle at 30 ml pegs → 25 theoretical, realistically 23–24. Overpour is the single biggest legitimate leak at a festival bar.
+30 L keg at 500 ml → 60 theoretical, realistically 54–57 after foam, line purge and the first-pour loss on each line each day.
+Bottled and canned beer → 1:1, no yield loss. This is why bottle/can bars audit cleanly and draught bars never do.
+Set the tolerance bands from these, per category, and revise them from the actual event.
+
+4. The ledger — one table, eight movement types
+Immutable. No update, no delete. A mistake is corrected by a reversing entry, which is itself evidence.
+Type
+From
+To
+Notes
+receipt
+supplier
+warehouse
+against a delivery note / invoice number
+issue
+warehouse
+bar
+the docket, two-party (§5)
+transfer
+bar
+bar
+bar 2 runs dry, bar 4 has spare — happens, capture it
+return
+bar
+warehouse
+close-of-night unsold
+sale
+bar
+—
+derived from POS import, never keyed by hand
+comp
+bar or warehouse
+hospitality
+riders, crew, sponsor — reason mandatory
+waste
+bar
+—
+breakage, foam, line purge, spillage, refused pour
+adjustment
+any
+—
+signed correction, requires a reason and a named person
+Every row: SKU, location(s), container count, ml, timestamp, entered_by, and for transfers accepted_by. adjustment rows are the report you read first the next morning — a bar with lots of adjustments is a bar with a problem, whether it is a person or a process.
+
+5. Chain of custody — the docket
+The single highest-value non-software feature. Every issue generates a docket with a QR; the receiving bar lead scans it and taps accept. Two named people, one timestamp, no paperwork, no argument at 02:00 about whether Bar 3 got twelve cases or ten.
+Without this, an unexplained shortfall has two possible causes — it never arrived, or it disappeared after arrival — and you cannot distinguish them. With it, the gap has an owner.
+Unaccepted dockets after 30 minutes should surface as an alert. That is usually a runner who got distracted, occasionally something else.
+
+6. Counts — and count blind
+Four counts, minimum:
+Warehouse opening, after final delivery, before any issue.
+Bar opening, at each bar, as the docket lands. This is the number staff are accountable for.
+Mid-event count — the one everyone skips. Do it at 19:30, during Paradise Lost and TAIM, when the bars are quiet because everyone is watching. Not during a changeover.
+Close-out, per bar and then warehouse.
+Blind counting is non-negotiable. The counter does not see the expected figure. If the app shows "expected 47" next to the input box, you will get 47 every time and the count is worthless. The expected figure appears only after submit, on the variance screen, to a different person.
+Open containers: count full containers as integers and weigh partials. One ₹2,000 kitchen scale per bar, tare weight stored on the SKU, (gross − tare) ≈ ml for spirits. This removes the biggest source of count error — "about a third left" across forty bottles is a hundreds-of- millilitres guess. Kegs: flow meter if the vendor has them, otherwise weight or accept a wider tolerance and say so.
+
+7. POS ingest — sales as volume
+Cashless is the gift here. Every sale is a row with a SKU, a time and a bar. You do not need to build a POS; you need to ingest one.
+CSV or API import, append-only, batched, with the raw file retained.
+Import maps POS SKU → serve → ml. Unmapped SKU = hard fail on the batch.
+Re-importing the same batch must be idempotent — dedupe on the POS transaction ID, or one double-import makes the bar look like it stole nothing and sold twice.
+Time-bucketed to the hour so depletion can be tracked live against the running order.
+Two figures fall out immediately and are worth the build on their own: ₹ per attendee at the bar, and sales per hour per bar, which is the number you need for next year's staffing and for the STOK conversation.
+
+8. Variance — the actual audit
+For each SKU × location × window:
+theoretical_closing = opening + in − out − sold − comped − wasted
+variance_ml         = counted_closing − theoretical_closing
+variance_pct        = variance_ml / (sold + comped + wasted)
+Show variance as a percentage of throughput, not of stock held. Twenty missing pegs on a bar that sold 40 is a crisis; on a bar that sold 4,000 it is a rounding error. A system that ranks by absolute variance will send you to the busiest bar every time.
+Tolerance bands, colour-coded, set per category:
+Category
+Green
+Amber
+Red
+Bottled / canned beer
+≤ 1%
+1–3%
+> 3%
+Draught beer
+≤ 8%
+8–15%
+> 15%
+Spirits
+≤ 3%
+3–8%
+> 8%
+Mixers / water
+≤ 2%
+2–5%
+> 5%
+Positive variance is a signal too. More stock than expected means a receipt was missed, a sale was rung on the wrong SKU, or a docket was never accepted. It is not good news and it should not be green.
+
+9. Show day — the operational half
+The audit is what you read on 11 October. On 10 October the same data does something more valuable: it stops a bar running dry during Carcass.
+Depletion rate per SKU per bar per hour, projected forward to a run-out time.
+Alert when projected run-out is inside 90 minutes: "Bar 3 draught runs out ~20:10 — issue now."
+Top up during sets, never during changeovers. Your bar queue peaks in the changeover windows, so the runner has to move stock at 19:45 while Paradise Lost is playing, not at 20:32 while three thousand people walk to the Dio stage. The running order is already in the database; use it to schedule the top-up windows rather than reacting.
+Live board on a phone: four bars, stock status, open dockets, last count age.
+
+10. Paper fallback — mandatory
+The venue is at Hennur, it will be 3,000 people deep, and mobile data will be unusable at peak. Assume the app is unreachable for some part of the night.
+Pre-printed count sheets per bar, SKU list already filled, blank columns. Printed and in a folder before load-in.
+Pre-printed docket books, triplicate, numbered. The QR flow is the fast path; the book is the fallback and the numbers reconcile later.
+The app itself should be offline-first — cache the SKU list and the bar's own ledger, queue writes, sync when it can, and stamp every screen "as of HH:MM". Same pattern already built for the artist portal.
+A system that only works online is a system that does not work.
+
+11. Leak taxonomy — what you are actually looking for
+Cashless removes the biggest one (cash skimming), which is a genuine structural advantage. What remains:
+Leak
+Signature in the data
+Overpour
+Consistent small negative variance on spirits, one bar, all night
+Free pours for friends
+Negative spirit variance concentrated in specific hours
+Stock never delivered
+Variance at the warehouse, docket accepted late or not at all
+Stock walks from behind the bar
+Step change between two counts, whole cases not pegs
+Wrong-SKU ring-ups
+One SKU heavy positive, another heavy negative, same bar
+Line loss / foam
+Draught only, roughly constant per hour of operation
+Uncaptured comps
+Large negative variance with no pattern — usually a process failure, not theft
+The point of the taxonomy is to stop treating all variance as suspicion. Most of it is process. Naming the shapes is what lets you find the part that isn't.
+
+12. STOK settlement
+Per the deal structure as recorded — STOK supplies free product for the bar and hospitality, operates the bar, and pays cash to BOA — this ledger is the settlement document. Verify the signed terms from the live system before building against them, but the requirement is already clear: STOK will want a depletion report and BOA will want to be able to check it.
+Build the report so it can be handed over without editing: product received from STOK, depleted at bar, depleted to hospitality, wasted, returned unsold, and empties returned. Separate the free-product SKUs (is_supplied = true) from anything BOA purchases, because those two flows settle completely differently and mixing them makes the report unusable to both sides.
+If any part of the deal is consumption-linked, the tolerance discipline in §8 stops being an operational nicety and becomes the number an invoice is built on.
+
+13. Schema sketch
+boa_bar_location      id, name, kind(warehouse|bar|hospitality|lounge), is_licenced
+boa_bar_sku           id, name, category, container_type, ml_per_container,
+                      units_per_case, tare_weight_g, abv, excise_category,
+                      is_supplied, supplier_vendor_id → boa_vendors
+boa_bar_serve         id, pos_sku_code, sku_id, ml_per_serve, label
+boa_bar_movement      id, at, kind(8 types), sku_id, from_location, to_location,
+                      containers, ml, docket_id, reason, entered_by, accepted_by
+boa_bar_docket        id, from_location, to_location, issued_by, issued_at,
+                      accepted_by, accepted_at, status
+boa_bar_count         id, location_id, counted_at, kind(open|mid|close),
+                      counted_by, witnessed_by, is_blind
+boa_bar_count_line    count_id, sku_id, full_containers, partial_ml, gross_weight_g
+boa_bar_pos_batch     id, source, imported_at, file_path, row_count, checksum
+boa_bar_pos_line      batch_id, pos_txn_id (unique), at, location_id, pos_sku_code,
+                      qty, amount_inr
+Views, all security_invoker = true:
+boa_bar_v_position     current derived stock, sku × location
+boa_bar_v_variance     counted vs theoretical, with pct of throughput and band
+boa_bar_v_depletion    ml per hour per sku per bar, with projected run-out
+boa_bar_v_excise       containers in / out / sold / returned / empties, by excise category
+boa_bar_v_settlement   supplied product depletion, split bar vs hospitality
+Notes that matter:
+boa_bar_pos_line.pos_txn_id unique — that constraint is the idempotent re-import.
+Movements reference boa_vendors by ID only. Do not reuse boa_vendors.category_id for anything here; it is a list-grouping hint and it has already produced one badly wrong figure on this project.
+Access tier: crew see stock, counts and variance. Management see settlement and any ₹ figure. Artists see none of it — the portal must remain free of every rupee, and bar data has no business being reachable from it at all.
+
+14. Screens
+Warehouse — receive delivery · issue to bar (generates docket) · current position · count. Bar (phone, offline) — accept docket · request top-up · record waste · count. Control (phone/desktop, show day) — four bars live, run-out projections, open dockets, count ages, alerts. Audit (desktop, after) — variance by bar / SKU / hour, adjustment log, leak view. Reports — excise return, STOK settlement, ₹ per attendee, sales per hour.
+Roughly six screens of real work. The bar screen is the one that has to be excellent, because it is used by temporary staff, one-handed, in the dark, at speed. Big targets, no free text where a picker will do, and never more than three taps to record a waste.
+
+15. Phasing — against 10 October
+Phase
+Scope
+When
+1
+Schema, SKU list, locations, receipt + issue + docket, warehouse position
+by mid-Sept
+2
+Bar app: accept, count (blind), waste. Offline. Paper sheets printed
+by 26.09
+3
+POS mapping table + import, variance engine, tolerance bands
+by 03.10
+4
+Show-day control board, run-out alerts
+by 08.10
+5
+Excise return + STOK settlement reports
+after the event
+If time runs short, cut in this order: control board, then run-out alerts, then POS import. Phases 1–2 with paper counts and a manual POS reconciliation the following week still produces a defensible audit. Nothing else does.
+Lane routing as usual — schema and RLS to Cowork, app to Claude Code, SKU list and licence questions to you.
+
+16. Decisions needed from you
+Who runs the POS? STOK, the cashless vendor, or BookMyShow. That determines whether §7 is an API, a CSV, or a nightly export someone emails.
+Are the four bars identical, or is one spirits-only / one beer-only? Changes the SKU list per location and the run-out logic.
+Eddie's and Promoter's Lounge — inclusive drinks or paid at the bar? Inclusive means a fifth location with comp movements, not sales, and it needs its own allocation.
+Is any part of the STOK deal consumption-linked, or is it flat ₹5L plus free product regardless of depletion? Decides whether variance is a management report or an invoice input.
+Who holds the licence and what return do they have to file? Get the template now.
+Empties — does the licence require them returned, and who stores 3,000 bottles overnight?
+
+Bar inventory & audit brainstorm · Bangalore Open Air 2026 · 20.08.2026

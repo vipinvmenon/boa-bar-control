@@ -1,0 +1,86 @@
+---
+description: UI and design fidelity rules. Read before touching any screen, component or stylesheet.
+globs: src/screens/**,src/components/**,src/styles.css,src/app/**
+---
+
+# UI work — reproduce the design, do not reinterpret it
+
+Read `docs/DESIGN-SYSTEM.md` before touching any UI. The full contract is there;
+this is the short version.
+
+`references/design-source/design-markup.html` has every value inline. Trace what
+you write back to it.
+
+## Forbidden without an explicit instruction in the task
+
+- redesign cards or change their composition
+- change spacing, radii, or the type scale
+- change navigation or screen order
+- substitute colours, or add any colour outside the palette
+- **add a grey** — every muted tone is sage or bone at an alpha
+- introduce a new component style
+- add gradients, shadows, or effects not in the source
+- change the typography hierarchy
+- rename, re-case, or rewrite label text
+- invent content, metrics, or affordances
+
+If the design appears wrong, say so and stop. Do not fix it silently.
+
+## Palette — the only colours in the app
+
+```
+--bone     #F2EFE2   primary text, key figures
+--green    #00F5A5   primary accent, live/healthy, active nav
+--ink      #0D0D12   base background, text on green/gold
+--sage     #A6C9B4   muted text and hairlines — ALWAYS at alpha
+--gold     #E3BB72   warning, amber band, offline
+--red      #FF4A3D   critical, negative variance, waste
+--charcoal #1B1B24   card and panel surface
+--venom    #08B078   mid-green gradient stop
+```
+
+`--red` is `#FF4A3D`. It is **not** `#ff5d5d`.
+
+## Typography
+
+- **Anton** — big numbers and screen titles only, always weight 400.
+- **Oswald** — all UI caps, labels, data lines, metrics, nav. Weights 400, 500,
+  600, **700**. All four must be loaded; `font-synthesis: none` is set globally,
+  so an unloaded weight renders wrong rather than falling back.
+- **Archivo** — body copy and sentence-case descriptive text only. 400, 600.
+
+**Casing:** the design's data vocabulary is UPPER CASE — `BAR 1`, `HEALTHY`,
+`COUNT DUE`, `TOTAL STOCK`, `48 BOTTLES`. Sentence case appears only in Archivo
+body copy and item names. Do not re-case label text.
+
+**Tracking:** Oswald caps always carry letter-spacing. Micro caps `0.16em`,
+section eyebrows `0.2em`, data caps `0.08–0.12em`. It is never zero.
+
+## Radii
+
+The design's vocabulary is soft: `18px` cards, `16px` alerts, `15px` metric
+grids, `14px` rows and buttons, `12px` small controls, `999px` pills, `44px`
+frame. A flow screen built on 3–7 px radii is wrong.
+
+## Material
+
+Surfaces are **glass**, not flat — the design has 51 `backdrop-filter`
+declarations. Panels are translucent over a three-layer ambient gradient field.
+The live dot pulses. See `docs/DESIGN-SYSTEM.md` for the exact declarations.
+
+## Navigation
+
+`back()` **pops the navigation stack** — it does not go home. Tab presses reset
+the stack. A hardcoded `<Link to="/">` on a flow screen is a defect. Toasts
+expire after 2600 ms.
+
+## Definition of done for a UI task
+
+1. Every value traced to `design-markup.html` or `design-script.jsx`.
+2. The screen renders from the **fixture repository**, not from literals.
+3. Compared against `references/ui/<screen>.png` at 390×844.
+4. Tap targets at least 44×44 px; focus indicators intact.
+
+Point 2 is load-bearing. A screen that hardcodes the design's sample figures can
+pass a screenshot comparison while being entirely non-functional — that is
+exactly how this project's previous design QA certified two broken screens.

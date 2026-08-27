@@ -1,0 +1,26 @@
+<!-- @dsCard group="Brand" viewport="700x180" name="Textures & Overlays" subtitle="Grain, halftone, venom wash — drop-in atmosphere" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; background: var(--ink-black); padding: 18px; font-family: var(--font-condensed);
+         display: flex; gap: 14px; }
+  .tile { flex: 1; height: 140px; border-radius: var(--radius-lg); position: relative; overflow: hidden;
+          border: 1px solid var(--line-hairline); background: var(--smoke-charcoal); }
+  .cap { position: absolute; bottom: 8px; left: 10px; font-size: 10px; letter-spacing: 0.07em;
+         text-transform: uppercase; color: var(--sage-bone); z-index: 2; }
+  .grain { position: absolute; inset: 0; background-image: var(--texture-grain); background-size: var(--texture-grain-size); }
+  .halftone { position: absolute; inset: 0; background-image: var(--texture-halftone); background-size: var(--texture-halftone-size); }
+  .wash { position: absolute; inset: 0; background: var(--bg-venom-wash), var(--venom-green); }
+  .aura { position: absolute; inset: 0; background: var(--bg-aura); }
+</style>
+</head>
+<body>
+  <div class="tile"><div class="grain"></div><span class="cap">--texture-grain</span></div>
+  <div class="tile"><div class="halftone"></div><span class="cap">--texture-halftone</span></div>
+  <div class="tile"><div class="wash"></div><span class="cap">--bg-venom-wash (over photo)</span></div>
+  <div class="tile"><div class="aura"></div><span class="cap">--bg-aura (behind hero)</span></div>
+</body>
+</html>

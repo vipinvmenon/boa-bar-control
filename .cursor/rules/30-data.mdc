@@ -1,0 +1,112 @@
+---
+description: Ledger, schema, domain and offline rules. Read before touching data, SQL or sync.
+globs: supabase/**,src/domain/**,src/data/**,src/services/**,src/lib/offline-db.ts
+---
+
+# Data, ledger and sync
+
+Read `docs/DATA-MODEL.md` and `docs/OFFLINE-SYNC.md` before touching anything
+here. Schema changes belong to Claude, not to an IDE session — if a fix needs a
+migration, stop and hand it over.
+
+## The ledger
+
+```
+boa_bar_movement is append-only.
+No UPDATE. No DELETE. No TRUNCATE.
+Corrections create compensating movements.
+```
+
+Stock on hand is derived by **summing the ledger**. There is no authoritative
+quantity column. `private.boa_bar_balance` is a projection, and it is only safe
+under the five conditions in `docs/DATA-MODEL.md` — written solely by the posting
+function, no client grants, a reconciliation view with a test, and a
+ledger-summing fallback for every read path.
+
+## The identity that must hold
+
+```
+Opening + Received − Issued out + Received in − Sold − Comped − Wasted − Returned = Closing
+```
+
+Per SKU, per location, per window — and it must be computable in SQL, decomposed
+by movement kind.
+
+## Movement rules
+
+| Kind | Line sum |
+| --- | --- |
+| `issue`, `transfer`, `return`, `comp` | Two legs netting to **zero** |
+| `receipt` | Net **positive** |
+| `sale`, `waste` | Net **negative** |
+| `adjustment` | Signed, reason required, manager only |
+
+`comp` is a custody move to a hospitality location, **not** a depletion.
+Hospitality depletion must never enter sales variance.
+
+`sale` is writable only by the POS import path. Never hand-keyed.
+
+## Units
+
+Capture **both** `container_delta` and `ml_delta` at write time. Derive neither
+from the other at read time — the point is that the ledger proves they agree.
+Deriving one makes the cross-check vacuous and makes partial containers unmovable.
+
+## Variance
+
+```
+theoretical = opening + in − out − sold − comped − wasted
+variance_ml = counted − theoretical
+variance_pct = variance_ml / (sold + comped + wasted)
+```
+
+Percentage of **throughput**, never of stock held. Banding is **signed** — never
+`Math.abs()` before banding. Positive variance means a missed receipt, a
+wrong-SKU ring-up, or an unaccepted docket. It is not good news and must not be
+green.
+
+## Blind counting
+
+Count inputs start at zero. While a count session is open for location L and user
+U, U must not be able to read L's expected position through any path — not the
+snapshot RPC, not by summing the raw ledger. This is **count-scoped, not
+role-scoped**: crew may see stock in general, but not for the location they are
+counting.
+
+The theoretical position is frozen server-side at submission
+(`count_session.sealed_position`) so variance is reproducible. A submitted count
+is sealed — the counter cannot edit it after the reveal.
+
+## Offline
+
+- Every write goes to the durable outbox, online or offline. No direct-to-network path.
+- Idempotency keys are minted **once per user action** and persisted, then reused
+  on retry. A key regenerated per call protects against nothing.
+- Replay is **strictly ordered** — a failed entry blocks the ones behind it, or an
+  acceptance can post before its issue.
+- A failed live load reads the reference cache. An empty cache shows an explicit
+  empty state — **never** fixture data rendered as real stock.
+- No `void` promise that can swallow a throw. Never toast success before the
+  write is durable.
+- A permanently-invalid entry goes to a dead-letter state a human can inspect —
+  it does not retry forever.
+- Nothing mutable lives only in React memory. A reload mid-count loses nothing.
+
+## Numbers
+
+Money is integer minor units (paise). Quantities are `numeric` / `integer` /
+`bigint`. **No float, anywhere, ever.**
+
+## Steppers and quantity inputs
+
+Every quantity input needs a **maximum**: you cannot issue more than the
+warehouse holds, and you cannot accept more than was issued. An over-receipt must
+not be silently classified as a shortfall.
+
+## Testing
+
+Existence assertions prove nothing. Tests must exercise behaviour: attempt an
+UPDATE, a DELETE and a TRUNCATE and assert they fail; connect as `authenticated`
+with a real role claim and assert each policy's actual effect; post the same
+action twice and assert one row; post an unmapped POS SKU and assert the batch is
+rejected.

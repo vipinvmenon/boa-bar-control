@@ -1,0 +1,28 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+.DS_Store
+coverage/
+playwright-report/
+test-results/
+.supabase/
+supabase/.temp/
+.visual-diff/
+
+# Working scratch, not deliverables
+*.log
+
+# Deliberately TRACKED, listed here so nobody adds them by reflex:
+#   references/design-source/   the recovered design and spec — the UI contract
+#   references/ui/              screen-keyed reference captures (acceptance artefacts)
+#   audit-current/              reference and implementation captures
+#   BOA-Bar.html                the original bundled design artifact
+#   BOA_Bar_Inventory.pptx      the approved slide deck
+#   Bar Inventory.docx          the original written specification
+#   Bangalore Open Air — Ritual/  the BOA brand system
+# These are large binaries, but they are the project's contracts. Losing them is
+# how this project spent five weeks building against assumptions — see
+# docs/DECISIONS.md ADR-001. If repository size becomes a problem, move them to
+# Git LFS; do not untrack them.

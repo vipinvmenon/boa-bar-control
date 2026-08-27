@@ -1,0 +1,38 @@
+/* Bangalore Open Air — Ritual :: Effects — glow, shadow, texture, grain
+ * The poison-green glow IS the identity. Don't flatten it.
+ */
+:root {
+  /* --- Green glow (the signature aura) --- */
+  --glow-green-sm: 0 0 6px rgba(0, 245, 165, 0.55);
+  --glow-green-md: 0 0 14px rgba(0, 245, 165, 0.5), 0 0 30px rgba(0, 245, 165, 0.28);
+  --glow-green-lg: 0 0 24px rgba(0, 245, 165, 0.55), 0 0 64px rgba(0, 245, 165, 0.32);
+  --glow-green-text: 0 0 8px rgba(0, 245, 165, 0.65), 0 0 22px rgba(8, 176, 120, 0.45);
+
+  /* --- Gold glow (headliner reverence) --- */
+  --glow-gold-sm: 0 0 6px rgba(227, 187, 114, 0.45);
+  --glow-gold-text: 0 0 10px rgba(227, 187, 114, 0.4);
+
+  /* --- Depth shadows on ink --- */
+  --shadow-panel: 0 12px 40px rgba(0, 0, 0, 0.55);
+  --shadow-sticker: 0 4px 0 rgba(0, 0, 0, 0.6), 0 8px 18px rgba(0, 0, 0, 0.5);
+
+  /* --- Radial aura background (drop behind a hero subject) --- */
+  --bg-aura: radial-gradient(60% 55% at 50% 42%,
+      var(--aura-green) 0%, var(--aura-green-soft) 38%, transparent 72%); /* @kind other */
+
+  /* --- Venom-to-ink vertical wash (protection gradient over photos) --- */
+  --bg-venom-wash: linear-gradient(180deg,
+      transparent 0%, rgba(13,13,18,0.15) 45%, rgba(13,13,18,0.88) 88%, var(--ink-black) 100%); /* @kind other */
+
+  /* --- Halftone / grain overlay (as a repeating dot texture) --- */
+  --texture-grain: radial-gradient(rgba(242,239,226,0.045) 1px, transparent 1.4px); /* @kind other */
+  --texture-grain-size: 3px 3px; /* @kind other */
+  --texture-halftone: radial-gradient(rgba(0,245,165,0.10) 1.1px, transparent 1.6px); /* @kind other */
+  --texture-halftone-size: 6px 6px; /* @kind other */
+
+  /* --- Motion --- */
+  --ease-ritual: cubic-bezier(0.22, 1, 0.36, 1); /* @kind other */
+  --dur-fast: 140ms; /* @kind other */
+  --dur-med: 260ms; /* @kind other */
+  --dur-slow: 520ms; /* @kind other */
+}

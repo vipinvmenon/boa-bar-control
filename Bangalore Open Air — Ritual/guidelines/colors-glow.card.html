@@ -1,0 +1,25 @@
+<!-- @dsCard group="Colors" viewport="700x180" name="Green Glow & Aura" subtitle="The signature poison-green atmosphere — never flatten it" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { margin: 0; background: var(--ink-black); font-family: var(--font-condensed);
+         display: flex; gap: 14px; padding: 18px; align-items: stretch; }
+  .tile { flex: 1; border-radius: var(--radius-lg); position: relative; overflow: hidden;
+          display: flex; align-items: center; justify-content: center; min-height: 140px;
+          border: 1px solid var(--line-hairline); }
+  .cap { position: absolute; bottom: 8px; left: 10px; font-size: 10px; letter-spacing: 0.08em;
+         text-transform: uppercase; color: var(--sage-bone); }
+  .orb { width: 60px; height: 60px; border-radius: 50%; background: var(--poison-green); }
+  .txt { font-family: var(--font-display); font-size: 40px; color: var(--poison-green); text-shadow: var(--glow-green-text); }
+</style>
+</head>
+<body>
+  <div class="tile" style="background:var(--bg-aura)"><span class="cap">--bg-aura radial</span></div>
+  <div class="tile"><div class="orb" style="box-shadow:var(--glow-green-lg)"></div><span class="cap">--glow-green-lg</span></div>
+  <div class="tile"><span class="txt">OPEN</span><span class="cap">--glow-green-text</span></div>
+  <div class="tile" style="background:var(--bg-venom-wash), var(--venom-green)"><span class="cap">--bg-venom-wash</span></div>
+</body>
+</html>

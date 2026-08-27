@@ -1,0 +1,39 @@
+---
+description: Rules that are defects to violate, regardless of the reason. Always applies.
+alwaysApply: true
+---
+
+# Non-negotiables
+
+Violating any of these is a defect regardless of how good the reason seemed.
+
+1. **The ledger is append-only.** No UPDATE, no DELETE, no TRUNCATE on
+   `boa_bar_movement` or `boa_bar_movement_line`. Corrections are compensating
+   movements. Never write `inventory.quantity -= n` or anything like it.
+2. **Stock is derived by summing the ledger.** Never introduce a stored
+   authoritative stock level. A cached projection is permitted only under the
+   five conditions in `docs/DATA-MODEL.md`.
+3. **Never pre-fill a count input with an expected figure**, and never let a
+   counting user read the expected position for the location they are counting.
+   This is the most important integrity rule in the product — the specification
+   calls blind counting "non-negotiable".
+4. **No fixture data inside a screen file.** No literal SKU list, stock figure,
+   or bar name in `src/screens/`. Data reaches a screen from a repository through
+   a service.
+5. **No silent write failure.** No `void` promise that can swallow a throw. Never
+   report success before a write is durable in the outbox.
+6. **Authorisation is enforced in the database.** Client-side role checks are a
+   usability affordance, never a control.
+7. **`sale` movements come only from POS import.** Never hand-keyed.
+8. **No float for money or quantities.** Money is integer paise. Quantities are
+   `numeric` / `integer` / `bigint`.
+9. **No architecture change without an ADR** in `docs/DECISIONS.md`.
+10. **Never mark a task done without meeting its acceptance criteria** in
+    `docs/ROADMAP.md`.
+
+## Why these are absolute
+
+This system is the evidence in three adversarial conversations: an excise
+inspection, a commercial settlement, and an internal question about where stock
+went. A defensible-looking but wrong number is the worst outcome — worse than an
+obvious failure, because nobody catches it.

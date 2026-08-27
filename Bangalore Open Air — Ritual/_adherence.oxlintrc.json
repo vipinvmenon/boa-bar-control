@@ -1,0 +1,360 @@
+{
+  "plugins": [
+    "react",
+    "import"
+  ],
+  "rules": {
+    "react/forbid-elements": [
+      "warn",
+      {
+        "forbid": []
+      }
+    ],
+    "no-restricted-imports": [
+      "warn",
+      {
+        "patterns": [
+          {
+            "group": [
+              "components/actions/**",
+              "components/content/**",
+              "components/marks/**"
+            ],
+            "message": "Import design-system components from 'index.js', not component internals."
+          }
+        ]
+      }
+    ],
+    "no-restricted-syntax": [
+      "warn",
+      {
+        "selector": "Literal[value=/#[0-9a-fA-F]{3,8}\\b/]",
+        "message": "Raw hex color — use a design-system color token via var()."
+      },
+      {
+        "selector": "Literal[value=/\\b\\d+px\\b/]",
+        "message": "Raw px value — use a design-system spacing token via var()."
+      },
+      {
+        "selector": "Literal[value=/font-family\\s*:\\s*(?!['\\\"]?(?:Metal Mania|Rye|Anton|Oswald|Archivo))/i]",
+        "message": "Font not provided by the design system. Available: Metal Mania, Rye, Anton, Oswald, Archivo."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='CTAButton'] > JSXAttribute > JSXIdentifier[name!=/^(?:variant|size|as|children|key|ref|className|style|children)$/]",
+        "message": "<CTAButton> doesn't accept that prop. Declared props: variant, size, as, children."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='CTAButton'] > JSXAttribute[name.name='variant'] > Literal[value!=/^(?:primary|ghost|green)$/]",
+        "message": "<CTAButton> variant must be one of 'primary' | 'ghost' | 'green'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='CTAButton'] > JSXAttribute[name.name='size'] > Literal[value!=/^(?:sm|md|lg)$/]",
+        "message": "<CTAButton> size must be one of 'sm' | 'md' | 'lg'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='CTAButton'] > JSXAttribute[name.name='as'] > Literal[value!=/^(?:button|a)$/]",
+        "message": "<CTAButton> as must be one of 'button' | 'a'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='DateVenueBar'] > JSXAttribute > JSXIdentifier[name!=/^(?:items|align|bordered|glow|style|key|ref|className|style|children)$/]",
+        "message": "<DateVenueBar> doesn't accept that prop. Declared props: items, align, bordered, glow, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='DateVenueBar'] > JSXAttribute[name.name='align'] > Literal[value!=/^(?:left|center)$/]",
+        "message": "<DateVenueBar> align must be one of 'left' | 'center'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='HeadlineBlock'] > JSXAttribute > JSXIdentifier[name!=/^(?:eyebrow|headline|subhead|accent|align|size|style|key|ref|className|style|children)$/]",
+        "message": "<HeadlineBlock> doesn't accept that prop. Declared props: eyebrow, headline, subhead, accent, align, size, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='HeadlineBlock'] > JSXAttribute[name.name='align'] > Literal[value!=/^(?:left|center)$/]",
+        "message": "<HeadlineBlock> align must be one of 'left' | 'center'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='HeadlineBlock'] > JSXAttribute[name.name='size'] > Literal[value!=/^(?:sm|md|lg)$/]",
+        "message": "<HeadlineBlock> size must be one of 'sm' | 'md' | 'lg'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Artist'] > JSXAttribute > JSXIdentifier[name!=/^(?:name|tier|key|ref|className|style|children)$/]",
+        "message": "<Artist> doesn't accept that prop. Declared props: name, tier."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Artist'] > JSXAttribute[name.name='tier'] > Literal[value!=/^(?:headliner|support|special)$/]",
+        "message": "<Artist> tier must be one of 'headliner' | 'support' | 'special'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='LogoLockup'] > JSXAttribute > JSXIdentifier[name!=/^(?:src|size|variant|glow|style|key|ref|className|style|children)$/]",
+        "message": "<LogoLockup> doesn't accept that prop. Declared props: src, size, variant, glow, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='LogoLockup'] > JSXAttribute[name.name='size'] > Literal[value!=/^(?:sm|md|lg)$/]",
+        "message": "<LogoLockup> size must be one of 'sm' | 'md' | 'lg'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='LogoLockup'] > JSXAttribute[name.name='variant'] > Literal[value!=/^(?:full|mono)$/]",
+        "message": "<LogoLockup> variant must be one of 'full' | 'mono'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Motif'] > JSXAttribute > JSXIdentifier[name!=/^(?:aura|texture|wash|intensity|style|key|ref|className|style|children)$/]",
+        "message": "<Motif> doesn't accept that prop. Declared props: aura, texture, wash, intensity, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Motif'] > JSXAttribute[name.name='texture'] > Literal[value!=/^(?:grain|halftone|none)$/]",
+        "message": "<Motif> texture must be one of 'grain' | 'halftone' | 'none'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='PriceSticker'] > JSXAttribute > JSXIdentifier[name!=/^(?:kicker|price|strike|tone|rotate|style|key|ref|className|style|children)$/]",
+        "message": "<PriceSticker> doesn't accept that prop. Declared props: kicker, price, strike, tone, rotate, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='PriceSticker'] > JSXAttribute[name.name='tone'] > Literal[value!=/^(?:green|gold)$/]",
+        "message": "<PriceSticker> tone must be one of 'green' | 'gold'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='SponsorLogo'] > JSXAttribute > JSXIdentifier[name!=/^(?:src|alt|height|key|ref|className|style|children)$/]",
+        "message": "<SponsorLogo> doesn't accept that prop. Declared props: src, alt, height."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='TicketBadge'] > JSXAttribute > JSXIdentifier[name!=/^(?:tier|price|tone|soldOut|style|key|ref|className|style|children)$/]",
+        "message": "<TicketBadge> doesn't accept that prop. Declared props: tier, price, tone, soldOut, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='TicketBadge'] > JSXAttribute[name.name='tone'] > Literal[value!=/^(?:green|gold|ghost)$/]",
+        "message": "<TicketBadge> tone must be one of 'green' | 'gold' | 'ghost'."
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/index.js"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ],
+  "x-omelette": {
+    "components": {
+      "CTAButton": {
+        "replaces": []
+      },
+      "DateVenueBar": {
+        "replaces": []
+      },
+      "HeadlineBlock": {
+        "replaces": []
+      },
+      "Artist": {
+        "replaces": []
+      },
+      "LogoLockup": {
+        "replaces": []
+      },
+      "Motif": {
+        "replaces": []
+      },
+      "PriceSticker": {
+        "replaces": []
+      },
+      "SponsorLogo": {
+        "replaces": []
+      },
+      "TicketBadge": {
+        "replaces": []
+      }
+    },
+    "tokens": [
+      "--aura-green",
+      "--aura-green-soft",
+      "--bg-aura",
+      "--bg-venom-wash",
+      "--bone-white",
+      "--border-1",
+      "--border-2",
+      "--border-3",
+      "--border-hair",
+      "--deep-gold",
+      "--dur-fast",
+      "--dur-med",
+      "--dur-slow",
+      "--ease-ritual",
+      "--focus-ring",
+      "--font-body",
+      "--font-condensed",
+      "--font-display",
+      "--font-eyebrow",
+      "--font-headline",
+      "--fs-body",
+      "--fs-caption",
+      "--fs-display",
+      "--fs-display-fluid",
+      "--fs-h1",
+      "--fs-h2",
+      "--fs-h3",
+      "--fs-small",
+      "--fw-bold",
+      "--fw-medium",
+      "--fw-regular",
+      "--fw-semibold",
+      "--glow-gold-sm",
+      "--glow-gold-text",
+      "--glow-green-lg",
+      "--glow-green-md",
+      "--glow-green-sm",
+      "--glow-green-text",
+      "--ink-black",
+      "--lh-body",
+      "--lh-display",
+      "--lh-heading",
+      "--lh-tight",
+      "--line-gold",
+      "--line-green",
+      "--line-hairline",
+      "--poison-green",
+      "--radius-lg",
+      "--radius-md",
+      "--radius-none",
+      "--radius-pill",
+      "--radius-sm",
+      "--ritual-gold",
+      "--safe-bottom",
+      "--safe-top",
+      "--sage-bone",
+      "--shadow-panel",
+      "--shadow-sticker",
+      "--smoke-charcoal",
+      "--sp-1",
+      "--sp-10",
+      "--sp-2",
+      "--sp-3",
+      "--sp-4",
+      "--sp-5",
+      "--sp-6",
+      "--sp-7",
+      "--sp-8",
+      "--sp-9",
+      "--surface-base",
+      "--surface-card",
+      "--surface-raised",
+      "--surface-sunken",
+      "--text-accent",
+      "--text-body",
+      "--text-muted",
+      "--text-on-gold",
+      "--text-on-green",
+      "--text-primary",
+      "--text-strong",
+      "--texture-grain",
+      "--texture-grain-size",
+      "--texture-halftone",
+      "--texture-halftone-size",
+      "--tr-body",
+      "--tr-data",
+      "--tr-display",
+      "--tr-eyebrow",
+      "--tr-headline",
+      "--venom-green"
+    ],
+    "tokenKinds": {
+      "--ink-black": "color",
+      "--smoke-charcoal": "color",
+      "--poison-green": "color",
+      "--venom-green": "color",
+      "--sage-bone": "color",
+      "--ritual-gold": "color",
+      "--deep-gold": "color",
+      "--bone-white": "color",
+      "--surface-base": "color",
+      "--surface-card": "color",
+      "--surface-raised": "color",
+      "--surface-sunken": "color",
+      "--text-strong": "font",
+      "--text-body": "font",
+      "--text-muted": "font",
+      "--text-accent": "font",
+      "--text-primary": "font",
+      "--text-on-gold": "font",
+      "--text-on-green": "font",
+      "--line-hairline": "color",
+      "--line-green": "color",
+      "--line-gold": "color",
+      "--aura-green": "color",
+      "--aura-green-soft": "color",
+      "--focus-ring": "color",
+      "--font-display": "font",
+      "--font-eyebrow": "font",
+      "--font-headline": "font",
+      "--font-condensed": "font",
+      "--font-body": "font",
+      "--fs-display": "spacing",
+      "--fs-h1": "spacing",
+      "--fs-h2": "spacing",
+      "--fs-h3": "spacing",
+      "--fs-body": "spacing",
+      "--fs-small": "spacing",
+      "--fs-caption": "spacing",
+      "--fs-display-fluid": "font",
+      "--fw-regular": "font",
+      "--fw-medium": "font",
+      "--fw-semibold": "font",
+      "--fw-bold": "font",
+      "--lh-display": "font",
+      "--lh-tight": "font",
+      "--lh-heading": "font",
+      "--lh-body": "font",
+      "--tr-display": "font",
+      "--tr-eyebrow": "spacing",
+      "--tr-headline": "font",
+      "--tr-data": "spacing",
+      "--tr-body": "font",
+      "--sp-1": "spacing",
+      "--sp-2": "spacing",
+      "--sp-3": "spacing",
+      "--sp-4": "spacing",
+      "--sp-5": "spacing",
+      "--sp-6": "spacing",
+      "--sp-7": "spacing",
+      "--sp-8": "spacing",
+      "--sp-9": "spacing",
+      "--sp-10": "spacing",
+      "--radius-none": "radius",
+      "--radius-sm": "radius",
+      "--radius-md": "radius",
+      "--radius-lg": "radius",
+      "--radius-pill": "radius",
+      "--border-hair": "spacing",
+      "--border-1": "spacing",
+      "--border-2": "spacing",
+      "--border-3": "spacing",
+      "--safe-top": "spacing",
+      "--safe-bottom": "spacing",
+      "--glow-green-sm": "shadow",
+      "--glow-green-md": "shadow",
+      "--glow-green-lg": "shadow",
+      "--glow-green-text": "font",
+      "--glow-gold-sm": "shadow",
+      "--glow-gold-text": "font",
+      "--shadow-panel": "shadow",
+      "--shadow-sticker": "shadow",
+      "--bg-aura": "other",
+      "--bg-venom-wash": "other",
+      "--texture-grain": "other",
+      "--texture-grain-size": "other",
+      "--texture-halftone": "other",
+      "--texture-halftone-size": "other",
+      "--ease-ritual": "other",
+      "--dur-fast": "other",
+      "--dur-med": "other",
+      "--dur-slow": "other"
+    },
+    "fontFamilies": [
+      "Anton",
+      "Archivo",
+      "Metal Mania",
+      "Oswald",
+      "Rye"
+    ]
+  }
+}
