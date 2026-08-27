@@ -28,6 +28,9 @@ import type {
 
 export const AS_OF = { label: '19:43', at: '2026-10-10T19:43:00+05:30' }
 
+// design-markup.html:1090-1098 — the sync card's DEVICE / SIGNED IN pair.
+export const SESSION = { deviceLabel: 'BAR-3-01', signedInName: 'RAHUL' }
+
 // design-script.jsx:72-75
 export const BARS: BarSummary[] = [
   { id: 'bar-1', name: 'BAR 1', containers: 182, status: 'HEALTHY',   tone: 'green', lead: 'Aditi',   countedAt: '17:40' },

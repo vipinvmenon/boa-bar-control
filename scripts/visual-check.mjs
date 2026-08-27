@@ -52,15 +52,38 @@ const SCREENS = [
   { key: 'mv', label: 'MOVEMENT', route: null },
   { key: 'control', label: 'CONTROL', route: null },
   { key: 'cowork', label: 'COWORK', route: null },
-  { key: 'more', label: 'MORE', route: '/more', expectsData: false, note: 'profile and menu only; the design also has a sync-state panel (BAR-104)' },
+  { key: 'more', label: 'MORE', route: '/more', expectsData: false, note: 'menu, sync card and role badge read live state, not fixture SKU data' },
   { key: 'reports', label: 'REPORTS', route: '/reports', expectsData: false, note: 'honest empty state until the ledger views exist (BAR-107)' },
   { key: 'rep', label: 'REPORT', route: null },
 ]
 
+/**
+ * Capture a settled render.
+ *
+ * Screens now read asynchronously through React Query, so a fixed delay races
+ * the loading state: one capture can catch "Loading…" and the other the settled
+ * screen, or both can catch the loading state and be identical — which the
+ * derivation check would report as hardcoded. That made the gate flaky, and a
+ * flaky gate is worse than none because it teaches people to re-run until green.
+ *
+ * So wait for every loading placeholder to clear, then for two consecutive
+ * identical frames, before capturing.
+ */
 async function shoot(page, url) {
   await page.goto(url, { waitUntil: 'networkidle' })
-  await page.waitForTimeout(450)
-  return page.screenshot()
+
+  await page
+    .waitForFunction(() => !/Loading[^]*?…/.test(document.body.innerText), null, { timeout: 8000 })
+    .catch(() => {}) // a screen with no loading state never matches; not a failure
+
+  let previous = null
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    await page.waitForTimeout(180)
+    const frame = await page.screenshot()
+    if (previous && Buffer.compare(previous, frame) === 0) return frame
+    previous = frame
+  }
+  return previous
 }
 
 async function main() {

@@ -100,7 +100,7 @@ The design is now recovered to `references/design-source/`. See
 | `mv` | MOVEMENT | `[ ]` | Missing. Activity rows are not tappable |
 | `control` | CONTROL | `[ ]` | Missing entirely — the show-day board |
 | `cowork` | COWORK | `[ ]` | Missing. Entry point silently redirects to More |
-| `more` | MORE | `[R]` | 3 of 6 destinations; no sync-state panel; demo switches shipped as product controls |
+| `more` | MORE | `[x]` | rebuilt — 6 destinations, green role badge, SYNC STATE card with device and signed-in, build stamp. Demo switches removed |
 | `reports` | REPORTS | `[R]` | Route repurposed into an invented variance page with fabricated `−2.1%`, `₹18.4K`, `94%` |
 | `rep` | REPORT | `[ ]` | Missing |
 
@@ -111,8 +111,11 @@ The fidelity gate (`pnpm test:visual`) is the live measure:
 
 ```
 22 in the design · 22 reference captures · 10 implemented routes
-6 reading the data layer · 2 legitimately static · 2 hardcoded · 12 missing
+7 reading the data layer · 1 legitimately static · 2 hardcoded · 12 missing
 ```
+
+Rebuilt to the design so far: `bars`, `bar`, `activity`, `more`, plus the shell's
+bottom navigation. The 2 still hardcoded are `home` and `warehouse`.
 
 ---
 

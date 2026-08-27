@@ -3,12 +3,12 @@ import { AppShell } from './AppShell'
 import { BarsScreen } from '../screens/bars/BarsScreen'
 import { BarScreen } from '../screens/bar/BarScreen'
 import { ActivityScreen } from '../screens/activity/ActivityScreen'
+import { MoreScreen } from '../screens/more/MoreScreen'
 import {
   CountScreen,
   DocketScreen,
   HomeScreen,
   IssueScreen,
-  MoreScreen,
   ReportsScreen,
   WarehouseScreen,
   WasteScreen,

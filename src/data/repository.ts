@@ -153,6 +153,22 @@ export type CatalogueGroup = {
 }
 
 // ---------------------------------------------------------------------------
+// session (more)
+// ---------------------------------------------------------------------------
+
+/**
+ * Device and signed-in identity, shown on the More screen's sync card.
+ *
+ * Note these are independent of role: the design shows the MANAGER badge and
+ * "SIGNED IN: RAHUL" together. Deriving the name from the role was an invention.
+ * Comes from auth once BAR-137/BAR-141 land.
+ */
+export type SessionInfo = {
+  deviceLabel: string
+  signedInName: string
+}
+
+// ---------------------------------------------------------------------------
 // The contract
 // ---------------------------------------------------------------------------
 
@@ -161,6 +177,7 @@ export interface Repository {
   readonly kind: 'fixture' | 'live'
 
   asOf(): Promise<AsOf>
+  session(): Promise<SessionInfo>
 
   stockPosition(): Promise<StockPosition>
   alerts(): Promise<Alert[]>

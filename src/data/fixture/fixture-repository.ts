@@ -20,9 +20,10 @@ import type {
   LedgerEntry,
   MovementDetail,
   Repository,
+  SessionInfo,
   StockPosition,
 } from '../repository'
-import { ALERTS, AS_OF, BARS, BAR_DETAIL, CATALOGUE, LEDGER, MOVEMENTS, STOCK_POSITION, variant } from './design-data'
+import { ALERTS, AS_OF, BARS, BAR_DETAIL, CATALOGUE, LEDGER, MOVEMENTS, SESSION, STOCK_POSITION, variant } from './design-data'
 
 export type FixtureVariant = 'a' | 'b'
 
@@ -34,6 +35,10 @@ export function createFixtureRepository(which: FixtureVariant = 'a'): Repository
 
     async asOf(): Promise<AsOf> {
       return v?.asOf ?? AS_OF
+    },
+
+    async session(): Promise<SessionInfo> {
+      return SESSION
     },
 
     async stockPosition(): Promise<StockPosition> {

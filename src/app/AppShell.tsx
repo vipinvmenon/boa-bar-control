@@ -1,15 +1,8 @@
 import { Link, Outlet, useRouterState } from '@tanstack/react-router'
-import { Activity, BatteryMedium, Boxes, Home, Menu, Star, Store, TriangleAlert, Wifi, WifiOff } from 'lucide-react'
+import { BatteryMedium, Star, TriangleAlert, Wifi, WifiOff } from 'lucide-react'
 import { useDemoStore } from '../lib/demo-store'
+import { BottomNav } from '../components/layout/BottomNav'
 import { configError } from '../lib/supabase'
-
-const navItems = [
-  { to: '/', label: 'Home', icon: Home },
-  { to: '/warehouse', label: 'Warehouse', icon: Boxes },
-  { to: '/bars', label: 'Bars', icon: Store },
-  { to: '/activity', label: 'Activity', icon: Activity },
-  { to: '/more', label: 'More', icon: Menu },
-] as const
 
 export function AppShell() {
   const store = useDemoStore()
@@ -97,16 +90,7 @@ export function AppShell() {
           <Outlet />
         </main>
 
-        {!fullFlow && (
-          <nav className="bottom-nav" aria-label="Primary navigation">
-            {navItems.map(({ to, label, icon: Icon }) => (
-              <Link key={to} to={to} activeOptions={{ exact: to === '/' }} className="nav-item">
-                <Icon size={20} strokeWidth={1.7} aria-hidden="true" />
-                <span>{label}</span>
-              </Link>
-            ))}
-          </nav>
-        )}
+        {!fullFlow && <BottomNav />}
         {store.toast && <div className="toast" role="status">{store.toast}</div>}
       </div>
       <div className="stage-caption" aria-hidden="true">BOA BAR INVENTORY / 390 × 844 / {caption}</div>
