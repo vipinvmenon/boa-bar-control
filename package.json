@@ -19,7 +19,9 @@
     "supabase:status": "supabase status",
     "supabase:reset": "supabase db reset",
     "supabase:test": "supabase test db",
-    "test:db": "supabase test db"
+    "test:db": "supabase test db",
+    "capture:design": "node scripts/capture-design-reference.mjs",
+    "test:visual": "node scripts/visual-check.mjs"
   },
   "dependencies": {
     "@fontsource/anton": "^5.2.6",

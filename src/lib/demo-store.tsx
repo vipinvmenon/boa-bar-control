@@ -94,14 +94,51 @@ const activity: ActivityItem[] = [
   { id: 'a4', at: '18:52', kind: 'ADJUSTMENT', title: 'Signed correction', detail: 'Bar 4 · +12 Budweiser · incorrect issue', actor: 'Salman', tone: 'red' },
 ]
 
+/**
+ * BAR-008. A second fixture set, used only by the visual harness.
+ *
+ * The harness renders every screen against both sets and fails any screen whose
+ * two renders are byte-identical, because that proves the screen is not reading
+ * the data layer at all. This is the gate whose absence let `home` and
+ * `warehouse` pass design QA while displaying hardcoded literals: a screenshot
+ * comparison rewards typing the screenshot's values into JSX, and a two-state
+ * comparison cannot be satisfied that way.
+ *
+ * This is a temporary seam. BAR-042/BAR-043 replace it with a real fixture
+ * repository selected at bootstrap; the harness then swaps repositories instead
+ * of reading a query parameter.
+ */
+const stockVariant: StockItem[] = stock.map((item, index) => ({
+  ...item,
+  // Vary the name as well as the quantities. Some screens legitimately show no
+  // quantity at all — the blind count is required to hide them — so a
+  // quantity-only variant would flag those screens as hardcoded when they are
+  // behaving correctly. A gate that cries wolf gets switched off.
+  name: `${item.name} (v2)`,
+  warehouse: item.warehouse + 7 * (index + 1),
+  bar3: item.bar3 + (index + 1),
+}))
+
+const activityVariant: ActivityItem[] = activity.map((item, index) => ({
+  ...item,
+  title: `${item.title} (v2)`,
+  at: `18:${String(10 + index * 3).padStart(2, '0')}`,
+}))
+
+function fixtureVariant(): 'a' | 'b' {
+  if (import.meta.env.PROD) return 'a'
+  if (typeof window === 'undefined') return 'a'
+  return new URLSearchParams(window.location.search).get('fixture') === 'b' ? 'b' : 'a'
+}
+
 const initialState: State = {
   backendMode: 'demo',
   dataLoading: false,
   role: 'Manager',
   offline: false,
   pending: 0,
-  stock,
-  activity,
+  stock: fixtureVariant() === 'b' ? stockVariant : stock,
+  activity: fixtureVariant() === 'b' ? activityVariant : activity,
   dockets: [],
 }
 
