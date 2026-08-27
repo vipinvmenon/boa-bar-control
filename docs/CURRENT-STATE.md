@@ -129,8 +129,8 @@ The design is now recovered to `references/design-source/`. See
 
 | Task | Title | State | Evidence / note |
 | --- | --- | --- | --- |
-| BAR-011 | Write policies | `[!]` | **All 13 policies are `for select` only.** No INSERT, no `WITH CHECK`, anywhere |
-| BAR-012 | `GRANT USAGE ON SCHEMA private` | `[!]` | Missing. Every policy calls `private.boa_bar_has_role`, so every policy would error at runtime |
+| BAR-011 | Write policies | `[!]` | **Acceptance criteria now in question — see "Open design question" below.** Still no write path of any kind, so the app cannot write |
+| BAR-012 | `GRANT USAGE ON SCHEMA private` | `[x]` | `3c6acd9` — migration `202608270001`. USAGE + EXECUTE on the helper only; `private.boa_bar_balance` stays unreachable |
 | BAR-013 | Harden immutability | `[~]` | Row triggers exist on movement and movement_line. No TRUNCATE guard, no `ENABLE ALWAYS`, no `FORCE ROW LEVEL SECURITY` |
 | BAR-014 | `v_position` sums the ledger | `[ ]` | No views exist. `boa_bar_inventory_snapshot` reads the projection exclusively; nothing sums the ledger |
 | BAR-015 | Reconciliation view | `[ ]` | — |
@@ -268,6 +268,36 @@ original audit.
 | 14 | **Empties are never counted** and cannot be reconstructed afterwards. This is a physical observation that exists only between 23:00 and 03:00 on 10 October, and both the excise return and the STOK settlement have a line for it | BAR-148 |
 | 15 | **There is no QR scanner anywhere in the app** — so the acceptance side of two-party custody has no input device, while `vercel.json` already grants camera permission for the capability that was never built | BAR-136 |
 | 16 | **No alert reaches anyone.** Every alert is passive, existing only while someone holds the phone on the home screen. The warehouse never learns Bar 3 is 26 minutes from dry, and the bar has no way to ask | BAR-149 |
+
+## Open design question — BAR-011 vs BAR-155
+
+**Raised 24 August. Needs a decision before BAR-011 starts.**
+
+BAR-011's acceptance criteria say: *"INSERT policies with `WITH CHECK` on dockets,
+docket lines, count sessions, count lines, POS imports and rows."*
+
+Migration `202608270001` (BAR-122) deliberately granted **no** table-level write
+privilege to `authenticated`, on the reasoning that every write goes through a
+`SECURITY DEFINER` RPC which runs as owner and therefore does not need the caller
+to hold table privileges. Granting `INSERT` directly would let a client bypass
+the validation those RPCs exist to enforce — the balance rules per movement kind,
+the unmapped-POS-SKU hard fail, the count seal.
+
+These two positions are incompatible. If writes go through RPCs, INSERT policies
+are not merely unnecessary, they are a hole. Options:
+
+1. **Fold BAR-011 into BAR-155 (command RPCs).** No table-level INSERT anywhere;
+   one `SECURITY DEFINER` command RPC per use case, each validating before
+   writing. Consistent with how `boa_bar_submit_movement` already works, and with
+   the atomicity requirement — every write spans two or more tables.
+2. **Keep INSERT policies** and grant table-level writes, accepting that
+   validation must then be duplicated in constraints and triggers rather than
+   living in one RPC.
+
+**Recommendation: option 1.** It matches the existing RPC, it keeps validation in
+one place, and it is the only one that gives atomic multi-table writes. If
+accepted, BAR-011 should be rewritten as "no table-level write grants; verify
+none exist" and the real work moves to BAR-155.
 
 ## Blockers needing a human
 
