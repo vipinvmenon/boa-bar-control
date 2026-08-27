@@ -1,0 +1,90 @@
+/**
+ * BAR-085 — count submitted.
+ *
+ * Values from design-markup.html:727-756. Compare against
+ * references/ui/countDone.png.
+ *
+ * Previously an inline success panel with no witness and no seal. The design's
+ * record carries both names, because spec §6 requires the expected figure to
+ * reach "a different person" — which only means something if the count records
+ * who counted and who witnessed.
+ *
+ * The variance CTA is manager-gated. The gate here is a usability affordance;
+ * the real enforcement is count-scoped in the database (ADR-005).
+ */
+import { useNavigate } from '@tanstack/react-router'
+import { Check, Lock } from 'lucide-react'
+import { useRepositoryQuery } from '../../data/RepositoryProvider'
+import { useDemoStore } from '../../lib/demo-store'
+import { DetailList, FlowFooter } from '../custody/parts'
+
+export function CountDoneScreen() {
+  const navigate = useNavigate()
+  const store = useDemoStore()
+  const session = useRepositoryQuery(['countSession'], (r) => r.countSession())
+  const s = session.data
+
+  if (!s) {
+    return (
+      <div className="flow-screen">
+        <div className="flow-body">
+          <p className="section-empty">Loading…</p>
+        </div>
+      </div>
+    )
+  }
+
+  const isManager = store.role === 'Manager'
+
+  return (
+    <div className="flow-screen">
+      <div className="flow-body countdone-body">
+        <div className="received-mark">
+          <div className="received-tick">
+            <Check size={30} strokeWidth={2.4} aria-hidden="true" />
+          </div>
+          <p className="countdone-title">COUNT SUBMITTED</p>
+          <p className="received-sub">
+            {s.locationName} mid-event count · {s.totalLines} SKUs · sealed {s.sealedAt}
+          </p>
+        </div>
+
+        <DetailList
+          rows={[
+            { label: 'Location', value: s.locationName },
+            { label: 'Count type', value: 'MID-EVENT · BLIND' },
+            { label: 'Counted by', value: s.countedBy },
+            { label: 'Witnessed by', value: s.witnessedBy },
+            { label: 'Lines', value: `${s.totalLines} OF ${s.totalLines}`, tone: 'green' },
+          ]}
+        />
+
+        <div className="advisory advisory-sage">
+          <Lock size={16} strokeWidth={1.9} aria-hidden="true" />
+          Expected figures stay sealed to the counter. Variance is released on the manager screen.
+        </div>
+      </div>
+
+      <FlowFooter>
+        <button
+          className="flow-cta-gold"
+          onClick={() => {
+            if (!isManager) {
+              store.flash('MANAGER ACCESS REQUIRED')
+              return
+            }
+            void navigate({ to: '/variance' })
+          }}
+        >
+          {isManager ? 'Open variance' : 'Variance · manager only'}
+        </button>
+        <button
+          className="flow-cta-ghost"
+          onClick={() => void navigate({ to: '/bars/$barId', params: { barId: 'bar-3' } })}
+        >
+          Back to {s.locationName}
+        </button>
+      </FlowFooter>
+    </div>
+  )
+}

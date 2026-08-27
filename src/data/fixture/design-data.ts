@@ -22,9 +22,11 @@ import type {
   BarSummary,
   CatalogueGroup,
   LedgerEntry,
+  CountSession,
   Custody,
   MovementDetail,
   StockPosition,
+  VarianceReport,
 } from '../repository'
 
 export const AS_OF = { label: '19:43', at: '2026-10-10T19:43:00+05:30' }
@@ -187,6 +189,48 @@ export const CUSTODY: Custody = {
 }
 
 /**
+ * design-script.jsx:107-111 — the count session's SKUs and their partial modes.
+ *
+ * These three modes are the point of spec §6: bottled beer is 1:1 with nothing
+ * to weigh, spirits are weighed against the SKU's tare, and kegs are metered.
+ * The previous count screen had no partial capture at all, so the largest source
+ * of count error — guessing "about a third left" across forty bottles — had
+ * nowhere to go.
+ */
+export const COUNT_SESSION: CountSession = {
+  locationName: 'BAR 3',
+  kindLabel: 'MID-EVENT COUNT',
+  scopeLabel: 'BAR 3 · BLIND',
+  totalLines: 18,
+  presets: [0, 6, 12, 24],
+  countedBy: 'RAHUL',
+  witnessedBy: 'CHANDAN',
+  sealedAt: '19:52',
+  lines: [
+    { skuId: 'kf',   name: 'Kingfisher Premium', spec: 'Beer · 650 ml bottle',              partial: 'none',   partialStep: 1,  partialUnit: 'OPEN BOTTLES',      partialHint: '' },
+    { skuId: 'monk', name: 'Old Monk',           spec: 'Spirit · 750 ml bottle · tare 480 g', partial: 'ml',     partialStep: 50, partialUnit: 'ML BY WEIGHT',      partialHint: 'WEIGH · TARE 480 G' },
+    { skuId: 'stok', name: 'STOK Draught',       spec: 'Beer · 30 L keg · line 2',          partial: 'litres', partialStep: 1,  partialUnit: 'LITRES REMAINING',  partialHint: 'FLOW METER · LINE 2' },
+  ],
+}
+
+/** design-script.jsx `varianceRows`, plus the header figures. */
+export const VARIANCE: VarianceReport = {
+  locationName: 'BAR 3',
+  bandLabel: 'AMBER',
+  bandTone: 'gold',
+  throughputLabel: '1,240 L',
+  varianceLabel: '-3.2%',
+  basisLabel: 'MID-EVENT COUNT 19:52 · COUNTED BY RAHUL · % OF THROUGHPUT',
+  lines: [
+    { skuId: 'stok',   name: 'STOK Draught',  expected: '96 L',      counted: '84 L',      delta: '−12 L',   pct: '−12.5%', tone: 'gold',  note: 'Draught band 8–15% · line purge and foam across two lines' },
+    { skuId: 'monk',   name: 'Old Monk',      expected: '11,400 ml', counted: '10,620 ml', delta: '−780 ml', pct: '−6.4%',  tone: 'gold',  note: 'Consistent all evening — overpour pattern, not a step change' },
+    { skuId: 'corona', name: 'Corona Extra',  expected: '16',        counted: '19',        delta: '+3',      pct: '+2.4%',  tone: 'gold',  note: 'Positive — check for a missed receipt or a wrong-SKU ring-up', noteTone: 'gold' },
+    { skuId: 'kf',     name: 'Kingfisher',    expected: '42',        counted: '40',        delta: '−2',      pct: '−1.8%',  tone: 'gold',  note: 'Bottled beer band 1–3% · watch, no action' },
+    { skuId: 'coke',   name: 'Coca-Cola',     expected: '22',        counted: '21',        delta: '−1',      pct: '−0.9%',  tone: 'green', note: 'Within tolerance' },
+  ],
+}
+
+/**
  * A visibly different second data set for the two-state fidelity gate.
  * Values are shifted, not merely relabelled, so a screen reading any of them
  * renders differently. A screen that renders identically is not reading its data.
@@ -208,6 +252,24 @@ export function variant() {
       byArea: STOCK_POSITION.byArea.map((a, i) => ({ ...a, containers: a.containers + 30 * (i + 1) })),
     },
     ledger: LEDGER.map((e, i) => ({ ...e, title: `${e.title} (v2)`, at: `18:${String(5 + i * 4).padStart(2, '0')}` })),
+    countSession: {
+      ...COUNT_SESSION,
+      locationName: 'BAR 1',
+      scopeLabel: 'BAR 1 · BLIND',
+      totalLines: 11,
+      countedBy: 'PRIYA',
+      witnessedBy: 'NIKHIL',
+      sealedAt: '21:15',
+    },
+    variance: {
+      ...VARIANCE,
+      locationName: 'BAR 1',
+      bandLabel: 'GREEN',
+      bandTone: 'green' as const,
+      throughputLabel: '880 L',
+      varianceLabel: '-0.6%',
+      basisLabel: 'MID-EVENT COUNT 21:15 · COUNTED BY PRIYA · % OF THROUGHPUT',
+    },
     custody: {
       ...CUSTODY,
       docketNo: 'D-0231',

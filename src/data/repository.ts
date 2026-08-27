@@ -192,6 +192,74 @@ export type Custody = {
 }
 
 // ---------------------------------------------------------------------------
+// count -> countDone -> variance
+// ---------------------------------------------------------------------------
+
+/**
+ * How a partial (open) container is measured for one SKU. Specification §6:
+ * "count full containers as integers and weigh partials".
+ *
+ * `none`  — bottled/canned beer, 1:1, nothing to weigh
+ * `ml`    — spirits: (gross − tare) ≈ ml, so the SKU's tare weight is shown
+ * `litres`— kegs: flow meter or weight
+ */
+export type PartialMode = 'none' | 'ml' | 'litres'
+
+export type CountLine = {
+  skuId: string
+  name: string
+  spec: string
+  partial: PartialMode
+  /** Increment for the partial stepper — 50 ml for spirits, 1 L for kegs. */
+  partialStep: number
+  /** Unit caption under the partial figure, e.g. 'ML BY WEIGHT'. */
+  partialUnit: string
+  /** Method hint, e.g. 'WEIGH · TARE 480 G'. */
+  partialHint: string
+}
+
+export type CountSession = {
+  locationName: string
+  /** 'MID-EVENT COUNT' */
+  kindLabel: string
+  /** 'BAR 3 · BLIND' */
+  scopeLabel: string
+  /** Total lines in the session — the design's session is 18. */
+  totalLines: number
+  /** Preset buttons for the full-container stepper. */
+  presets: number[]
+  lines: CountLine[]
+  countedBy: string
+  witnessedBy: string
+  sealedAt: string
+}
+
+export type VarianceLine = {
+  skuId: string
+  name: string
+  expected: string
+  counted: string
+  delta: string
+  pct: string
+  tone: Tone
+  note: string
+  /** The design tints the note gold when the variance is positive. */
+  noteTone?: Tone
+}
+
+export type VarianceReport = {
+  locationName: string
+  /** 'AMBER' — the band, per spec §8's tolerance table. */
+  bandLabel: string
+  bandTone: Tone
+  throughputLabel: string
+  varianceLabel: string
+  /** 'MID-EVENT COUNT 19:52 · COUNTED BY RAHUL · % OF THROUGHPUT' */
+  basisLabel: string
+  lines: VarianceLine[]
+}
+
+// ---------------------------------------------------------------------------
 // session (more)
 // ---------------------------------------------------------------------------
 
@@ -230,4 +298,13 @@ export interface Repository {
   movementDetail(id: string): Promise<MovementDetail | null>
 
   custody(docketNo?: string): Promise<Custody>
+
+  countSession(locationId?: string): Promise<CountSession>
+  /**
+   * Variance for a location. Manager-gated: spec §6 requires the expected
+   * figure to reach a different person than the counter, and §13's access tier
+   * puts variance behind management. Enforcement is in the database (ADR-005);
+   * this signature exists so the UI can ask honestly.
+   */
+  variance(locationId?: string): Promise<VarianceReport>
 }

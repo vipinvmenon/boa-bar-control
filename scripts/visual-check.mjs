@@ -46,8 +46,8 @@ const SCREENS = [
   { key: 'received', label: 'RECEIVED', route: '/dockets/D-0184/received' },
   { key: 'waste', label: 'RECORD WASTE', route: '/waste' },
   { key: 'count', label: 'MID-EVENT COUNT', route: '/count' },
-  { key: 'countDone', label: 'COUNT SUBMITTED', route: null },
-  { key: 'variance', label: 'VARIANCE', route: null },
+  { key: 'countDone', label: 'COUNT SUBMITTED', route: '/count/submitted' },
+  { key: 'variance', label: 'VARIANCE', route: '/variance' },
   { key: 'activity', label: 'ACTIVITY', route: '/activity' },
   { key: 'mv', label: 'MOVEMENT', route: null },
   { key: 'control', label: 'CONTROL', route: null },
@@ -101,6 +101,17 @@ async function main() {
   fs.mkdirSync(OUT, { recursive: true })
   const browser = await chromium.launch()
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
+
+  // Warm-up pass. Vite compiles modules on first request, so the first render of
+  // each route is slower than the settle logic allows and can be captured
+  // mid-compile — which showed up as one screen falsely reporting "hardcoded" on
+  // the first run after a server restart, and clean on every run after. Touch
+  // every route once before measuring anything.
+  for (const s of SCREENS) {
+    if (!s.route) continue
+    await page.goto(`${BASE}${s.route}`, { waitUntil: 'networkidle' }).catch(() => {})
+  }
+  await page.waitForTimeout(400)
 
   const rows = []
   for (const s of SCREENS) {

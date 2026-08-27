@@ -17,14 +17,16 @@ import type {
   BarDetail,
   BarSummary,
   CatalogueGroup,
+  CountSession,
   Custody,
   LedgerEntry,
   MovementDetail,
   Repository,
   SessionInfo,
   StockPosition,
+  VarianceReport,
 } from '../repository'
-import { ALERTS, AS_OF, BARS, BAR_DETAIL, CATALOGUE, CUSTODY, LEDGER, MOVEMENTS, SESSION, STOCK_POSITION, variant } from './design-data'
+import { ALERTS, AS_OF, BARS, BAR_DETAIL, CATALOGUE, COUNT_SESSION, CUSTODY, LEDGER, MOVEMENTS, SESSION, STOCK_POSITION, VARIANCE, variant } from './design-data'
 
 export type FixtureVariant = 'a' | 'b'
 
@@ -73,6 +75,14 @@ export function createFixtureRepository(which: FixtureVariant = 'a'): Repository
 
     async custody(): Promise<Custody> {
       return v?.custody ?? CUSTODY
+    },
+
+    async countSession(): Promise<CountSession> {
+      return v?.countSession ?? COUNT_SESSION
+    },
+
+    async variance(): Promise<VarianceReport> {
+      return v?.variance ?? VARIANCE
     },
   }
 }

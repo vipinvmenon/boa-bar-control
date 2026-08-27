@@ -93,9 +93,9 @@ The design is now recovered to `references/design-source/`. See
 | `diff` | REPORT DIFFERENCE | `[x]` | built as the accept variant it is (not a route). Reason mandatory, stepper bounded at issued qty; both verified by driving the UI |
 | `received` | RECEIVED | `[x]` | built — the custody document, with both names and both timestamps |
 | `waste` | RECORD WASTE | `[R]` | Wrong reason vocabulary; line loss dropped |
-| `count` | MID-EVENT COUNT | `[R]` | **Pre-fills the expected figures.** No sequential progress, no partial capture |
-| `countDone` | COUNT SUBMITTED | `[ ]` | Missing. No witness, no seal |
-| `variance` | VARIANCE | `[ ]` | Missing. Design's per-SKU data replaced by invented category figures |
+| `count` | MID-EVENT COUNT | `[x]` | rebuilt — sequential progress, presets, and all three partial-capture modes (none / ml-by-weight against tare / litres). Inputs start at zero and reset per line; nothing shows an expected figure |
+| `countDone` | COUNT SUBMITTED | `[x]` | built — sealed record with counted-by and witnessed-by, manager-gated variance CTA |
+| `variance` | VARIANCE | `[x]` | built — per-SKU expected vs counted, throughput beside the figure (spec §8), and positive variance graded amber not green |
 | `activity` | ACTIVITY | `[x]` | rebuilt — all 5 filters, edge-to-edge rows with a kind-bar, AUDIT badge and tinted adjustment row |
 | `mv` | MOVEMENT | `[ ]` | Missing. Activity rows are not tappable |
 | `control` | CONTROL | `[ ]` | Missing entirely — the show-day board |
@@ -110,8 +110,8 @@ the design (`bars`, `bar`, `activity`), 12 still missing, 8 still to rewrite.
 The fidelity gate (`pnpm test:visual`) is the live measure:
 
 ```
-22 in the design · 22 reference captures · 14 implemented routes
-13 reading the data layer · 1 legitimately static · 0 hardcoded · 8 missing
+22 in the design · 22 reference captures · 16 implemented routes
+15 reading the data layer · 1 legitimately static · 0 hardcoded · 6 missing
 ```
 
 **Zero hardcoded screens.** Every implemented screen reads the repository, so the
@@ -122,9 +122,8 @@ Rebuilt or built to the design: `home`, `warehouse`, `bars`, `bar`, `activity`,
 `more`, the shell's bottom navigation, and the full custody chain
 (`review` → `docket` → `accept` → `diff` → `received`).
 
-Still missing (8): `sku`, `countDone`, `variance`, `mv`, `control`, `cowork`,
-`rep`, and `reports` needs rebuilding to the design rather than its current
-honest-empty-state placeholder.
+Still missing (6): `sku`, `mv`, `control`, `cowork`, `rep`, and `reports` needs
+rebuilding to the design rather than its current honest-empty-state placeholder.
 
 ---
 

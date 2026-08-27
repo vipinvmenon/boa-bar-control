@@ -10,8 +10,10 @@ import { ReviewScreen } from '../screens/custody/ReviewScreen'
 import { DocketScreen } from '../screens/custody/DocketScreen'
 import { AcceptScreen } from '../screens/custody/AcceptScreen'
 import { ReceivedScreen } from '../screens/custody/ReceivedScreen'
+import { CountScreen } from '../screens/count/CountScreen'
+import { CountDoneScreen } from '../screens/count/CountDoneScreen'
+import { VarianceScreen } from '../screens/count/VarianceScreen'
 import {
-  CountScreen,
   IssueScreen,
   ReportsScreen,
   WasteScreen,
@@ -34,6 +36,8 @@ const issueRoute = createRoute({ getParentRoute: () => rootRoute, path: '/issue'
 const wasteRoute = createRoute({ getParentRoute: () => rootRoute, path: '/waste', component: WasteScreen })
 const countRoute = createRoute({ getParentRoute: () => rootRoute, path: '/count', component: CountScreen })
 const reportsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/reports', component: ReportsScreen })
+const countDoneRoute = createRoute({ getParentRoute: () => rootRoute, path: '/count/submitted', component: CountDoneScreen })
+const varianceRoute = createRoute({ getParentRoute: () => rootRoute, path: '/variance', component: VarianceScreen })
 // The custody chain, as five design screens rather than one collapsed page.
 // `diff` is deliberately absent: it is the accept screen with its difference
 // panel open, not a route (design-script.jsx `toggleDiff`).
@@ -79,6 +83,8 @@ const routeTree = rootRoute.addChildren([
   reviewRoute,
   acceptRoute,
   receivedRoute,
+  countDoneRoute,
+  varianceRoute,
   barRoute,
 ])
 
