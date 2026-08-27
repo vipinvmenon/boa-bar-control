@@ -3,7 +3,7 @@
 Status: canonical. Agents implement from this file; they do not decide what to
 build next.
 
-**Event: Saturday 10 October 2026.** Today: 24 August 2026 — **47 days out.**
+**Event: Saturday 10 October 2026.** Today: 27 August 2026 — **44 days out.**
 
 Live status per task lives in [CURRENT-STATE.md](CURRENT-STATE.md). This file
 defines the plan and the acceptance criteria; that file records where each task
@@ -52,7 +52,7 @@ order changes.
 ### How to read severity — read this before picking a task
 
 **Do not work this roadmap top-down by the audit's stated severity.** The
-24 August audit rated roughly forty design-fidelity findings as blocker or
+27 August audit rated roughly forty design-fidelity findings as blocker or
 critical — screen counts, back-stack semantics, radii, hex values,
 `backdrop-filter` counts, font weights. None of them changes a number, loses a
 record, or stops a bar being restocked. Worked in severity order, that list
@@ -89,7 +89,7 @@ design** — do not start any of it while an M1–M5 task is open. Paper fallbac
 (BAR-092) is promoted to a blocker and is **never** cut: it is the thing that
 makes cutting everything else survivable.
 
-Show-ready is not the right frame at 47 days. **A defensible audit is**, and the
+Show-ready is not the right frame at 44 days. **A defensible audit is**, and the
 specification says so itself.
 
 ---
@@ -183,7 +183,7 @@ find-and-replace, a repository boundary is not.
 | Task | Title | Owner | Acceptance |
 | --- | --- | --- | --- |
 | BAR-157 | Per-location position model | claude | The scalar `warehouse` / `bar3` fields are replaced by a position keyed by `locationId`. The current model discards seven of the nine locations that exist in the schema and the design |
-| BAR-036 | Restore the radius vocabulary | codex | **Unblocked by ADR-009 (accepted 24 Aug).** Flow screens use the design's soft 12/14/15/16/18 px and 999 px pills. Ritual's sharp 2/4/8 px tokens do not apply to the app. Mechanical — fold into the M0 token pass |
+| BAR-036 | Restore the radius vocabulary | codex | **Unblocked by ADR-009 (accepted 27 Aug).** Flow screens use the design's soft 12/14/15/16/18 px and 999 px pills. Ritual's sharp 2/4/8 px tokens do not apply to the app. Mechanical — fold into the M0 token pass |
 | BAR-037 | Restore glass material and ambient field | codex | `backdrop-filter` on cards, bands and nav; **all three** ambient gradient layers present; live dot pulses |
 | BAR-038 | Component primitives | codex | Panel, Chip, Pill, Stepper, StatusDot, Metric, SectionLabel, FooterCTA built from design values and used by every screen |
 | BAR-039 | Shell: status bar, glass header, sync strip, bottom nav | codex | Matches `design-markup.html` composition; mobile fills the viewport, desktop keeps the 390×844 frame |

@@ -1,4 +1,4 @@
-> ARCHIVED 24 August 2026. Superseded by `docs/CURRENT-STATE.md`.
+> ARCHIVED 27 August 2026. Superseded by `docs/CURRENT-STATE.md`.
 >
 > This gap audit was accurate. Every screen-level defect it recorded was still
 > present verbatim in the code five weeks later, while `PROJECT_STATUS.md` marked

@@ -14,7 +14,7 @@ movement ledger, variance review, and a defensible post-event audit.
 [docs/CURRENT-STATE.md](docs/CURRENT-STATE.md) first.** It records what is done,
 what is broken, and what to do next.
 
-A forensic audit on 24 August 2026 found 156 evidenced defects — 36 of them
+A forensic audit on 27 August 2026 found 156 evidenced defects — 36 of them
 blockers. The application code is substantially unbuilt: 11 of the design's 22
 screens do not exist and 11 more must be rewritten. Do not infer project state
 from the code, and do not trust `PROJECT_STATUS.md` or `design-qa.md` — both are

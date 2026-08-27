@@ -126,6 +126,6 @@ supabase/
 
 ## Current state, in one line
 
-47 days to the event. The schema is salvageable but has no write policies and has
+44 days to the event. The schema is salvageable but has no write policies and has
 never been executed. The UI is a stub: 11 of 22 screens missing, 11 to rewrite.
 The domain layer is dead code. Start with `docs/CURRENT-STATE.md`.

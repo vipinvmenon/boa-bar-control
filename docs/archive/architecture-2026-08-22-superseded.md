@@ -1,4 +1,4 @@
-> ARCHIVED 24 August 2026. Superseded by `docs/ARCHITECTURE.md`.
+> ARCHIVED 27 August 2026. Superseded by `docs/ARCHITECTURE.md`.
 >
 > This document was written while the design prototype, PowerPoint and written
 > specification were unavailable — it says so itself in section 1. Its

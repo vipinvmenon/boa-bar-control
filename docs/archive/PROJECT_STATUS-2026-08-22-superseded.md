@@ -1,4 +1,4 @@
-> ARCHIVED 24 August 2026. Superseded by `docs/CURRENT-STATE.md`.
+> ARCHIVED 27 August 2026. Superseded by `docs/CURRENT-STATE.md`.
 >
 > Retained as evidence, not as guidance. Many `[x]` entries below were not true:
 > the migrations had never been executed, every RLS policy was SELECT-only so

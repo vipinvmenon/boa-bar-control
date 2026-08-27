@@ -40,7 +40,7 @@ If the design appears wrong, raise it as a question. Do not fix it silently.
 
 ### Precedence, when two sources disagree
 
-**Ruled by the user, 24 August 2026: go with the mobile app design file, not the
+**Ruled by the user, 27 August 2026: go with the mobile app design file, not the
 Ritual file.** ([DECISIONS.md](DECISIONS.md) ADR-009, Accepted.)
 
 1. `references/design-source/design-markup.html` — the approved app design wins on every app-surface value.

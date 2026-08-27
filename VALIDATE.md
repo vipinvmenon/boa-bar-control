@@ -1,6 +1,6 @@
 # How to validate the work so far
 
-24 August 2026. Written for a human doing a hands-on review, not for an agent.
+27 August 2026. Written for a human doing a hands-on review, not for an agent.
 
 The work splits into two layers that must be validated in different ways:
 

@@ -1,4 +1,4 @@
-> ARCHIVED 24 August 2026. Superseded by `docs/CURRENT-STATE.md`.
+> ARCHIVED 27 August 2026. Superseded by `docs/CURRENT-STATE.md`.
 >
 > Retained as evidence, not as guidance. This document's "final result: passed"
 > is not supportable. The two screens it passed — dashboard and warehouse —

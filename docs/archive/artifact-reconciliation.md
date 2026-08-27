@@ -1,4 +1,4 @@
-> ARCHIVED 24 August 2026. Retained as evidence, not as guidance.
+> ARCHIVED 27 August 2026. Retained as evidence, not as guidance.
 >
 > This document claims the build "was checked against the supplied" specification,
 > PowerPoint and HTML prototype. Section 1 of the architecture document written

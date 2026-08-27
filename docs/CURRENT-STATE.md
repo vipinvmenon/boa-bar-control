@@ -1,11 +1,11 @@
 # BOA Bar Control — Current State
 
-**Last updated: 24 August 2026 (M0 in progress)** · Event: 10 October 2026 — **47 days out**
+**Last updated: 27 August 2026 (M0 in progress)** · Event: 10 October 2026 — **44 days out**
 
 This is the single handoff record. Read it first, before writing any code.
 
 > **Read this before trusting anything else in the repo.** A forensic audit on
-> 24 August 2026 found 156 evidenced defects; 154 survived adversarial
+> 27 August 2026 found 156 evidenced defects; 154 survived adversarial
 > verification, which surfaced 36 more. The previous status documents recorded
 > milestones as complete that were not. Their claims have been reset here against
 > actual code.
@@ -17,7 +17,7 @@ This is the single handoff record. Read it first, before writing any code.
 > reach 10 October with no way to enter opening stock. The reprioritised order is
 > in [ROADMAP.md](ROADMAP.md); read its severity note first.
 >
-> Show-ready is not the right frame at 47 days. **A defensible audit is** — and
+> Show-ready is not the right frame at 44 days. **A defensible audit is** — and
 > specification §15 says so: Phases 1–2 plus paper counts and a manual POS
 > reconciliation the following week still produce one. Nothing else does.
 
@@ -54,7 +54,7 @@ never been executed against PostgreSQL.
 
 The **UI was a stub, not a wrong implementation** — 10 route components for a
 22-screen design, most rendering hardcoded copies of the design's sample figures.
-As of 24 August that is substantially addressed: 16 routes, 15 reading the data
+As of 27 August that is substantially addressed: 16 routes, 15 reading the data
 layer, 0 hardcoded, 6 screens still missing. See the gate output below.
 
 The **domain layer is still dead code**: every function in `src/domain/` has zero
@@ -296,7 +296,7 @@ original audit.
 
 ## Resolved — BAR-011 vs BAR-155
 
-**Decided 24 August: option 1, command RPCs.** Recorded as
+**Decided 27 August: option 1, command RPCs.** Recorded as
 [DECISIONS.md](DECISIONS.md) ADR-013. `authenticated` holds no table-level write
 privilege on any `boa_bar_` table, ever; every write goes through a
 `SECURITY DEFINER` command RPC. BAR-011 became a test; the work moved to BAR-155.
@@ -345,13 +345,13 @@ none exist" and the real work moves to BAR-155.
 ## Blockers needing a human
 
 1. **BAR-001 — git.** Nothing is reviewable until this exists.
-2. ~~**BAR-031 — a PostgreSQL to migrate against.**~~ **Done 24 Aug.** Hosted
+2. ~~**BAR-031 — a PostgreSQL to migrate against.**~~ **Done 27 Aug.** Hosted
    project linked; both migrations applied; pgTAP runs Docker-free.
 3. **Rotate the database password.** It was exposed in a shared terminal
-   screenshot on 24 August. Settings → Database → Reset database password.
+   screenshot on 27 August. Settings → Database → Reset database password.
 4. **BAR-140 — opening stock.** Decide how the warehouse gets loaded on the day:
    a receipt flow, an opening count, or a seeded import.
-5. **Open decision 5 — the excise return template.** 47 days out, unowned and
+5. **Open decision 5 — the excise return template.** 44 days out, unowned and
    undated. The return's category vocabulary and its treatment of empties dictate
    what must be physically observed on the night. A wrong category set is
    backfillable per SKU; a missing physical observation is not.
@@ -417,7 +417,7 @@ Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
 
-### Session — 24 August 2026 (later) · Claude
+### Session — 27 August 2026 (later) · Claude
 
 **Completed:**
 - BAR-001 — `git init`, baseline commit `5c5345d` on `main`, 251 files, no remote.
@@ -485,7 +485,7 @@ literal-ban lint rule.
   (`design-script.jsx:376`). The roadmap's issue → review → docket flow is only
   one of them.
 
-### Session — 24 August 2026 · Claude
+### Session — 27 August 2026 · Claude
 
 **Completed:**
 - BAR-002 — recovered the design source from the `BOA-Bar.html` bundle

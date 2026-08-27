@@ -21,15 +21,15 @@ Every ADR below carries a **Provenance** line saying exactly what backs it:
 - **MINE** — my inference or engineering opinion, with **no supporting statement
   in any file you gave me.** These are the ones to scrutinise.
 
-Five are yours. Two are mixed. Six are mine (ADR-013 added 24 Aug, accepted). The provenance line was added
-24 August 2026 after a fair challenge that the decisions were made on
+Five are yours. Two are mixed. Six are mine (ADR-013 added 27 Aug, accepted). The provenance line was added
+27 August 2026 after a fair challenge that the decisions were made on
 assumptions — which was correct for the five marked MINE.
 
 ---
 
 ## ADR-001 — The architecture was written without its sources
 
-**Status:** Accepted · **Date:** 24 August 2026
+**Status:** Accepted · **Date:** 27 August 2026
 
 **Provenance: your files.** `BOA-Bar.html` unpacked; `Bar Inventory.docx` extracted verbatim. The failure it describes is quoted from `docs/archive/architecture-2026-08-22-superseded.md` §1 and the two files' mtimes.
 
@@ -87,7 +87,7 @@ of truth.
 the same reason: it tries to store a stock level." The moment two places can
 hold the truth, they disagree at the worst possible time.
 
-**Amendment, 24 August 2026.** A cached projection is permitted only under the
+**Amendment, 27 August 2026.** A cached projection is permitted only under the
 five conditions in [DATA-MODEL.md](DATA-MODEL.md) — private schema, written only
 by the posting function, no client grants, a reconciliation view with a test, and
 a ledger-summing fallback for every read path. `private.boa_bar_balance` as first
@@ -131,7 +131,7 @@ server-only operation.
 
 **Reason.** Show-day cellular connectivity at Hennur cannot be trusted.
 
-**Amendment, 24 August 2026.** An outbox without a read path is not offline
+**Amendment, 27 August 2026.** An outbox without a read path is not offline
 support. The reference cache is mandatory, and a failed live load must never
 fall back to fixture data. See [OFFLINE-SYNC.md](OFFLINE-SYNC.md).
 
@@ -139,7 +139,7 @@ fall back to fixture data. See [OFFLINE-SYNC.md](OFFLINE-SYNC.md).
 
 ## ADR-005 — Blind counting is enforced count-scoped in the database
 
-**Status:** DEFERRED — decision not needed until ~15 September · **Date:** 24 August 2026
+**Status:** DEFERRED — decision not needed until ~15 September · **Date:** 27 August 2026
 
 **Why deferred.** You said "not sure", which is a reasonable place to be: the
 question is operational, not technical, and nothing is blocked by leaving it open.
@@ -196,7 +196,7 @@ time and the count is worthless."
 
 ## ADR-006 — `comp` is a two-leg custody move, not a depletion
 
-**Status:** PROPOSED — awaiting your approval · **Date:** 24 August 2026
+**Status:** PROPOSED — awaiting your approval · **Date:** 27 August 2026
 
 **Provenance: your specification.** spec.txt §4's movement table gives `comp` as From "bar or warehouse" → To "hospitality", with "reason mandatory" — a two-leg move by the spec's own columns. Reinforced by §2. This one is not an assumption.
 
@@ -217,7 +217,7 @@ whatever the bands drank."
 
 ## ADR-007 — `sale` movements originate only from POS import
 
-**Status:** Accepted · **Date:** 24 August 2026
+**Status:** Accepted · **Date:** 27 August 2026
 
 **Provenance: your specification, verbatim.** spec.txt §4 — `sale` is "derived from POS import, never keyed by hand"; §7 — "Unmapped SKU = hard fail on the batch" and "dedupe on the POS transaction ID". The `location_id`/`amount_minor` requirement is my inference from §7's "₹ per attendee" and "sales per hour per bar", which are uncomputable without them.
 
@@ -238,7 +238,7 @@ every ₹ figure are uncomputable.
 
 ## ADR-008 — Variance bands are signed and live in the database
 
-**Status:** PROPOSED — awaiting your approval · **Date:** 24 August 2026
+**Status:** PROPOSED — awaiting your approval · **Date:** 27 August 2026
 
 **Provenance: MIXED.** Signed banding is spec.txt §8, verbatim — "Positive variance is a signal too… it should not be green." The four band tables are the spec's. **Storing bands in the database with an `effective_from` is my inference** from "revise them from the actual event" — the spec says they must change, not where they live.
 
@@ -258,7 +258,7 @@ docket was never accepted. It is not good news and it should not be green."
 
 ## ADR-009 — `references/design-source/` is the visual source of truth
 
-**Status:** ACCEPTED by the user, 24 August 2026 · **Date:** 24 August 2026
+**Status:** ACCEPTED by the user, 27 August 2026 · **Date:** 27 August 2026
 
 **Ruling.** "Go with the mobile app design file and not the Ritual file."
 
@@ -296,7 +296,7 @@ Visual deviation is a bug. See [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md).
 
 ## ADR-010 — Screens hold no fixture data
 
-**Status:** PROPOSED — awaiting your approval · **Date:** 24 August 2026
+**Status:** PROPOSED — awaiting your approval · **Date:** 27 August 2026
 
 **Provenance: MINE — engineering practice, not in your files.** The evidence is measured (the two screens `design-qa.md` passed hold literal `1,284`/`638`/`520`/`126` and never read the data layer). The *rule* banning fixture data in screens is my proposal.
 
@@ -321,7 +321,7 @@ diverged while its status file recorded progress.
 
 ## ADR-011 — The repository is under version control, and CI is the gate
 
-**Status:** PROPOSED — awaiting your approval · **Date:** 24 August 2026
+**Status:** PROPOSED — awaiting your approval · **Date:** 27 August 2026
 
 **Provenance: MINE — not in your files.** spec.txt §15 mentions lane routing ("schema and RLS to Cowork, app to Claude Code"), but says nothing about version control or CI. Hard to argue against, still my proposal.
 
@@ -342,7 +342,7 @@ because there was no mechanism that could have verified it.
 
 ## ADR-012 — Status is tracked per task with evidence
 
-**Status:** PROPOSED — awaiting your approval · **Date:** 24 August 2026
+**Status:** PROPOSED — awaiting your approval · **Date:** 27 August 2026
 
 **Provenance: MINE — not in your files.** The drift is measured fact; requiring a commit SHA or command output before `[x]` is my proposal.
 
@@ -365,7 +365,7 @@ misleads the next agent.
 
 ## ADR-013 — All writes go through command RPCs; no table-level write grants
 
-**Status:** ACCEPTED by the user, 24 August 2026 · **Date:** 24 August 2026
+**Status:** ACCEPTED by the user, 27 August 2026 · **Date:** 27 August 2026
 
 **Provenance: MINE, accepted by the user.** No source states this. It follows
 from spec §4's per-kind balance rules and §7's unmapped-SKU hard fail needing a
