@@ -157,10 +157,10 @@ The design is now recovered to `references/design-source/`. See
 
 | Task | Title | State | Evidence / note |
 | --- | --- | --- | --- |
-| BAR-034 | Font weights | `[!]` | Oswald 500 and 700 used 18 times, never loaded, under `font-synthesis: none` |
-| BAR-035 | Colour tokens | `[!]` | `--red` is `#ff5d5d`, design is `#FF4A3D`; ~22 invented off-palette greys |
-| BAR-036 | Radius vocabulary | `[ ]` | Flow screens use 3–7 px; design uses 12–18 px. **Unblocked** — ADR-009 accepted 24 Aug: the app design wins over Ritual's sharp tokens |
-| BAR-037 | Glass and ambient field | `[!]` | 51 `backdrop-filter` declarations in the design, 1 in `src/styles.css`; live dot does not pulse |
+| BAR-034 | Font weights | `[x]` | `bfdc1f4` — Oswald 400/500/600/700 and Archivo 400/600 all loaded |
+| BAR-035 | Colour tokens | `[x]` | `bfdc1f4` — `--red` → `#FF4A3D`; 22 greys and 5 surfaces mapped to the sage-alpha scale; no hex outside the palette remains |
+| BAR-036 | Radius vocabulary | `[x]` | `bfdc1f4` — restored to 999/12/14/15/18 px; nothing below 11 px remains. The old 3–7 px values were Ritual's sharp tokens applied to the wrong surface |
+| BAR-037 | Glass and ambient field | `[x]` | `bfdc1f4` — glass on panels, cards, metrics, bands and nav; third (venom-green) gradient layer restored; live dot pulses at 2.4 s behind `prefers-reduced-motion` |
 | BAR-038 | Component primitives | `[R]` | `src/components/ui.tsx` is 60 lines for the whole system |
 | BAR-039 | Shell | `[~]` | Status bar, header and nav exist; composition diverges; fixed 390×844 frame applied on mobile |
 | BAR-040 | Navigation state machine | `[!]` | No stack. Every back button is a hardcoded `<Link to="/">` |
@@ -377,8 +377,17 @@ Recommended next: BAR-nnn
 **Known issues:** `corepack enable` needs sudo on this machine — use
 `corepack pnpm <script>`. Migrations still never executed (BAR-031).
 
-**Recommended next:** BAR-034/035/036/037 (the mechanical token pass, now
-unblocked), then BAR-031.
+**Completed since:** BAR-034/035/036/037 — the mechanical token pass, commit
+`bfdc1f4`. Verified in-browser on home, issue and more.
+
+**Recommended next:** BAR-031 (a PostgreSQL to execute the migrations against —
+gates every M1 task), then BAR-011/BAR-012 (write policies and the `private`
+schema grant, without which the app cannot write at all).
+
+**M0 remaining:** BAR-006 CI is written but unproven (no remote yet); BAR-007
+reference captures, BAR-008 the two-fixture-state harness, BAR-009 sw.ts in
+typecheck/lint, BAR-010 formatter/hooks, BAR-153 checksums, BAR-154 the
+literal-ban lint rule.
 
 ### Session — 24 August 2026 · Claude
 
