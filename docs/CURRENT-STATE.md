@@ -85,13 +85,13 @@ The design is now recovered to `references/design-source/`. See
 | `warehouse` | WAREHOUSE | `[x]` | rebuilt — catalogue and totals from the repository; search and ALL/BEER/SPIRITS filters work |
 | `sku` | SKU LEDGER | `[ ]` | Missing. Warehouse and bar rows lead nowhere |
 | `issue` | ISSUE STOCK | `[R]` | No case/bottle unit switch, no equivalence, no warehouse-after row, wrong presets |
-| `review` | REVIEW ISSUE | `[ ]` | Missing. Flow jumps straight to docket creation |
-| `docket` | DOCKET CREATED | `[R]` | Absorbs three other screens; loses identity treatment and footer; QR points at a non-existent route |
+| `review` | REVIEW ISSUE | `[x]` | built — derived cases/litres/warehouse-after, and the design's in-transit advisory |
+| `docket` | DOCKET CREATED | `[x]` | rebuilt as its own screen — identity treatment, real QR encoding a route that exists, two-button footer |
 | `bars` | BARS | `[x]` | `b49768c` — rebuilt. Leads, count times and flags restored; decorative progress bars removed; cards tappable |
 | `bar` | BAR 3 | `[x]` | `b49768c`+ — built to the design: live header, category grid, gold incoming sheet, TOP-UP/WASTE/COUNT, ledger-derived inventory. Reads the repository |
-| `accept` | RECEIVE STOCK | `[ ]` | Missing. Acceptance bolted onto the docket screen |
-| `diff` | REPORT DIFFERENCE | `[R]` | Reduced to a three-option `<select>`; no required reason, no short-by feedback |
-| `received` | RECEIVED | `[ ]` | Missing. Replaced by a one-line success panel |
+| `accept` | RECEIVE STOCK | `[x]` | built — FROM/TO/ISSUED BY grid, items panel, bounded stepper |
+| `diff` | REPORT DIFFERENCE | `[x]` | built as the accept variant it is (not a route). Reason mandatory, stepper bounded at issued qty; both verified by driving the UI |
+| `received` | RECEIVED | `[x]` | built — the custody document, with both names and both timestamps |
 | `waste` | RECORD WASTE | `[R]` | Wrong reason vocabulary; line loss dropped |
 | `count` | MID-EVENT COUNT | `[R]` | **Pre-fills the expected figures.** No sequential progress, no partial capture |
 | `countDone` | COUNT SUBMITTED | `[ ]` | Missing. No witness, no seal |
@@ -110,17 +110,21 @@ the design (`bars`, `bar`, `activity`), 12 still missing, 8 still to rewrite.
 The fidelity gate (`pnpm test:visual`) is the live measure:
 
 ```
-22 in the design · 22 reference captures · 10 implemented routes
-9 reading the data layer · 1 legitimately static · 0 hardcoded · 12 missing
+22 in the design · 22 reference captures · 14 implemented routes
+13 reading the data layer · 1 legitimately static · 0 hardcoded · 8 missing
 ```
 
 **Zero hardcoded screens.** Every implemented screen reads the repository, so the
 defect that let `home` and `warehouse` pass design QA while displaying literals
 no longer exists anywhere in the codebase.
 
-Rebuilt to the design: `home`, `warehouse`, `bars`, `bar`, `activity`, `more`,
-plus the shell's bottom navigation. What remains is the 12 screens that were
-never built.
+Rebuilt or built to the design: `home`, `warehouse`, `bars`, `bar`, `activity`,
+`more`, the shell's bottom navigation, and the full custody chain
+(`review` → `docket` → `accept` → `diff` → `received`).
+
+Still missing (8): `sku`, `countDone`, `variance`, `mv`, `control`, `cowork`,
+`rep`, and `reports` needs rebuilding to the design rather than its current
+honest-empty-state placeholder.
 
 ---
 

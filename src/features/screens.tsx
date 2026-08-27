@@ -33,10 +33,11 @@ export function IssueScreen() {
   const [quantity, setQuantity] = useState(24)
   const selectedSkuId = store.stock.some((candidate) => candidate.id === skuId) ? skuId : store.stock[0]?.id ?? ''
   const item = store.stock.find((candidate) => candidate.id === selectedSkuId)
+  // BAR-052: the design requires a review step before a docket exists. The old
+  // flow created one straight from the quantity picker.
   const submit = () => {
     if (!item) return
-    const docket = store.issue({ to: destination, skuId: selectedSkuId, quantity })
-    void navigate({ to: '/dockets/$docketId', params: { docketId: docket.id } })
+    void navigate({ to: '/issue/review', search: { qty: quantity } })
   }
   return (
     <div className="screen flow-screen">
@@ -48,7 +49,7 @@ export function IssueScreen() {
       <p className="step-label">3 / 3 · Quantity</p>
       <Panel className="quantity-panel"><span>{item?.name ?? 'No active SKU'}</span><Stepper label="issue quantity" value={quantity} min={1} onChange={setQuantity} /><div className="presets">{[12, 24, 48].map((value) => <button key={value} onClick={() => setQuantity(value)}>+{value}</button>)}</div></Panel>
       <Panel className="review-card"><span>Warehouse <ArrowRight size={15} /> {destination}</span><strong>{quantity} × {item?.name ?? 'No active SKU'}</strong><small>{item ? quantity * item.mlPerContainer / 1000 : 0} L total · issued by Chandan</small></Panel>
-      <RitualButton wide onClick={submit} disabled={quantity < 1 || !item}>Create QR docket</RitualButton>
+      <RitualButton wide onClick={submit} disabled={quantity < 1 || !item}>Review issue</RitualButton>
     </div>
   )
 }

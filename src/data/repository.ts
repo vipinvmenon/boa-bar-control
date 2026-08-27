@@ -153,6 +153,45 @@ export type CatalogueGroup = {
 }
 
 // ---------------------------------------------------------------------------
+// custody chain: review -> docket -> accept -> diff -> received
+// ---------------------------------------------------------------------------
+
+/** A labelled row, used by all four custody detail panels. */
+export type DetailRow = { label: string; value: string; tone?: Tone }
+
+/**
+ * Everything the custody flow displays for one docket.
+ *
+ * Quantities the design derives (cases, litres, warehouse-after, short-by) are
+ * NOT stored here — the screens compute them from `unitsPerCase`,
+ * `mlPerContainer` and `expectedContainers`, so they stay correct when the
+ * quantity changes. The previous implementation hardcoded such figures, which is
+ * how "1.5 cases" appeared next to a container count that could not produce it.
+ */
+export type Custody = {
+  docketNo: string
+  /** Design: 'AWAITING ACCEPTANCE'. */
+  statusLabel: string
+  fromName: string
+  toName: string
+  issuedBy: string
+  issuedAt: string
+  productName: string
+  productSpec: string
+  unitsPerCase: number
+  mlPerContainer: number
+  /** What the docket says was issued. */
+  expectedContainers: number
+  /** Warehouse position before the issue, for the review screen's after-figure. */
+  warehouseBefore: number
+  /** design-script.jsx `diffReasons`. */
+  differenceReasons: string[]
+  /** Who is receiving, for the receipt record. */
+  acceptedBy: string
+  acceptedAt: string
+}
+
+// ---------------------------------------------------------------------------
 // session (more)
 // ---------------------------------------------------------------------------
 
@@ -189,4 +228,6 @@ export interface Repository {
 
   ledger(group?: ActivityGroup): Promise<LedgerEntry[]>
   movementDetail(id: string): Promise<MovementDetail | null>
+
+  custody(docketNo?: string): Promise<Custody>
 }

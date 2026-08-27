@@ -22,6 +22,7 @@ import type {
   BarSummary,
   CatalogueGroup,
   LedgerEntry,
+  Custody,
   MovementDetail,
   StockPosition,
 } from '../repository'
@@ -163,6 +164,29 @@ export const BAR_DETAIL: Record<string, BarDetail> = {
 }
 
 /**
+ * design-script.jsx — the custody flow's docket. Figures the design derives
+ * (cases, litres, warehouse-after, short-by) are deliberately absent; the
+ * screens compute them.
+ */
+export const CUSTODY: Custody = {
+  docketNo: 'D-0184',
+  statusLabel: 'AWAITING ACCEPTANCE',
+  fromName: 'WAREHOUSE',
+  toName: 'BAR 3',
+  issuedBy: 'CHANDAN',
+  issuedAt: '19:31',
+  productName: 'Kingfisher Premium',
+  productSpec: 'Beer · 650 ml bottle',
+  unitsPerCase: 24,
+  mlPerContainer: 650,
+  expectedContainers: 48,
+  warehouseBefore: 288,
+  differenceReasons: ['Short on pallet', 'Breakage in transit', 'Miscount at issue', 'Other'],
+  acceptedBy: 'RAHUL',
+  acceptedAt: '19:38',
+}
+
+/**
  * A visibly different second data set for the two-state fidelity gate.
  * Values are shifted, not merely relabelled, so a screen reading any of them
  * renders differently. A screen that renders identically is not reading its data.
@@ -184,6 +208,20 @@ export function variant() {
       byArea: STOCK_POSITION.byArea.map((a, i) => ({ ...a, containers: a.containers + 30 * (i + 1) })),
     },
     ledger: LEDGER.map((e, i) => ({ ...e, title: `${e.title} (v2)`, at: `18:${String(5 + i * 4).padStart(2, '0')}` })),
+    custody: {
+      ...CUSTODY,
+      docketNo: 'D-0231',
+      productName: 'Corona Extra',
+      productSpec: 'Beer · 355 ml bottle',
+      mlPerContainer: 355,
+      expectedContainers: 72,
+      warehouseBefore: 410,
+      issuedBy: 'PRIYA',
+      issuedAt: '20:14',
+      acceptedBy: 'IMRAN',
+      acceptedAt: '20:22',
+      toName: 'BAR 1',
+    },
     catalogue: CATALOGUE.map((g) => ({
       ...g,
       totalLabel: g.totalLabel.replace(/^\d+/, (n) => String(Number(n) + 40)),

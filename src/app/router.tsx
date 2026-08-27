@@ -6,9 +6,12 @@ import { ActivityScreen } from '../screens/activity/ActivityScreen'
 import { MoreScreen } from '../screens/more/MoreScreen'
 import { HomeScreen } from '../screens/home/HomeScreen'
 import { WarehouseScreen } from '../screens/warehouse/WarehouseScreen'
+import { ReviewScreen } from '../screens/custody/ReviewScreen'
+import { DocketScreen } from '../screens/custody/DocketScreen'
+import { AcceptScreen } from '../screens/custody/AcceptScreen'
+import { ReceivedScreen } from '../screens/custody/ReceivedScreen'
 import {
   CountScreen,
-  DocketScreen,
   IssueScreen,
   ReportsScreen,
   WasteScreen,
@@ -31,10 +34,35 @@ const issueRoute = createRoute({ getParentRoute: () => rootRoute, path: '/issue'
 const wasteRoute = createRoute({ getParentRoute: () => rootRoute, path: '/waste', component: WasteScreen })
 const countRoute = createRoute({ getParentRoute: () => rootRoute, path: '/count', component: CountScreen })
 const reportsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/reports', component: ReportsScreen })
+// The custody chain, as five design screens rather than one collapsed page.
+// `diff` is deliberately absent: it is the accept screen with its difference
+// panel open, not a route (design-script.jsx `toggleDiff`).
+const reviewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/issue/review',
+  component: ReviewScreen,
+  validateSearch: (search: Record<string, unknown>): { qty?: number } => ({
+    qty: search.qty === undefined ? undefined : Number(search.qty),
+  }),
+})
 const docketRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/dockets/$docketId',
   component: DocketScreen,
+})
+const acceptRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/dockets/$docketId/accept',
+  component: AcceptScreen,
+})
+const receivedRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/dockets/$docketId/received',
+  component: ReceivedScreen,
+  validateSearch: (search: Record<string, unknown>): { qty?: number; reason?: string } => ({
+    qty: search.qty === undefined ? undefined : Number(search.qty),
+    reason: search.reason === undefined ? undefined : String(search.reason),
+  }),
 })
 
 const routeTree = rootRoute.addChildren([
@@ -48,6 +76,9 @@ const routeTree = rootRoute.addChildren([
   countRoute,
   reportsRoute,
   docketRoute,
+  reviewRoute,
+  acceptRoute,
+  receivedRoute,
   barRoute,
 ])
 
