@@ -454,3 +454,6 @@ h1 { font: 400 31px/1 'Anton', sans-serif; letter-spacing: .035em; text-transfor
 .received-sub { margin-top: 8px; color: rgba(166,201,180,.75); font: 400 13px/1.4 'Archivo', sans-serif; }
 .received-note { text-align: center; color: rgba(166,201,180,.45); font: 400 11px/1.5 'Archivo', sans-serif; }
 .status-dot.gold { background: var(--gold); }
+
+/* BAR-138 — a waiting service worker must be applicable, and visible. */
+.update-bar { position: absolute; z-index: 30; left: 14px; right: 14px; bottom: 14px; padding: 13px; border: 0; border-radius: 14px; background: linear-gradient(180deg, #F2D69C 0%, #E3BB72 55%, #CDA45C 100%); color: var(--ink); font: 700 11px/1 'Oswald', sans-serif; letter-spacing: .12em; box-shadow: 0 8px 25px rgba(0,0,0,.55); }

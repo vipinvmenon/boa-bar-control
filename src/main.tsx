@@ -20,6 +20,7 @@ import { RepositoryProvider } from './data/RepositoryProvider'
 import { startMovementSync } from './lib/offline-db'
 import { AuthProvider } from './lib/auth'
 import { AuthGate } from './features/AuthGate'
+import { setPendingUpdate } from './lib/pwa-update'
 import './styles.css'
 
 const queryClient = new QueryClient({
@@ -29,9 +30,11 @@ const queryClient = new QueryClient({
   },
 })
 
+// BAR-138. The previous version dispatched an event nothing listened for, so
+// `updateSW` was never called and a waiting worker never activated.
 const updateSW = registerSW({
   onNeedRefresh() {
-    window.dispatchEvent(new CustomEvent('boa:pwa-update', { detail: updateSW }))
+    setPendingUpdate(updateSW)
   },
 })
 

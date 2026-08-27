@@ -31,9 +31,18 @@ registerRoute(
   }),
 )
 
+// BAR-138. This previously matched EVERY same-origin GET, including navigation
+// documents that the NavigationRoute above already handles. Caching documents
+// here can serve a stale shell, and combined with an update that could never
+// activate, a device could be pinned to an old bundle indefinitely. Narrowed to
+// same-origin data requests only.
 registerRoute(
-  ({ url, request }) => request.method === 'GET' && url.origin === self.location.origin,
-  new NetworkFirst({ cacheName: 'boa-pages-v1', networkTimeoutSeconds: 3 }),
+  ({ url, request }) =>
+    request.method === 'GET' &&
+    request.mode !== 'navigate' &&
+    request.destination === '' &&
+    url.origin === self.location.origin,
+  new NetworkFirst({ cacheName: 'boa-data-v1', networkTimeoutSeconds: 3 }),
 )
 
 self.addEventListener('message', (event) => {

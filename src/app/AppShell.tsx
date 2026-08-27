@@ -1,8 +1,10 @@
+import { useEffect, useState } from 'react'
 import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import { BatteryMedium, Star, TriangleAlert, Wifi, WifiOff } from 'lucide-react'
 import { useDemoStore } from '../lib/demo-store'
 import { BottomNav } from '../components/layout/BottomNav'
 import { configError } from '../lib/supabase'
+import { applyUpdate, onUpdateAvailability } from '../lib/pwa-update'
 
 export function AppShell() {
   const store = useDemoStore()
@@ -11,6 +13,12 @@ export function AppShell() {
   const isHome = pathname === '/'
   const caption = pathname === '/' ? 'LIVE HOME' : pathname.replace(/^\//, '').replaceAll('-', ' ').toUpperCase()
   const isDemo = store.backendMode !== 'live'
+
+  // BAR-138. A waiting service worker previously had no way to be activated, so
+  // a device stayed on whatever bundle it first cached. Surfaced rather than
+  // auto-reloading, because reloading under someone mid-count loses their input.
+  const [updateReady, setUpdateReady] = useState(false)
+  useEffect(() => onUpdateAvailability(setUpdateReady), [])
 
   // BAR-139. A production build with no Supabase configuration must not run at
   // all. Silently serving fixtures is the failure mode this guard exists for.
@@ -91,6 +99,11 @@ export function AppShell() {
         </main>
 
         {!fullFlow && <BottomNav />}
+        {updateReady && (
+          <button className="update-bar" onClick={() => void applyUpdate()}>
+            NEW VERSION READY · TAP TO UPDATE
+          </button>
+        )}
         {store.toast && <div className="toast" role="status">{store.toast}</div>}
       </div>
       <div className="stage-caption" aria-hidden="true">BOA BAR INVENTORY / 390 × 844 / {caption}</div>
