@@ -275,14 +275,29 @@ export function WasteScreen() {
 export function CountScreen() {
   const store = useDemoStore()
   const countItems = useMemo(() => store.stock.slice(0, 3), [store.stock])
-  const [counts, setCounts] = useState<Record<string, number>>({ kf: 11, bud: 36, corona: 19 })
+  // BAR-151. These inputs were seeded with { kf: 11, bud: 36, corona: 19 } —
+  // two of the three exact expected figures from the store, the third one below.
+  // Specification §6: "If the app shows 'expected 47' next to the input box, you
+  // will get 47 every time and the count is worthless." Count inputs start
+  // empty, always. Never seed this state.
+  const [counts, setCounts] = useState<Record<string, number>>({})
   const [submitted, setSubmitted] = useState(false)
   return (
     <div className="screen flow-screen">
       <BackTitle>Blind count</BackTitle>
       <Panel className="blind-banner"><ShieldCheck /><div><strong>Expected stock is hidden</strong><span>Bar 3 · mid-event · 3 lines</span></div></Panel>
       <div className="count-list">{countItems.map((item) => <Panel key={item.id} className="count-row"><div><strong>{item.name}</strong><span>{item.container}</span></div><Stepper label={`${item.name} count`} value={counts[item.id] ?? 0} onChange={(value) => setCounts((current) => ({ ...current, [item.id]: value }))} /></Panel>)}</div>
-      {submitted ? store.role === 'Manager' ? <Panel className="variance-preview"><strong>Manager review</strong><div><span>Kingfisher</span><b className="red">−1</b></div><div><span>Budweiser</span><b className="green">0</b></div><div><span>Corona</span><b className="green">0</b></div><small>Count is locked. Any correction requires an adjustment.</small></Panel> : <Panel className="success-panel"><Check /><div><strong>Count submitted</strong><span>Variance remains hidden until manager review.</span></div></Panel> : <RitualButton wide onClick={() => setSubmitted(true)}>Submit blind count</RitualButton>}
+      {/*
+        BAR-151/BAR-152. The manager reveal previously hardcoded −1 / 0 / 0 to
+        match the pre-filled counts. Variance must be derived from the ledger
+        (BAR-086/BAR-087) and sealed server-side at submit (BAR-084). Until that
+        exists, say so rather than showing an invented figure.
+      */}
+      {submitted
+        ? store.role === 'Manager'
+          ? <Panel className="variance-preview"><strong>Manager review</strong><small>Variance is derived from the ledger and is not yet available — see BAR-086. No figure is shown rather than an invented one.</small></Panel>
+          : <Panel className="success-panel"><Check /><div><strong>Count submitted</strong><span>Variance remains hidden until manager review.</span></div></Panel>
+        : <RitualButton wide onClick={() => setSubmitted(true)}>Submit blind count</RitualButton>}
     </div>
   )
 }
@@ -293,10 +308,26 @@ export function ReportsScreen() {
   return (
     <div className="screen">
       <p className="eyebrow">Manager settlement</p><h1>Variance</h1>
-      <div className="report-metrics"><Metric value="−2.1%" label="Overall" tone="gold" /><Metric value="₹18.4K" label="At risk" tone="red" /><Metric value="94%" label="Mapped POS" tone="green" /></div>
-      <SectionLabel>Category performance</SectionLabel>
-      <div className="variance-table"><div><span>Bottled beer</span><strong className="green">−0.8%</strong><small>Green · within 1%</small></div><div><span>Draught beer</span><strong className="gold">−11.2%</strong><small>Amber · throughput based</small></div><div><span>Spirits</span><strong className="red">−9.4%</strong><small>Red · investigate</small></div><div><span>Mixers & water</span><strong className="green">+1.1%</strong><small>Positive variance is still a signal</small></div></div>
-      <Panel className="method-note"><strong>How variance is calculated</strong><span>Counted closing − (opening + in − out − sold − comped − wasted), divided by sold + comped + wasted.</span></Panel>
+      {/*
+        BAR-152. This screen previously displayed −2.1% overall, ₹18.4K at risk,
+        94% mapped POS, and four category variances — none of which any code
+        computed, and none of which appear in the approved design. Variance
+        requires the ledger views (BAR-014), a real count (BAR-082) and POS
+        ingest (BAR-094). An empty state is honest; an invented figure that a
+        manager might act on, or defend to STOK or excise, is not.
+
+        This whole screen is replaced by the design's `reports` and `rep` screens
+        in BAR-107/BAR-108 — it is not the approved design.
+      */}
+      <Panel className="method-note">
+        <strong>Not yet available</strong>
+        <span>
+          Variance is derived from the movement ledger and cannot be computed until the
+          ledger views, count persistence and POS ingest exist. No figure is shown here
+          rather than an estimated one.
+        </span>
+      </Panel>
+      <Panel className="method-note"><strong>How variance will be calculated</strong><span>Counted closing − (opening + in − out − sold − comped − wasted), divided by sold + comped + wasted. Banding is signed: positive variance is reviewed, never graded green.</span></Panel>
     </div>
   )
 }

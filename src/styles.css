@@ -43,6 +43,14 @@ h1 { font: 400 31px/1 'Anton', sans-serif; letter-spacing: .035em; text-transfor
 .sync-line span { display: flex; gap: 6px; align-items: center; }
 .sync-line small { color: rgba(166,201,180,.58); font: 400 11px/1 'Oswald'; letter-spacing: .08em; }
 .sync-line.offline { color: var(--gold); }
+/* BAR-139 — demo mode must read as a warning, never as a healthy live state. */
+.sync-line.demo { color: var(--red); }
+.sync-line.demo small { color: rgba(255,74,61,.72); }
+.demo-banner { flex: none; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 5px 12px; background: var(--red); color: var(--ink); font: 700 10px/1 'Oswald'; letter-spacing: .16em; text-transform: uppercase; }
+.config-error { max-width: 380px; padding: 28px 24px; display: grid; gap: 10px; justify-items: center; text-align: center; border: 1px solid rgba(255,74,61,.4); border-radius: 18px; background: rgba(27,27,36,.82); color: var(--red); }
+.config-error strong { font: 700 15px/1 'Oswald'; letter-spacing: .18em; }
+.config-error p { color: var(--bone); font: 400 13px/1.5 'Archivo'; }
+.config-error small { color: rgba(166,201,180,.7); font: 400 11px/1.5 'Archivo'; }
 .app-main { flex: 1; overflow: auto; overscroll-behavior: contain; scrollbar-width: none; }
 .app-main::-webkit-scrollbar { display: none; }
 .screen { min-height: 100%; padding: 14px 16px 88px; }

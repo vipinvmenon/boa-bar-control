@@ -5,6 +5,22 @@ const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string |
 
 export const isSupabaseConfigured = Boolean(url && publishableKey)
 
+/**
+ * BAR-139. A production build that is not configured for Supabase would
+ * otherwise fall through to fixture data and, before this fix, label itself
+ * LIVE. Twenty staff could work a full shift against invented stock and nobody
+ * would know until the next morning. Demo data is a development affordance
+ * only, so refuse to start a production build without real configuration.
+ */
+export const configError: string | null = (() => {
+  if (isSupabaseConfigured) return null
+  if (!import.meta.env.PROD) return null
+  const missing = [!url && 'VITE_SUPABASE_URL', !publishableKey && 'VITE_SUPABASE_PUBLISHABLE_KEY']
+    .filter(Boolean)
+    .join(' and ')
+  return `Not configured for live data: ${missing} is missing. This build cannot be used to record stock.`
+})()
+
 export const supabase = isSupabaseConfigured
   ? createClient(url!, publishableKey!, {
       auth: {
