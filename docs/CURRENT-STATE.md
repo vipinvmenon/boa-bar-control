@@ -148,8 +148,8 @@ The design is now recovered to `references/design-source/`. See
 | BAR-027 | Missing §13 columns | `[ ]` | `abv`, `supplier_vendor_id`, `is_licenced`, `is_blind`, `witnessed_by`, `counted_at`, empties, delivery-note all absent |
 | BAR-028 | Non-negative position | `[ ]` | Nothing prevents issuing more than is held |
 | BAR-029 | Index `movement_line.movement_id` | `[ ]` | Unindexed FK, evaluated per row by the read policy |
-| BAR-030 | Behavioural pgTAP | `[R]` | All 11 assertions test existence only. Nothing attempts an UPDATE; nothing connects as `authenticated` |
-| BAR-031 | Execute migrations | `[!]` | **Never executed.** No Docker or PostgreSQL available on this machine |
+| BAR-030 | Behavioural pgTAP | `[R]` | All 11 assertions test existence only and now **pass** against a real database, which is exactly why they must be replaced: passing proves nothing about behaviour. Nothing attempts an UPDATE; nothing connects as a role |
+| BAR-031 | Execute migrations | `[x]` | `897cdc0` — both migrations applied to the linked project (PostgreSQL 17.6, ap-southeast-1). pgTAP suite runs Docker-free via `pnpm test:db`: **11 passed, 0 failed**. Note the assertions are existence-only — see BAR-030 |
 | BAR-032 | Deterministic seed | `[R]` | Seed produces an empty ledger, no serve mappings, no excise categories — live mode renders every SKU at zero and flags all critical |
 | BAR-033 | Generate database types | `[ ]` | Supabase client untyped; every row is `any` |
 
@@ -272,15 +272,17 @@ original audit.
 ## Blockers needing a human
 
 1. **BAR-001 — git.** Nothing is reviewable until this exists.
-2. **BAR-031 — a PostgreSQL to migrate against.** Either Docker locally or a
-   hosted Supabase development project. Every M1 task is unverifiable without it.
-3. **BAR-140 — opening stock.** Decide how the warehouse gets loaded on the day:
+2. ~~**BAR-031 — a PostgreSQL to migrate against.**~~ **Done 24 Aug.** Hosted
+   project linked; both migrations applied; pgTAP runs Docker-free.
+3. **Rotate the database password.** It was exposed in a shared terminal
+   screenshot on 24 August. Settings → Database → Reset database password.
+4. **BAR-140 — opening stock.** Decide how the warehouse gets loaded on the day:
    a receipt flow, an opening count, or a seeded import.
-4. **Open decision 5 — the excise return template.** 47 days out, unowned and
+5. **Open decision 5 — the excise return template.** 47 days out, unowned and
    undated. The return's category vocabulary and its treatment of empties dictate
    what must be physically observed on the night. A wrong category set is
    backfillable per SKU; a missing physical observation is not.
-5. **The six open decisions** below.
+6. **The six open decisions** below.
 
 ## Open decisions
 
@@ -316,8 +318,8 @@ else — leaving them in place while building for six weeks is indefensible.
    run-out and SLA figures. An empty state is honest; an invented number is not.
 4. **BAR-001** — initialise git and commit this tree as the baseline. Nothing is
    reviewable until this exists.
-5. **BAR-031** — get a PostgreSQL and run the migrations. Every M1 task is
-   unverifiable until this has run once, so do it early rather than last.
+5. ~~**BAR-031**~~ **done** — migrations applied to PostgreSQL 17.6, 11/11
+   existence assertions pass. M1 is now verifiable.
 6. **BAR-007 / BAR-008** — reference captures plus the two-fixture-state harness.
    Without them no UI task has an acceptance artefact, and hardcoding stays
    undetectable.
