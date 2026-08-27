@@ -4,13 +4,13 @@ import { BarsScreen } from '../screens/bars/BarsScreen'
 import { BarScreen } from '../screens/bar/BarScreen'
 import { ActivityScreen } from '../screens/activity/ActivityScreen'
 import { MoreScreen } from '../screens/more/MoreScreen'
+import { HomeScreen } from '../screens/home/HomeScreen'
+import { WarehouseScreen } from '../screens/warehouse/WarehouseScreen'
 import {
   CountScreen,
   DocketScreen,
-  HomeScreen,
   IssueScreen,
   ReportsScreen,
-  WarehouseScreen,
   WasteScreen,
 } from '../features/screens'
 

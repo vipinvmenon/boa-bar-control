@@ -72,15 +72,26 @@ const SCREENS = [
 async function shoot(page, url) {
   await page.goto(url, { waitUntil: 'networkidle' })
 
+  // Every async screen renders a "Loading …" placeholder; wait for all of them
+  // to clear. A screen with no loading state simply satisfies this immediately.
   await page
-    .waitForFunction(() => !/Loading[^]*?…/.test(document.body.innerText), null, { timeout: 8000 })
-    .catch(() => {}) // a screen with no loading state never matches; not a failure
+    .waitForFunction(() => !document.body.innerText.includes('Loading'), null, { timeout: 10000 })
+    .catch(() => {})
 
+  // Then require THREE consecutive identical frames. Two was not enough: a
+  // placeholder that is stable for one interval satisfied it, which is why
+  // consecutive runs still disagreed (0, 0, 1).
   let previous = null
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    await page.waitForTimeout(180)
+  let stable = 0
+  for (let attempt = 0; attempt < 25; attempt += 1) {
+    await page.waitForTimeout(150)
     const frame = await page.screenshot()
-    if (previous && Buffer.compare(previous, frame) === 0) return frame
+    if (previous && Buffer.compare(previous, frame) === 0) {
+      stable += 1
+      if (stable >= 2) return frame
+    } else {
+      stable = 0
+    }
     previous = frame
   }
   return previous

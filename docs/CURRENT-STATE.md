@@ -81,8 +81,8 @@ The design is now recovered to `references/design-source/`. See
 
 | Screen | Label | State | Gap |
 | --- | --- | --- | --- |
-| `home` | LIVE HOME | `[R]` | Hardcoded `1,284`/`638`/`520`/`126`; wrong nav targets; invented affordances; alert CTA does nothing |
-| `warehouse` | WAREHOUSE | `[R]` | Module-level `warehouseCatalog` constant; never reflects a movement |
+| `home` | LIVE HOME | `[x]` | rebuilt — every figure from the repository; alert CTAs route per the design; bar cards open their own bar |
+| `warehouse` | WAREHOUSE | `[x]` | rebuilt — catalogue and totals from the repository; search and ALL/BEER/SPIRITS filters work |
 | `sku` | SKU LEDGER | `[ ]` | Missing. Warehouse and bar rows lead nowhere |
 | `issue` | ISSUE STOCK | `[R]` | No case/bottle unit switch, no equivalence, no warehouse-after row, wrong presets |
 | `review` | REVIEW ISSUE | `[ ]` | Missing. Flow jumps straight to docket creation |
@@ -111,11 +111,16 @@ The fidelity gate (`pnpm test:visual`) is the live measure:
 
 ```
 22 in the design · 22 reference captures · 10 implemented routes
-7 reading the data layer · 1 legitimately static · 2 hardcoded · 12 missing
+9 reading the data layer · 1 legitimately static · 0 hardcoded · 12 missing
 ```
 
-Rebuilt to the design so far: `bars`, `bar`, `activity`, `more`, plus the shell's
-bottom navigation. The 2 still hardcoded are `home` and `warehouse`.
+**Zero hardcoded screens.** Every implemented screen reads the repository, so the
+defect that let `home` and `warehouse` pass design QA while displaying literals
+no longer exists anywhere in the codebase.
+
+Rebuilt to the design: `home`, `warehouse`, `bars`, `bar`, `activity`, `more`,
+plus the shell's bottom navigation. What remains is the 12 screens that were
+never built.
 
 ---
 
