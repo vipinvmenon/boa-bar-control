@@ -19,9 +19,10 @@
     "supabase:status": "supabase status",
     "supabase:reset": "supabase db reset",
     "supabase:test": "supabase test db",
-    "test:db": "supabase test db",
+    "test:db": "node scripts/db-test.mjs",
     "capture:design": "node scripts/capture-design-reference.mjs",
-    "test:visual": "node scripts/visual-check.mjs"
+    "test:visual": "node scripts/visual-check.mjs",
+    "test:db:docker": "supabase test db --linked"
   },
   "dependencies": {
     "@fontsource/anton": "^5.2.6",
@@ -43,6 +44,7 @@
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
     "@types/node": "^24.3.1",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.2",
@@ -51,6 +53,7 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "fast-check": "^4.3.0",
     "globals": "^16.3.0",
+    "pg": "^8.23.0",
     "supabase": "2.115.0",
     "typescript": "~5.9.2",
     "typescript-eslint": "^8.42.0",
