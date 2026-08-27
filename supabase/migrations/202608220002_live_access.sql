@@ -3,7 +3,13 @@ begin;
 alter table public.boa_bar_docket add column token_hash bytea;
 alter table public.boa_bar_docket add column token_expires_at timestamptz;
 update public.boa_bar_docket
-set token_hash = digest(token::text, 'sha256'), token_expires_at = issued_at + interval '12 hours';
+-- BAR-031. Was `digest(token::text, 'sha256')`, which depends on pgcrypto being
+-- resolvable from the migration's search_path. On a hosted Supabase project
+-- pgcrypto is pre-installed in the `extensions` schema, so migration 1's
+-- `create extension if not exists pgcrypto` is a no-op and digest() is not
+-- necessarily in scope here. `sha256(bytea)` is built into PostgreSQL 11+ and
+-- needs no extension, so this cannot fail for that reason.
+set token_hash = sha256(token::text::bytea), token_expires_at = issued_at + interval '12 hours';
 alter table public.boa_bar_docket alter column token_hash set not null;
 alter table public.boa_bar_docket alter column token_expires_at set not null;
 alter table public.boa_bar_docket drop column token;

@@ -1,4 +1,12 @@
 begin;
+
+-- BAR-031 runnability fix. This suite calls pgTAP (plan/has_table/finish) but
+-- nothing in supabase/migrations/ ever created the extension, so `supabase test
+-- db` could not have passed at any point — which is consistent with the
+-- migrations never having been executed. Created inside the transaction, so the
+-- rollback below undoes it and no production migration depends on pgTAP.
+create extension if not exists pgtap;
+
 select plan(11);
 
 select has_table('public', 'boa_bar_movement', 'movement table exists');
