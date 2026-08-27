@@ -14,14 +14,21 @@ supabase/.temp/
 # Working scratch, not deliverables
 *.log
 
+# The BOA "Ritual" brand system — 40 MB of poster and band artwork, including
+# unannounced 2026 lineup images. Not a project contract: per ADR-009 the app
+# design file governs every app-surface value, and the app itself loads only
+# public/assets/. Its text tokens and guideline cards are preserved in
+# references/brand-tokens/ because the docs reference them.
+Bangalore Open Air — Ritual/
+
 # Deliberately TRACKED, listed here so nobody adds them by reflex:
 #   references/design-source/   the recovered design and spec — the UI contract
 #   references/ui/              screen-keyed reference captures (acceptance artefacts)
+#   references/brand-tokens/    brand text tokens (ADR-009 scope)
 #   audit-current/              reference and implementation captures
 #   BOA-Bar.html                the original bundled design artifact
 #   BOA_Bar_Inventory.pptx      the approved slide deck
 #   Bar Inventory.docx          the original written specification
-#   Bangalore Open Air — Ritual/  the BOA brand system
 # These are large binaries, but they are the project's contracts. Losing them is
 # how this project spent five weeks building against assumptions — see
 # docs/DECISIONS.md ADR-001. If repository size becomes a problem, move them to

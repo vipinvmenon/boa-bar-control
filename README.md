@@ -100,16 +100,22 @@ pnpm test
 pnpm build
 ```
 
-Database and visual gates (`pnpm test:db`, `pnpm test:visual`) are on the roadmap
-as BAR-008 and BAR-030 and do not exist yet.
+```bash
+pnpm test:visual     # design fidelity gate (BAR-008) — needs `pnpm dev` running
+pnpm capture:design  # regenerate references/ui from the approved design (BAR-007)
+```
+
+`pnpm test:db` exists but has never passed: the migrations have never been
+executed against PostgreSQL. See BAR-031, the current blocker.
 
 ## Repository map
 
 ```
 docs/                    canonical documentation
 references/
-  design-source/         the recovered design and spec
-  ui/                    screen-keyed reference captures (BAR-007, not yet created)
+  design-source/         the recovered design and spec, plus screens.json
+  ui/                    22 screen-keyed reference captures (the acceptance artefacts)
+  brand-tokens/          brand text tokens only — ADR-009 scope, artwork untracked
 src/
   app/                   shell and typed routes
   features/              current screens — being replaced, see CURRENT-STATE
@@ -121,9 +127,14 @@ supabase/
   migrations/            schema, RLS, immutable ledger, RPCs
   tests/                 pgTAP (currently existence-only, see BAR-030)
   seed.sql               fixture data
-audit-current/           reference and implementation captures
-Bangalore Open Air — Ritual/   BOA brand system (posters, campaign)
+scripts/                 design capture and fidelity gate
+audit-current/           earlier reference and implementation captures
 ```
+
+The BOA "Ritual" brand system (40 MB of poster and lineup artwork) is **not
+tracked** — it is git-ignored. Only its text tokens are kept, in
+`references/brand-tokens/`. Per ADR-009 the app design file governs every
+app-surface value, and the app itself loads only `public/assets/`.
 
 ## Production setup
 

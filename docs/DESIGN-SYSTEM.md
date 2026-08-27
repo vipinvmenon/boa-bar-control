@@ -36,7 +36,7 @@ If the design appears wrong, raise it as a question. Do not fix it silently.
 | `references/design-source/design-markup.html` | The design's markup with every style inline. **The pixel contract.** |
 | `references/design-source/template.html` | The complete original page, fonts included. |
 | `references/design-source/spec.txt` | The original written specification. |
-| `Bangalore Open Air — Ritual/` | The BOA brand system (posters, campaign). |
+| `references/brand-tokens/` | The BOA brand text tokens and guideline cards. Brand identity only — see the precedence rule below. The full 40 MB artwork set is untracked. |
 
 ### Precedence, when two sources disagree
 
@@ -45,7 +45,7 @@ Ritual file.** ([DECISIONS.md](DECISIONS.md) ADR-009, Accepted.)
 
 1. `references/design-source/design-markup.html` — the approved app design wins on every app-surface value.
 2. `references/design-source/design-script.jsx` — wins on behaviour, data shape, and label text.
-3. `Bangalore Open Air — Ritual/tokens/` — governs brand identity (logo, palette meaning, campaign type) only. It does **not** override an app value.
+3. `references/brand-tokens/tokens/` — governs brand identity (logo, palette meaning, campaign type) only. It does **not** override an app value.
 
 The Ritual brand system was built for **posters and campaign assets**. Its
 display face (Metal Mania) and its large type scale do not apply to the app.

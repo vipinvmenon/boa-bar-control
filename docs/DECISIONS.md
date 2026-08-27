@@ -287,7 +287,7 @@ replaced with 3–7 px on flow screens, 51 `backdrop-filter` declarations became
 
 1. `design-markup.html` wins on every app-surface value.
 2. `design-script.jsx` wins on behaviour, data shape, and label text.
-3. `Bangalore Open Air — Ritual/tokens/` governs brand identity and fills gaps
+3. `references/brand-tokens/tokens/` governs brand identity and fills gaps
    the app design does not cover.
 
 Visual deviation is a bug. See [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md).
