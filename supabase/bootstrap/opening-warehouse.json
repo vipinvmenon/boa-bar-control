@@ -1,0 +1,16 @@
+{
+  "_comment": "BAR-156 opening warehouse stock. Shared by scripts/bootstrap.mjs and src/data/bootstrap/opening-warehouse.test.ts so the two cannot drift. These quantities are the design's own warehouse catalogue, which makes them a verification artefact: after bootstrap the live warehouse screen must show BEER 380, SPIRITS 142, MIXERS 116 and a total of 638 containers, matching references/ui/warehouse.png. If it shows anything else, the live repository is wrong.",
+  "location_code": "warehouse",
+  "lines": [
+    { "sku_code": "KF650",   "containers": 288 },
+    { "sku_code": "COR355",  "containers": 48 },
+    { "sku_code": "BIRA330", "containers": 36 },
+    { "sku_code": "STOK30",  "containers": 8 },
+    { "sku_code": "OM750",   "containers": 62 },
+    { "sku_code": "SIG750",  "containers": 48 },
+    { "sku_code": "SMI750",  "containers": 32 },
+    { "sku_code": "COKE300", "containers": 96 },
+    { "sku_code": "TON200",  "containers": 12 },
+    { "sku_code": "SOD300",  "containers": 8 }
+  ]
+}

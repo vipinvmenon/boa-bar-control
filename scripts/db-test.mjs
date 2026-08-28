@@ -20,65 +20,23 @@ import { Client } from 'pg'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { resolveDbUrl } from './lib/db-url.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const TESTS = path.join(ROOT, 'supabase', 'tests')
 
+
 /**
- * Resolve the connection string.
- *
- * Preferred: set only SUPABASE_DB_PASSWORD. `supabase link` already wrote the
- * host and user to supabase/.temp/pooler-url (which contains no password), so
- * the password is the only thing missing. Asking for one value rather than a
- * whole URL removes the copy-paste class of error entirely.
- *
- * SUPABASE_DB_URL still works and takes precedence, for CI or a non-pooler host.
+ * Credentials come from scripts/lib/db-url.mjs, shared with scripts/bootstrap.mjs.
+ * This logic used to live here alone; the second consumer reimplemented it and got
+ * the pooler URL's shape wrong — `supabase link` writes no password segment — so it
+ * is now in one place.
  */
-function resolveUrl() {
-  const explicit = process.env.SUPABASE_DB_URL
-  if (explicit) {
-    // A leftover placeholder URL from an earlier attempt silently wins over a
-    // correctly-set password, because this branch takes precedence. Catch it
-    // rather than emitting a confusing DNS error.
-    const placeholders = ['YOUR_PASSWORD', 'YOUR-PASSWORD', '<password>', '@HOST', '<host>', '[YOUR-PASSWORD]']
-    const hit = placeholders.find((p) => explicit.includes(p))
-    if (hit) {
-      console.error(`\nSUPABASE_DB_URL still contains the placeholder "${hit}".`)
-      console.error('It is set in this shell from an earlier attempt, and it takes precedence')
-      console.error('over SUPABASE_DB_PASSWORD, so your password is being ignored.\n')
-      console.error('  unset SUPABASE_DB_URL')
-      console.error("  export SUPABASE_DB_PASSWORD='your-database-password'")
-      console.error('  pnpm test:db\n')
-      process.exit(2)
-    }
-    return explicit
-  }
-
-  const password = process.env.SUPABASE_DB_PASSWORD
-  if (!password) return null
-
-  const poolerPath = path.join(ROOT, 'supabase', '.temp', 'pooler-url')
-  if (!fs.existsSync(poolerPath)) {
-    console.error('\nSUPABASE_DB_PASSWORD is set, but supabase/.temp/pooler-url is missing.')
-    console.error('Run `supabase link --project-ref <ref>` first, or set SUPABASE_DB_URL instead.\n')
-    process.exit(2)
-  }
-  const pooler = fs.readFileSync(poolerPath, 'utf8').trim()
-  // postgresql://user@host:port/db  ->  postgresql://user:password@host:port/db
-  return pooler.replace('@', `:${encodeURIComponent(password)}@`)
-}
-
-const url = resolveUrl()
-if (!url) {
-  console.error('\nNo database credentials found.\n')
-  console.error('Set just the password — the host comes from `supabase link`:\n')
-  console.error("  export SUPABASE_DB_PASSWORD='your-database-password'")
-  console.error('  pnpm test:db\n')
-  console.error('Get it from the dashboard: Settings -> Database -> Database password.')
-  console.error('(Reset it there if you no longer have it.)\n')
-  console.error('Type the password yourself rather than pasting an example — a literal')
-  console.error("placeholder produces 'getaddrinfo ENOTFOUND HOST'.\n")
-  console.error('Alternatively set a full SUPABASE_DB_URL. Never commit either value.\n')
+const { url, error: urlError } = resolveDbUrl({ root: ROOT, command: 'pnpm test:db' })
+if (urlError) {
+  console.error('')
+  for (const line of urlError) console.error(line ? `  ${line}` : '')
+  console.error('')
   process.exit(2)
 }
 
