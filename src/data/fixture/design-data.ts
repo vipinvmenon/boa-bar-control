@@ -24,6 +24,7 @@ import type {
   LedgerEntry,
   CountSession,
   Custody,
+  CustodyOverview,
   IssueOptions,
   MovementDetail,
   StockPosition,
@@ -199,10 +200,23 @@ export const BAR_DETAIL: Record<string, BarDetail> = {
       { label: 'SPIRITS', containers: 34 },
       { label: 'MIXERS', containers: 30 },
     ],
-    incoming: {
-      docketNo: 'D-0184', fromName: 'Warehouse', toName: 'Bar 3',
-      summary: '48 × Kingfisher Premium', ageLabel: '18 MIN',
-    },
+    /**
+     * Two, deliberately. The design's sample data shows one, but the defect
+     * BAR-146 fixes is that a SECOND docket to the same bar was unreachable —
+     * `barDetail` picked the first with `.find` while the bars list correctly
+     * reported "2 DOCKETS INCOMING". A one-entry fixture would not exercise the
+     * path that was broken.
+     */
+    incoming: [
+      {
+        docketNo: 'D-0184', fromName: 'Warehouse', toName: 'Bar 3',
+        summary: '48 × Kingfisher Premium', ageLabel: '18 MIN',
+      },
+      {
+        docketNo: 'D-0185', fromName: 'Warehouse', toName: 'Bar 3',
+        summary: '24 × Corona Extra', ageLabel: '34 MIN',
+      },
+    ],
     inventory: [
       { skuId: 'kf',        name: 'Kingfisher Premium', quantity: '12', unit: 'BOTTLES', tone: 'red',   movementSummary: 'RECEIVED 48 · WASTE 2 · RETURNED 0' },
       { skuId: 'corona',    name: 'Corona Extra',       quantity: '18', unit: 'BOTTLES', tone: 'muted', movementSummary: 'RECEIVED 24 · WASTE 0 · RETURNED 0' },
@@ -212,6 +226,29 @@ export const BAR_DETAIL: Record<string, BarDetail> = {
       { skuId: 'coke',      name: 'Coca-Cola',          quantity: '18', unit: 'BOTTLES', tone: 'muted', movementSummary: 'RECEIVED 24 · WASTE 0 · RETURNED 0' },
     ],
   },
+}
+
+/**
+ * BAR-146 — what is in custody right now.
+ *
+ * The design has no awaiting-dockets screen, so this is not transcribed from it:
+ * the design's mechanism for reaching a docket is the QR code, which was never
+ * built. Two entries deliberately, because the defect this fixes is that a SECOND
+ * docket to the same bar was unreachable — a one-entry fixture would not have
+ * caught it.
+ */
+export const CUSTODY_OVERVIEW: CustodyOverview = {
+  dockets: [
+    {
+      docketNo: 'D-0184', fromName: 'WAREHOUSE', toName: 'BAR 3',
+      summary: '48 × Kingfisher Premium', ageLabel: '18 MIN', overdue: false,
+    },
+    {
+      docketNo: 'D-0185', fromName: 'WAREHOUSE', toName: 'BAR 3',
+      summary: '24 × Corona Extra', ageLabel: '34 MIN', overdue: true,
+    },
+  ],
+  inTransitContainers: 72,
 }
 
 /**
@@ -239,6 +276,30 @@ export const CUSTODY: Custody = {
   differenceReasons: ['Short on pallet', 'Breakage in transit', 'Miscount at issue', 'Other'],
   acceptedBy: 'RAHUL',
   acceptedAt: '19:38',
+}
+
+/**
+ * BAR-146. A second docket, so the fixture walkthrough is honest.
+ *
+ * `custody()` previously ignored its argument and always returned D-0184, so
+ * opening the second docket in the list showed the first one's contents — a demo
+ * that quietly contradicts itself. Derived from `CUSTODY` rather than
+ * hand-written, so the two cannot drift apart.
+ */
+export const CUSTODY_BY_DOCKET: Record<string, Custody> = {
+  [CUSTODY.docketNo]: CUSTODY,
+  'D-0185': {
+    ...CUSTODY,
+    docketId: 'D-0185',
+    docketNo: 'D-0185',
+    skuId: 'corona',
+    productName: 'Corona Extra',
+    productSpec: 'Beer · 355 ml bottle',
+    mlPerContainer: 355,
+    expectedContainers: 24,
+    warehouseBefore: 96,
+    issuedAt: '19:15',
+  },
 }
 
 /**
@@ -351,6 +412,16 @@ export function variant() {
       toLocationId: 'bar-1',
     },
     catalogue,
+    custodyOverview: {
+      dockets: CUSTODY_OVERVIEW.dockets.map((d, i) => ({
+        ...d,
+        docketNo: `D-02${31 + i}`,
+        toName: 'BAR 1',
+        ageLabel: `${12 + i * 9} MIN`,
+        overdue: i > 0,
+      })),
+      inTransitContainers: 118,
+    },
     issueOptions: {
       ...ISSUE_OPTIONS,
       destinations: [

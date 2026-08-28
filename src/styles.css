@@ -578,3 +578,19 @@ h1 { font: 400 31px/1 'Anton', sans-serif; letter-spacing: .035em; text-transfor
 .failure-action { margin-top: 5px; min-height: 44px; padding: 0 18px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid rgba(166,201,180,.28); border-radius: 999px; background: rgba(166,201,180,.08); color: var(--sage); font: 700 11px/1 'Oswald', sans-serif; letter-spacing: .16em; }
 /* BAR-044 — a write that failed says so, in the flow footer where the CTA is. */
 .flow-error { margin: 0 0 8px; padding: 9px 12px; border: 1px solid rgba(255,74,61,.4); border-radius: 12px; background: rgba(255,74,61,.09); color: var(--red); font: 400 11px/1.45 'Archivo', sans-serif; }
+
+/* BAR-146 — in-custody screen. Not a design reproduction: the design has no
+   awaiting-dockets screen. Built from the existing design tokens. */
+.transit-card { padding: 16px; display: grid; gap: 3px; justify-items: start; border: 1px solid rgba(212,175,55,.28); border-radius: 18px; background: rgba(212,175,55,.06); backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%); }
+.transit-label { color: var(--gold); font: 700 9px/1 'Oswald', sans-serif; letter-spacing: .2em; }
+.transit-figure { color: var(--bone); font: 400 34px/1 'Anton', sans-serif; letter-spacing: .01em; }
+.transit-unit { color: rgba(166,201,180,.7); font: 500 10px/1 'Oswald', sans-serif; letter-spacing: .16em; }
+.transit-note { margin-top: 6px; color: rgba(242,239,226,.74); font: 400 11px/1.5 'Archivo', sans-serif; }
+.docket-row { width: 100%; margin-bottom: 8px; padding: 13px 14px; display: grid; gap: 4px; text-align: left; border: 1px solid rgba(166,201,180,.2); border-radius: 15px; background: rgba(27,27,36,.82); }
+.docket-row.is-overdue { border-color: rgba(255,74,61,.4); background: rgba(255,74,61,.07); }
+.docket-row-top { display: flex; align-items: center; justify-content: space-between; }
+.docket-row-top strong { color: var(--bone); font: 500 14px/1 'Oswald', sans-serif; letter-spacing: .1em; }
+.docket-age { color: rgba(166,201,180,.68); font: 700 9px/1 'Oswald', sans-serif; letter-spacing: .16em; }
+.docket-age-overdue { display: inline-flex; align-items: center; gap: 4px; color: var(--red); font: 700 9px/1 'Oswald', sans-serif; letter-spacing: .16em; }
+.docket-row-summary { color: rgba(242,239,226,.86); font: 400 12px/1.4 'Archivo', sans-serif; }
+.docket-row-route { color: rgba(166,201,180,.64); font: 500 10px/1 'Oswald', sans-serif; letter-spacing: .14em; }

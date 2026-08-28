@@ -21,6 +21,7 @@ import type {
   CountSession,
   CountWriteOutcome,
   Custody,
+  CustodyOverview,
   IssueOptions,
   LedgerEntry,
   MovementDetail,
@@ -31,7 +32,7 @@ import type {
   VarianceReport,
   WriteOutcome,
 } from '../repository'
-import { ALERTS, AS_OF, BARS, BAR_DETAIL, CATALOGUE, COUNT_SESSION, CUSTODY, ISSUE_OPTIONS, LEDGER, MOVEMENTS, SESSION, STOCK_POSITION, VARIANCE, variant } from './design-data'
+import { ALERTS, AS_OF, BARS, BAR_DETAIL, CATALOGUE, COUNT_SESSION, CUSTODY, CUSTODY_BY_DOCKET, CUSTODY_OVERVIEW, ISSUE_OPTIONS, LEDGER, MOVEMENTS, SESSION, STOCK_POSITION, VARIANCE, variant } from './design-data'
 
 export type FixtureVariant = 'a' | 'b'
 
@@ -69,6 +70,10 @@ export function createFixtureRepository(which: FixtureVariant = 'a'): Repository
       return v?.catalogue ?? CATALOGUE
     },
 
+    async custodyOverview(): Promise<CustodyOverview> {
+      return v?.custodyOverview ?? CUSTODY_OVERVIEW
+    },
+
     async issueOptions(): Promise<IssueOptions> {
       return v?.issueOptions ?? ISSUE_OPTIONS
     },
@@ -82,8 +87,15 @@ export function createFixtureRepository(which: FixtureVariant = 'a'): Repository
       return MOVEMENTS[id] ?? null
     },
 
-    async custody(): Promise<Custody> {
-      return v?.custody ?? CUSTODY
+    /**
+     * Honours the docket number, so opening the second docket in the list does
+     * not show the first one's contents (BAR-146). The variant path keeps its
+     * single shifted docket, which is what the two-state gate compares.
+     */
+    async custody(docketNo?: string): Promise<Custody> {
+      if (v?.custody) return v.custody
+      if (docketNo && CUSTODY_BY_DOCKET[docketNo]) return CUSTODY_BY_DOCKET[docketNo]!
+      return CUSTODY
     },
 
     async countSession(): Promise<CountSession> {

@@ -70,8 +70,43 @@ export type BarDetail = {
   managerName: string
   asOf: AsOf
   categoryTotals: { label: string; containers: number }[]
-  incoming?: IncomingDocket
+  /**
+   * BAR-146. **All** dockets awaiting acceptance at this bar, not one.
+   *
+   * This was a single optional docket, and `barDetail` picked the first with
+   * `.find`. `listBars` meanwhile reported `2 DOCKETS INCOMING` correctly — so a
+   * second docket issued to the same bar could not be opened, could not be
+   * accepted, and its stock sat in `in_transit`, which no screen read. Stock that
+   * had left the warehouse and could never arrive: exactly the case specification
+   * §5 exists to resolve, and worse than not shipping the feature, because the
+   * ledger says it exists.
+   */
+  incoming: IncomingDocket[]
   inventory: BarInventoryLine[]
+}
+
+/** A docket awaiting acceptance, for the awaiting-dockets list. */
+export type AwaitingDocket = {
+  /** The docket number, which is also what the routes are keyed by. */
+  docketNo: string
+  fromName: string
+  toName: string
+  summary: string
+  ageLabel: string
+  /** Past the acceptance SLA the design draws its meter against. */
+  overdue: boolean
+}
+
+/**
+ * Everything in custody between two locations right now.
+ *
+ * `inTransitContainers` exists because `in_transit` is a real location holding
+ * real stock that no screen previously read (BAR-146). A figure nobody can see is
+ * indistinguishable from stock that has gone missing.
+ */
+export type CustodyOverview = {
+  dockets: AwaitingDocket[]
+  inTransitContainers: number
 }
 
 // ---------------------------------------------------------------------------
@@ -434,6 +469,9 @@ export interface Repository {
   barDetail(barId: string): Promise<BarDetail | null>
 
   catalogue(): Promise<CatalogueGroup[]>
+
+  /** Every docket awaiting acceptance, and what is sitting in transit (BAR-146). */
+  custodyOverview(): Promise<CustodyOverview>
 
   /** Source, destinations and SKU positions for the issue-stock draft screen. */
   issueOptions(): Promise<IssueOptions>

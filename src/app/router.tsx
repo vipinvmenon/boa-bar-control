@@ -11,6 +11,7 @@ import { ReviewScreen } from '../screens/custody/ReviewScreen'
 import { DocketScreen } from '../screens/custody/DocketScreen'
 import { AcceptScreen } from '../screens/custody/AcceptScreen'
 import { ReceivedScreen } from '../screens/custody/ReceivedScreen'
+import { DocketsScreen } from '../screens/custody/DocketsScreen'
 import { CountScreen } from '../screens/count/CountScreen'
 import { CountDoneScreen } from '../screens/count/CountDoneScreen'
 import { VarianceScreen } from '../screens/count/VarianceScreen'
@@ -54,6 +55,13 @@ const reviewRoute = createRoute({
   component: ReviewScreen,
   validateSearch: parseIssueDraftSearch,
 })
+// BAR-146. Must be declared before the `$docketId` route so `/dockets` is not
+// captured as a docket called "dockets".
+const docketsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/dockets',
+  component: DocketsScreen,
+})
 const docketRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/dockets/$docketId',
@@ -84,6 +92,7 @@ const routeTree = rootRoute.addChildren([
   wasteRoute,
   countRoute,
   reportsRoute,
+  docketsRoute,
   docketRoute,
   reviewRoute,
   acceptRoute,

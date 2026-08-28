@@ -85,23 +85,35 @@ export function BarScreen() {
       </header>
 
       <div className="section-body bar-body">
-        {detail.incoming ? (
-          <section className="incoming-sheet">
+        {/*
+          BAR-146. Every docket awaiting acceptance here, each with a working CTA.
+          Two defects lived in the previous nine lines: only the FIRST docket was
+          rendered, so a second issued to this bar could never be opened; and the
+          CTA flashed "RECEIVING SCREEN IS BAR-055" — a placeholder left behind
+          after BAR-055 shipped, which meant **no path in the app reached the
+          accept screen at all**. It was only reachable by typing a URL.
+        */}
+        {detail.incoming.map((docket) => (
+          <section className="incoming-sheet" key={docket.docketNo}>
             <div className="incoming-top">
               <span className="incoming-eyebrow">INCOMING STOCK</span>
-              <span className="incoming-age">{detail.incoming.ageLabel}</span>
+              <span className="incoming-age">{docket.ageLabel}</span>
             </div>
-            <p className="incoming-summary">{detail.incoming.summary}</p>
+            <p className="incoming-summary">{docket.summary}</p>
             <p className="incoming-route">
-              Docket {detail.incoming.docketNo} · {detail.incoming.fromName} → {detail.incoming.toName}
+              Docket {docket.docketNo} · {docket.fromName} → {docket.toName}
             </p>
-            {/* BAR-055 builds the receiving screen; until then say so rather than
-                navigating into nothing. */}
-            <button className="incoming-cta" onClick={() => store.flash('RECEIVING SCREEN IS BAR-055')}>
+            <button
+              className="incoming-cta"
+              onClick={() => void navigate({
+                to: '/dockets/$docketId/accept',
+                params: { docketId: docket.docketNo },
+              })}
+            >
               Review &amp; accept
             </button>
           </section>
-        ) : null}
+        ))}
 
         <div className="bar-actions">
           <button onClick={() => store.flash('TOP-UP REQUEST IS BAR-064')}>

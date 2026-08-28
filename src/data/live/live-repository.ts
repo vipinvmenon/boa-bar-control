@@ -83,6 +83,7 @@ import type {
   CountSession,
   CountWriteOutcome,
   Custody,
+  CustodyOverview,
   IssueOptions,
   LedgerEntry,
   MovementDetail,
@@ -590,26 +591,29 @@ export function createLiveRepository(context: LiveContext): Repository {
           }
         })
 
-      const incoming = awaiting.find((d) => d.to_location_id === bar.id)
-      let incomingSummary: BarDetail['incoming']
-      if (incoming) {
-        const docketLines = await db
-          .from('boa_bar_docket_line')
-          .select(DOCKET_LINE_COLUMNS)
-          .eq('docket_id', incoming.id)
-          .then((r) => unwrap<DocketLineRow[]>('docket lines', r))
-        const first = docketLines[0]
-        const extra = docketLines.length > 1 ? ` +${docketLines.length - 1} more` : ''
-        incomingSummary = {
-          docketNo: incoming.docket_no,
-          fromName: locationName(ref, incoming.from_location_id),
-          toName: locationName(ref, incoming.to_location_id),
+      // BAR-146: every docket awaiting acceptance here, not just the first.
+      const incomingDockets = awaiting.filter((d) => d.to_location_id === bar.id)
+      const incomingLines = incomingDockets.length
+        ? await db
+            .from('boa_bar_docket_line')
+            .select(DOCKET_LINE_COLUMNS)
+            .in('docket_id', incomingDockets.map((d) => d.id))
+            .then((r) => unwrap<DocketLineRow[]>('docket lines', r))
+        : []
+      const incomingSummary: BarDetail['incoming'] = incomingDockets.map((docket) => {
+        const own = incomingLines.filter((l) => l.docket_id === docket.id)
+        const first = own[0]
+        const extra = own.length > 1 ? ` +${own.length - 1} more` : ''
+        return {
+          docketNo: docket.docket_no,
+          fromName: locationName(ref, docket.from_location_id),
+          toName: locationName(ref, docket.to_location_id),
           summary: first
             ? `${first.issued_containers} × ${ref.skuById.get(first.sku_id)?.name ?? 'unknown SKU'}${extra}`
             : 'no lines',
-          ageLabel: `${clock.minutesBetween(incoming.issued_at, snap.now) ?? 0} MIN`,
+          ageLabel: `${clock.minutesBetween(docket.issued_at, snap.now) ?? 0} MIN`,
         }
-      }
+      })
 
       return {
         id: bar.id,
@@ -676,6 +680,51 @@ export function createLiveRepository(context: LiveContext): Repository {
           }),
         }
       }).filter((g) => g.items.length > 0)
+    },
+
+    /**
+     * BAR-146. Everything in custody right now: the dockets awaiting acceptance,
+     * and the containers sitting in `in_transit`.
+     *
+     * The in-transit figure is the point. `in_transit` is a real location holding
+     * real stock, and no screen read it — so an unaccepted docket parked its whole
+     * quantity somewhere invisible while the ledger said it existed.
+     */
+    async custodyOverview(): Promise<CustodyOverview> {
+      const [ref, snap, awaiting] = await Promise.all([reference(), snapshot(), awaitingDockets()])
+
+      const lines = awaiting.length
+        ? await db
+            .from('boa_bar_docket_line')
+            .select(DOCKET_LINE_COLUMNS)
+            .in('docket_id', awaiting.map((d) => d.id))
+            .then((r) => unwrap<DocketLineRow[]>('awaiting docket lines', r))
+        : []
+
+      const transitIds = new Set(ref.locations.filter((l) => l.kind === 'in_transit').map((l) => l.id))
+      const inTransitContainers = snap.rows
+        .filter((row) => transitIds.has(row.location_id))
+        .reduce((sum, row) => sum + Number(row.containers), 0)
+
+      return {
+        dockets: awaiting.map((docket) => {
+          const own = lines.filter((l) => l.docket_id === docket.id)
+          const first = own[0]
+          const extra = own.length > 1 ? ` +${own.length - 1} more` : ''
+          const age = clock.minutesBetween(docket.issued_at, snap.now) ?? 0
+          return {
+            docketNo: docket.docket_no,
+            fromName: locationName(ref, docket.from_location_id).toUpperCase(),
+            toName: locationName(ref, docket.to_location_id).toUpperCase(),
+            summary: first
+              ? `${first.issued_containers} × ${ref.skuById.get(first.sku_id)?.name ?? 'unknown SKU'}${extra}`
+              : 'no lines',
+            ageLabel: `${age} MIN`,
+            overdue: age >= DOCKET_SLA_MINUTES,
+          }
+        }),
+        inTransitContainers,
+      }
     },
 
     async issueOptions(): Promise<IssueOptions> {
