@@ -31,6 +31,30 @@ export const supabase = isSupabaseConfigured
     })
   : null
 
+/**
+ * BAR-044. The command RPCs, per ADR-013. These are the ONLY write path — the
+ * `authenticated` role holds no INSERT on any table, so there is nothing else
+ * they could be.
+ *
+ * Called from the outbox drain and nowhere else: `docs/OFFLINE-SYNC.md` rule 5
+ * says every write goes to the outbox, online or offline, with no fast path that
+ * skips it. A screen or a service that called one of these directly would be able
+ * to report success before the write was durable.
+ */
+export async function createDocketRpc(payload: unknown) {
+  if (!supabase) throw new Error('Supabase is not configured')
+  const { data, error } = await supabase.rpc('boa_bar_create_docket', { p_payload: payload })
+  if (error) throw error
+  return data
+}
+
+export async function acceptDocketRpc(payload: unknown) {
+  if (!supabase) throw new Error('Supabase is not configured')
+  const { data, error } = await supabase.rpc('boa_bar_accept_docket', { p_payload: payload })
+  if (error) throw error
+  return data
+}
+
 export async function submitMovement(payload: unknown) {
   if (!supabase) throw new Error('Supabase is not configured')
   const { data, error } = await supabase.rpc('boa_bar_submit_movement', {

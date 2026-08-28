@@ -169,7 +169,17 @@ export type DetailRow = { label: string; value: string; tone?: Tone }
  * how "1.5 cases" appeared next to a container count that could not produce it.
  */
 export type Custody = {
+  /**
+   * BAR-044. The docket's primary key, which is what `boa_bar_accept_docket`
+   * takes. `docketNo` is the human label printed on paper and shown on screen;
+   * accepting by label would break the moment two venues existed.
+   */
+  docketId: string
   docketNo: string
+  /** The SKU being moved, for the acceptance command. */
+  skuId: string
+  /** Source location id, for the issue command. */
+  fromLocationId: string
   /**
    * BAR-133. The receiving location's id, so the received screen's CTA can
    * navigate to the bar it just delivered to. Previously the screen carried the
@@ -285,6 +295,59 @@ export type SessionInfo = {
 }
 
 // ---------------------------------------------------------------------------
+// commands — the write side
+// ---------------------------------------------------------------------------
+
+/**
+ * BAR-044. Writes are on the repository, not on a Supabase call in a screen,
+ * because `docs/ARCHITECTURE.md` puts one interface between the use cases and all
+ * IO. The live implementation appends to the outbox; the fixture implementation
+ * records in memory so the design walkthrough still works. Neither is reachable
+ * from a screen except through a service in `src/services/`.
+ */
+export type DocketLineCommand = {
+  skuId: string
+  /** Containers. Millilitres are derived from the SKU, not supplied by the UI. */
+  containers: number
+}
+
+export type CreateDocketCommand = {
+  /**
+   * Minted once per user action and reused on retry (BAR-069). Supplied by the
+   * caller rather than generated here: a repository call happens once per attempt,
+   * and a key minted per attempt defeats its own purpose.
+   */
+  idempotencyKey: string
+  fromLocationId: string
+  toLocationId: string
+  lines: DocketLineCommand[]
+}
+
+export type AcceptDocketCommand = {
+  idempotencyKey: string
+  docketId: string
+  /** What was actually received, per line. */
+  lines: DocketLineCommand[]
+  /** Required by the database when any line is short (BAR-058). */
+  differenceReason?: string
+}
+
+/**
+ * What a write returns.
+ *
+ * `posted` means the server has it and the docket number is real — minted
+ * server-side under an advisory lock, so it exists nowhere else.
+ *
+ * `queued` means the write is durable in the outbox but has not posted. This is
+ * the ordinary offline state, and it is NOT a failure: the distinction exists so a
+ * screen can say "queued" rather than either claiming success or reporting loss.
+ * A failure throws.
+ */
+export type WriteOutcome =
+  | { status: 'posted'; docketId: string; docketNo: string; token?: string }
+  | { status: 'queued'; outboxId: string }
+
+// ---------------------------------------------------------------------------
 // The contract
 // ---------------------------------------------------------------------------
 
@@ -316,4 +379,12 @@ export interface Repository {
    * this signature exists so the UI can ask honestly.
    */
   variance(locationId?: string): Promise<VarianceReport>
+
+  // -- commands -------------------------------------------------------------
+
+  /** Issue stock: mints the docket and posts leg 1 (source -> in_transit). */
+  createDocket(command: CreateDocketCommand): Promise<WriteOutcome>
+
+  /** The second named person takes custody, posting leg 2 (in_transit -> destination). */
+  acceptDocket(command: AcceptDocketCommand): Promise<WriteOutcome>
 }

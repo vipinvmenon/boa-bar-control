@@ -171,7 +171,10 @@ export const BAR_DETAIL: Record<string, BarDetail> = {
  * screens compute them.
  */
 export const CUSTODY: Custody = {
+  docketId: 'D-0184',
   docketNo: 'D-0184',
+  skuId: 'kf',
+  fromLocationId: 'warehouse',
   toLocationId: 'bar-3',
   statusLabel: 'AWAITING ACCEPTANCE',
   fromName: 'WAREHOUSE',
@@ -275,7 +278,9 @@ export function variant() {
     },
     custody: {
       ...CUSTODY,
+      docketId: 'D-0231',
       docketNo: 'D-0231',
+      skuId: 'corona',
       productName: 'Corona Extra',
       productSpec: 'Beer · 355 ml bottle',
       mlPerContainer: 355,

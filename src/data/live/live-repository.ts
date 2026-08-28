@@ -21,7 +21,9 @@
  *      clock must not be able to age a docket or stamp a count.
  */
 import { supabase } from '../../lib/supabase'
+import { enqueueCommand, OutboxPendingError, waitForCommand } from '../../lib/offline-db'
 import { toleranceFor, varianceBand } from '../../domain/inventory'
+import { mlForContainers } from '../../domain/custody'
 import {
   actorLabel,
   groupKey,
@@ -68,6 +70,7 @@ import {
   type SnapshotRow,
 } from './rows'
 import type {
+  AcceptDocketCommand,
   ActivityGroup,
   Alert,
   AsOf,
@@ -79,11 +82,13 @@ import type {
   Custody,
   LedgerEntry,
   MovementDetail,
+  CreateDocketCommand,
   Repository,
   SessionInfo,
   StockPosition,
   Tone,
   VarianceReport,
+  WriteOutcome,
 } from '../repository'
 
 export type LiveContext = {
@@ -946,7 +951,10 @@ export function createLiveRepository(context: LiveContext): Repository {
               : 'CANCELLED'
 
       return {
+        docketId: docket.id,
         docketNo: docket.docket_no,
+        skuId: first.sku_id,
+        fromLocationId: docket.from_location_id,
         toLocationId: docket.to_location_id,
         statusLabel,
         fromName: locationName(ref, docket.from_location_id).toUpperCase(),
@@ -1151,6 +1159,103 @@ export function createLiveRepository(context: LiveContext): Repository {
         lines,
       }
     },
+
+    // -----------------------------------------------------------------------
+    // commands
+    // -----------------------------------------------------------------------
+
+    /**
+     * BAR-044. Appends to the outbox, then waits briefly for the drain.
+     *
+     * It does not call the RPC directly. `docs/OFFLINE-SYNC.md` rule 5: every
+     * write goes to the outbox, online or offline, with no fast path that skips
+     * it — that is what makes losing signal ordinary rather than exceptional. The
+     * short wait is how an online action still gets a real docket number while
+     * obeying that rule: the number is minted server-side under an advisory lock,
+     * so it exists nowhere else and cannot be predicted here.
+     *
+     * If the wait elapses the write is still durable and still going to post; the
+     * outcome says `queued` and the caller must not report it as either success or
+     * loss.
+     */
+    async createDocket(command: CreateDocketCommand): Promise<WriteOutcome> {
+      const ref = await reference()
+      const outboxId = await enqueueCommand({
+        kind: 'create_docket',
+        idempotencyKey: command.idempotencyKey,
+        payload: {
+          venue_id: venueId,
+          from_location_id: command.fromLocationId,
+          to_location_id: command.toLocationId,
+          idempotency_key: command.idempotencyKey,
+          source: 'pwa',
+          lines: command.lines.map((line) => {
+            const sku = ref.skuById.get(line.skuId)
+            if (!sku) throw new Error(`Unknown SKU ${line.skuId}`)
+            return {
+              sku_id: line.skuId,
+              containers: line.containers,
+              // Derived here, from the SKU, rather than accepted from the UI: a
+              // container count and a volume that disagree is a corrupt docket.
+              ml: mlForContainers(line.containers, sku.ml_per_container),
+            }
+          }),
+        },
+      })
+      return settle(outboxId)
+    },
+
+    async acceptDocket(command: AcceptDocketCommand): Promise<WriteOutcome> {
+      const ref = await reference()
+      const outboxId = await enqueueCommand({
+        kind: 'accept_docket',
+        idempotencyKey: command.idempotencyKey,
+        payload: {
+          idempotency_key: command.idempotencyKey,
+          docket_id: command.docketId,
+          difference_reason: command.differenceReason ?? null,
+          source: 'pwa',
+          lines: command.lines.map((line) => {
+            const sku = ref.skuById.get(line.skuId)
+            if (!sku) throw new Error(`Unknown SKU ${line.skuId}`)
+            return {
+              sku_id: line.skuId,
+              containers: line.containers,
+              ml: mlForContainers(line.containers, sku.ml_per_container),
+            }
+          }),
+        },
+      })
+      return settle(outboxId)
+    },
+  }
+}
+
+/**
+ * Turn a queued outbox entry into an outcome.
+ *
+ * A rejection propagates: a write the server refused must reach the user, never a
+ * toast claiming success (`docs/OFFLINE-SYNC.md` rule 3).
+ */
+async function settle(outboxId: string): Promise<WriteOutcome> {
+  try {
+    const result = (await waitForCommand(outboxId)) as
+      | { docket_id?: string; docket_no?: string; token?: string }
+      | null
+    if (result?.docket_id && result?.docket_no) {
+      return {
+        status: 'posted',
+        docketId: result.docket_id,
+        docketNo: result.docket_no,
+        token: result.token,
+      }
+    }
+    // Posted, but the reply did not carry a docket. Reporting a number we do not
+    // have would be worse than reporting it as queued.
+    return { status: 'queued', outboxId }
+  } catch (error) {
+    if (error instanceof OutboxPendingError) return { status: 'queued', outboxId }
+    throw error
   }
 }
 

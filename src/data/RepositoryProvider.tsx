@@ -13,7 +13,8 @@
  * It gives loading and error states without every screen hand-rolling them.
  */
 import { createContext, useContext, useMemo, type PropsWithChildren } from 'react'
-import { useQuery, type UseQueryResult } from '@tanstack/react-query'
+import { useMutation, useQueryClient, type UseMutationResult, type UseQueryResult } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { createFixtureRepository, type FixtureVariant } from './fixture/fixture-repository'
 import { createLiveRepository } from './live/live-repository'
 import { isSupabaseConfigured } from '../lib/supabase'
@@ -98,5 +99,30 @@ export function useRepositoryQuery<T>(
      * not surface at all.
      */
     throwOnError: true,
+  })
+}
+
+/**
+ * BAR-044 — run a write.
+ *
+ * A screen calls a service; the service is handed the repository from here. That
+ * keeps `docs/ARCHITECTURE.md` rule 1 intact — a screen imports neither Supabase
+ * nor Dexie — while leaving the service a plain function that takes its
+ * dependencies as arguments and is therefore testable without React.
+ *
+ * On success every repository query is invalidated. A write changes the position,
+ * and a stale cached figure after a docket is accepted is exactly the sort of
+ * quiet wrongness this project is trying to eliminate.
+ */
+export function useRepositoryMutation<TInput, TResult>(
+  run: (repository: Repository, input: TInput) => Promise<TResult>,
+): UseMutationResult<TResult, Error, TInput> {
+  const repository = useRepository()
+  const queryClient = useQueryClient()
+  return useMutation<TResult, Error, TInput>({
+    mutationFn: (input: TInput) => run(repository, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [repository.kind] })
+    },
   })
 }

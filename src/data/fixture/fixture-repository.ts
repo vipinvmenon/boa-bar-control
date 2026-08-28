@@ -11,6 +11,7 @@
  * as live festival inventory (BAR-067).
  */
 import type {
+  AcceptDocketCommand,
   ActivityGroup,
   Alert,
   AsOf,
@@ -25,6 +26,7 @@ import type {
   SessionInfo,
   StockPosition,
   VarianceReport,
+  WriteOutcome,
 } from '../repository'
 import { ALERTS, AS_OF, BARS, BAR_DETAIL, CATALOGUE, COUNT_SESSION, CUSTODY, LEDGER, MOVEMENTS, SESSION, STOCK_POSITION, VARIANCE, variant } from './design-data'
 
@@ -83,6 +85,26 @@ export function createFixtureRepository(which: FixtureVariant = 'a'): Repository
 
     async variance(): Promise<VarianceReport> {
       return v?.variance ?? VARIANCE
+    },
+
+    /**
+     * BAR-044. The fixture commands record nothing durable and say so by
+     * returning the design's own docket, so the walkthrough still reaches the
+     * docket and received screens.
+     *
+     * They deliberately do NOT simulate a ledger. A fixture that pretended to
+     * post movements would let the custody chain look functional in demo mode,
+     * and the shell already announces DEMO DATA · NOTHING IS RECORDED on every
+     * screen precisely because that must not be in doubt (BAR-139).
+     */
+    async createDocket(): Promise<WriteOutcome> {
+      const custody = v?.custody ?? CUSTODY
+      return { status: 'posted', docketId: custody.docketId, docketNo: custody.docketNo }
+    },
+
+    async acceptDocket(command: AcceptDocketCommand): Promise<WriteOutcome> {
+      const custody = v?.custody ?? CUSTODY
+      return { status: 'posted', docketId: command.docketId || custody.docketId, docketNo: custody.docketNo }
     },
   }
 }

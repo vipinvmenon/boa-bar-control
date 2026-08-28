@@ -21,6 +21,8 @@ import { Check, Minus, Plus } from 'lucide-react'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
 import { Advisory, FlowFooter, FlowHeader } from './parts'
 import { describeQuantity } from './quantity'
+import { useRepositoryMutation } from '../../data/RepositoryProvider'
+import { acceptDocket } from '../../services/accept'
 
 export function AcceptScreen() {
   const { docketId } = useParams({ from: '/dockets/$docketId/accept' })
@@ -31,6 +33,37 @@ export function AcceptScreen() {
   const [diffOpen, setDiffOpen] = useState(false)
   const [received, setReceived] = useState<number | null>(null)
   const [reason, setReason] = useState<string | null>(null)
+
+  /**
+   * BAR-044 / BAR-069. One id for this ACCEPTANCE, created once when the screen
+   * mounts and reused for every attempt, so the idempotency key identifies the
+   * user's action rather than the network call. A double tap, or a retry after the
+   * reply was lost, produces one acceptance.
+   *
+   * It does not survive a reload — persisting it is BAR-072 — so a reload before
+   * the write drains can still produce a second acceptance. The database refuses
+   * that one (BAR-134 asserts it), so the failure mode is a visible error, not a
+   * duplicate ledger entry.
+   */
+  const [actionId] = useState(() => crypto.randomUUID())
+
+  // Declared before the loading guard below, because hooks must run in the same
+  // order on every render. The docket is therefore read inside the callback,
+  // where it is guaranteed to be loaded — the button that fires this does not
+  // exist until it is.
+  const submit = useRepositoryMutation((repository, input: { accepted: number; why?: string }) => {
+    if (!d) throw new Error('The docket is still loading')
+    return acceptDocket({
+      repository,
+      actionId,
+      docketId: d.docketId,
+      lines: [
+        { skuId: d.skuId, issuedContainers: d.expectedContainers, acceptedContainers: input.accepted },
+      ],
+      differenceReason: input.why,
+    })
+  })
+
 
   if (!d) {
     return (
@@ -55,14 +88,29 @@ export function AcceptScreen() {
   // Just the "2 cases" part of the design's "2 cases · 650 ml · 31.2 L".
   const casesLabel = (describeQuantity(expected, d.unitsPerCase, d.mlPerContainer).split(' · ')[0] ?? '').toUpperCase()
 
-  const canAccept = !isShort || reason !== null
+  // Disabled while the write is in flight, so a second tap cannot start a second
+  // acceptance before the first has landed.
+  const canAccept = (!isShort || reason !== null) && !submit.isPending
 
+  /**
+   * The write is awaited before navigating. The design's received screen is a
+   * receipt — "chain of custody closed, both names held permanently" — and showing
+   * it before the write is durable would be a claim of success this app is not
+   * entitled to make (non-negotiable 6).
+   */
   const accept = () => {
-    void navigate({
-      to: '/dockets/$docketId/received',
-      params: { docketId: d.docketNo },
-      search: { qty, reason: reason ?? undefined },
-    })
+    submit.mutate(
+      { accepted: qty, why: reason ?? undefined },
+      {
+        onSuccess: (outcome) => {
+          void navigate({
+            to: '/dockets/$docketId/received',
+            params: { docketId: outcome.status === 'posted' ? outcome.docketId : d.docketId },
+            search: { qty, reason: reason ?? undefined },
+          })
+        },
+      },
+    )
   }
 
   return (
@@ -153,12 +201,26 @@ export function AcceptScreen() {
       </div>
 
       <FlowFooter>
+        {/*
+          A failed write is stated, not swallowed. The person is standing at a bar
+          with a delivery in front of them; "it didn't save" is information they
+          can act on, and a silent failure is not.
+        */}
+        {submit.isError && (
+          <p className="flow-error" role="alert">
+            NOT ACCEPTED · {submit.error.message}
+          </p>
+        )}
         <button
           className={`flow-cta ${isShort ? 'is-short' : ''}`}
           onClick={accept}
           disabled={!canAccept}
         >
-          {isShort ? `Accept ${qty} · report short ${short}` : `Accept ${expected} bottles`}
+          {submit.isPending
+            ? 'Recording…'
+            : isShort
+              ? `Accept ${qty} · report short ${short}`
+              : `Accept ${expected} bottles`}
         </button>
         <button
           className={`flow-cta-ghost ${diffOpen ? 'is-active' : ''}`}
