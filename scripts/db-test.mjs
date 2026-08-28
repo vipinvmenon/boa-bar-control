@@ -142,14 +142,19 @@ async function main() {
   // stale claim of coverage, just pointing the other way.
   console.log(
     '\nWhat these assertions do and do not prove:\n' +
+      '  blind_count    BEHAVIOURAL, and the only one that CONNECTS AS A ROLE.\n' +
+      '                 Sets request.jwt.claims and switches to `authenticated`, so\n' +
+      '                 RLS applies. Proves the movement_line policy: the bar lead\n' +
+      '                 can read their bar, then cannot once a count is open.\n' +
       '  business_date  BEHAVIOURAL. Calls the function with real instants and\n' +
       '                 asserts the date, including the 01:30 event-night case.\n' +
       '  privileges     REAL privilege checks per role, on every table and every\n' +
-      '                 function. These caught two live EXECUTE holes.\n' +
+      '                 function. These caught two live EXECUTE holes, one of which\n' +
+      '                 broke every ledger read in production.\n' +
       '  ledger         EXISTENCE ONLY. Asserts objects are present, nothing more.\n' +
-      '\nStill uncovered (BAR-030): nothing attempts an UPDATE to prove the\n' +
-      'immutability trigger fires, and nothing connects AS a role to prove an RLS\n' +
-      'policy returns the right rows. Both need a fixture harness with a real JWT.\n',
+      '\nStill uncovered (BAR-030): nothing attempts an UPDATE or DELETE to prove the\n' +
+      'immutability triggers fire, and no policy other than movement_line is proved\n' +
+      'behaviourally. Replacing ledger.test.sql is the remaining work.\n',
   )
 }
 

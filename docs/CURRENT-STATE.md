@@ -177,7 +177,7 @@ States are defined once in the **Status key** above.
 | BAR-155 | Command RPCs as the only write path | `[~]` | `e087d10` — `boa_bar_create_docket` and `boa_bar_accept_docket` exist and enforce their rules. **No application code calls either.** The count-submit and POS-post RPCs do not exist |
 | BAR-156 | Interim opening-stock bootstrap | `[~]` | `202608280002` applied 28 Aug; `boa_bar_claim_venue` and `boa_bar_open_stock` exist. **Opening stock has not been posted** — `pnpm bootstrap` correctly refuses while `auth.users` is empty and changes nothing. Verified by running it |
 | BAR-011 | Verify no table-level write grants | `[x]` | **Verified against the live database 28 Aug**, not asserted: `privileges.test.sql` 52/52, plus `ledger.test.sql` 11/11 — 63 assertions, 0 failed. It failed the first time it was ever actually run, which is how the two EXECUTE holes were found. It now enumerates every function for both roles |
-| BAR-161 | Location-scope the snapshot RPC | `[~]` | Applied 28 Aug, plus `202608280008` fixing a live defect it introduced (see event-stopper 21). The location under an open count is **omitted** from the snapshot, and the `movement_line` policy withholds its lines so the position cannot be re-summed. **`blind_count.test.sql` has still never passed** — it has failed twice, each time on a real bug, and its six assertions remain unproven |
+| BAR-161 | Location-scope the snapshot RPC | `[x]` | **Applied and PROVEN against the live database, 28 August: `blind_count.test.sql` 6/6.** A bar lead can read their bar with no open count, and once a count is open the snapshot returns no row for it and the raw movement lines are unreadable. Required `202608280008` to fix a live defect `_0007` introduced — see event-stopper 21 |
 | BAR-163 | Count witness column | `[ ]` | `boa_bar_count_session` has `assigned_to` and `reviewed_by`; no witness column |
 | BAR-012 | `GRANT USAGE ON SCHEMA private` | `[x]` | `3c6acd9`, verified 28 Aug — `authenticated` has USAGE on `private`, `anon` has none, and `private.boa_bar_balance` is unreachable |
 | BAR-013 | Harden ledger immutability | `[~]` | Row triggers on `movement`, `movement_line` and now `person_name_history`; `alter default privileges … revoke truncate` present. Still no `ENABLE ALWAYS` and no `FORCE ROW LEVEL SECURITY`, so a table owner bypasses both |
@@ -197,7 +197,7 @@ States are defined once in the **Status key** above.
 | BAR-027 | Missing spec §13 columns | `[~]` | BAR-124 added display names. `abv`, `supplier_vendor_id`, `is_licenced`, `is_blind`, `witnessed_by`, `counted_at`, empties and delivery-note remain absent |
 | BAR-028 | Non-negative position guard | `[ ]` | Nothing prevents issuing more than is held. The per-column `>= 0` checks are on docket and count lines, not on the position |
 | BAR-029 | Index `movement_line.movement_id` | `[ ]` | The two indexes are `(venue_id, business_date, occurred_at)` and `(location_id, sku_id)`. `movement_id` is still an unindexed FK, evaluated per row by the read policy — and the live repository queries it by `movement_id` on every ledger read |
-| BAR-030 | Behavioural pgTAP suite | `[~]` | 72 assertions pass against the live database. `business_date.test.sql` (9) is behavioural; `privileges.test.sql` (52) checks real privileges and caught two live EXECUTE holes; `ledger.test.sql` (11) is still existence-only. Uncovered: nothing attempts an UPDATE to prove the immutability trigger fires, and nothing connects **as** a role to prove an RLS policy returns the right rows — both need a fixture harness with a real JWT |
+| BAR-030 | Behavioural pgTAP suite | `[~]` | **80 assertions pass against the live database.** `blind_count.test.sql` (6) is the first to CONNECT AS A ROLE and the first to prove an RLS policy behaviourally. `business_date` (9) is behavioural. `privileges` (54) checks real privileges and has now caught **two** live EXECUTE holes, one of which broke every ledger read in production. `ledger.test.sql` (11) is still existence-only, and nothing yet attempts an UPDATE to prove the immutability triggers fire — that is the remaining work |
 | BAR-031 | Execute migrations | `[x]` | **All seven migrations applied and confirmed by object existence, 28 Aug.** PostgreSQL 17.6. `pnpm db:state` reports the history and checks that each migration's objects actually exist, rather than trusting the history table |
 | BAR-032 | Deterministic seed that renders the design | `[~]` | **Reference data verified present in the hosted project 28 Aug: 1 venue, 9 locations, 11 SKUs.** Opening ledger not yet posted — blocked on the first `auth.users` row. Still no serve mappings (BAR-159) and no tolerance bands in the database (BAR-025) |
 | BAR-033 | Generate database types | `[ ]` | The client is untyped. `src/data/live/rows.ts` hand-writes every row shape precisely because generated types do not exist — 156 lines that a generator would own |
@@ -293,7 +293,7 @@ States are defined once in the **Status key** above.
 | BAR-080 | Partial-container capture | `[x]` | `36ffc4f` — all three modes (`none` / `ml` / `litres`) verified in the browser |
 | BAR-081 | Tare weighing | `[~]` | `partialMlFromWeight` in `services/count.ts` wraps the domain function, and `partialToMl` converts a keg reading from litres. The count screen still asks for millilitres directly rather than taking a gross weight and a tare — the conversion exists but the input does not use it |
 | BAR-082 | Count persistence | `[x]` | `202608280005` — `boa_bar_submit_count`, a service, and `CountScreen` accumulating its lines and submitting through the outbox. The screen previously reset each line and navigated away, discarding every count. A partial count is refused: 12 of 18 lines reports six SKUs as zero. **Unapplied** |
-| BAR-083 | Blind enforcement in the database | `[~]` | `202608280007` — `private.boa_bar_is_blinded` is the single definition, and it gates BOTH `boa_bar_inventory_snapshot` and the `boa_bar_movement_line` read policy, so the position cannot be re-summed from the raw ledger either. Count-scoped, per docs/SECURITY.md, not role-scoped. **Written, unapplied, and the pgTAP test has never executed** |
+| BAR-083 | Blind enforcement in the database | `[x]` | Same work as BAR-161, proven the same way. `private.boa_bar_is_blinded` is the single definition and gates both the snapshot and the `movement_line` read policy, so the position cannot be re-summed from the ledger |
 | BAR-084 | Seal the theoretical position at submit | `[x]` | `private.boa_bar_count_seal`, summed from the ledger at the instant counted, not from the balance projection which only holds "now". No grant to anybody — it IS the expected figure a counter must never see. Append-only. **Unapplied** |
 | BAR-085 | `countDone` screen | `[x]` | `36ffc4f` |
 | BAR-086 | `variance` screen | `[x]` | `36ffc4f` — renders from the repository, signed deltas, banding, notes |
@@ -363,15 +363,15 @@ Computed from the rows above, not asserted.
 
 | | Count |
 | --- | --- |
-| `[x]` done | 49 |
-| `[~]` partial | 39 |
+| `[x]` done | 51 |
+| `[~]` partial | 37 |
 | `[R]` rewrite | 4 |
 | `[!]` defect actively present | 11 |
 | `[ ]` not started | 59 |
 | `[?]` unverifiable today | 2 |
 | **Total** | **164** |
 
-Read the middle three rows as the real position: **54 tasks are neither done nor
+Read the middle three rows as the real position: **52 tasks are neither done nor
 untouched**, and 11 of them are defects sitting in the code right now.
 
 ## Would stop the event dead
