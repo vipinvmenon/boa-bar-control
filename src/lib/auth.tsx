@@ -7,6 +7,12 @@ export type VenueMembership = {
   venueId: string
   venueCode: string
   venueName: string
+  /**
+   * boa_bar_venue.timezone. The live repository needs it: every stamp the design
+   * shows is venue-local wall-clock, and a crew phone set to the wrong timezone
+   * must not be able to put a wrong time on an excise record (BAR-042).
+   */
+  venueTimezone: string
   role: 'crew' | 'warehouse' | 'bar_lead' | 'manager' | 'auditor' | 'admin'
   locationId?: string
   locationName?: string
@@ -72,7 +78,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const venueIds = [...new Set((membershipRows ?? []).map((row) => row.venue_id as string))]
       const locationIds = [...new Set((membershipRows ?? []).map((row) => row.location_id as string | null).filter(Boolean))] as string[]
       const [{ data: venues, error: venueError }, { data: locations, error: locationError }] = await Promise.all([
-        venueIds.length ? client.from('boa_bar_venue').select('id, code, name').in('id', venueIds) : Promise.resolve({ data: [], error: null }),
+        venueIds.length ? client.from('boa_bar_venue').select('id, code, name, timezone').in('id', venueIds) : Promise.resolve({ data: [], error: null }),
         locationIds.length ? client.from('boa_bar_location').select('id, name').in('id', locationIds) : Promise.resolve({ data: [], error: null }),
       ])
       if (venueError) throw venueError
@@ -81,6 +87,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
         venueId: row.venue_id as string,
         venueCode: (venues ?? []).find((venue) => venue.id === row.venue_id)?.code ?? 'venue',
         venueName: (venues ?? []).find((venue) => venue.id === row.venue_id)?.name ?? 'BOA Bar Control',
+        // Falls back to the event's own timezone rather than the device's: a
+        // missing column must not silently reinterpret every timestamp.
+        venueTimezone: (venues ?? []).find((venue) => venue.id === row.venue_id)?.timezone ?? 'Asia/Kolkata',
         role: row.role as VenueMembership['role'],
         locationId: (row.location_id as string | null) ?? undefined,
         locationName: (locations ?? []).find((location) => location.id === row.location_id)?.name,

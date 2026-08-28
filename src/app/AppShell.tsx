@@ -5,6 +5,7 @@ import { useDemoStore } from '../lib/demo-store'
 import { BottomNav } from '../components/layout/BottomNav'
 import { configError } from '../lib/supabase'
 import { applyUpdate, onUpdateAvailability } from '../lib/pwa-update'
+import { useRepository } from '../data/RepositoryProvider'
 
 export function AppShell() {
   const store = useDemoStore()
@@ -12,7 +13,13 @@ export function AppShell() {
   const fullFlow = ['/issue', '/waste', '/count'].some((path) => pathname.startsWith(path)) || pathname.startsWith('/dockets/')
   const isHome = pathname === '/'
   const caption = pathname === '/' ? 'LIVE HOME' : pathname.replace(/^\//, '').replaceAll('-', ' ').toUpperCase()
-  const isDemo = store.backendMode !== 'live'
+  /**
+   * BAR-042. Whether this session is live is a property of the repository that is
+   * actually answering reads — not of `demo-store`, which reports `live` once its
+   * own legacy snapshot load succeeds and would therefore label fixture-served
+   * screens as live. There is one honest answer and this is it.
+   */
+  const isDemo = useRepository().kind !== 'live'
 
   // BAR-138. A waiting service worker previously had no way to be activated, so
   // a device stayed on whatever bundle it first cached. Surfaced rather than

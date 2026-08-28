@@ -1,0 +1,1165 @@
+/**
+ * BAR-042 — the live repository.
+ *
+ * The same interface the fixture repository implements, answered from the
+ * database. Selected once at bootstrap (RepositoryProvider); never reached as a
+ * fallback, and never falling back to fixtures itself. If a read fails it throws
+ * and the screen shows an error, because the alternative — quietly serving the
+ * design's sample stock — is the defect this whole project is recovering from
+ * (BAR-067).
+ *
+ * Reads only. Every write goes through a command RPC (ADR-013), which is why the
+ * `authenticated` role holds no INSERT on any table.
+ *
+ * Two rules govern everything below:
+ *
+ *   1. No figure is invented. Where the schema cannot yet produce something the
+ *      design displays, this file omits it and says so in a comment — it does not
+ *      substitute a plausible number. Those omissions are listed in
+ *      docs/CURRENT-STATE.md rather than hidden here.
+ *   2. Time is the server's, in the venue's timezone. A crew phone with a wrong
+ *      clock must not be able to age a docket or stamp a count.
+ */
+import { supabase } from '../../lib/supabase'
+import { toleranceFor, varianceBand } from '../../domain/inventory'
+import {
+  actorLabel,
+  groupKey,
+  GROUP_ORDER,
+  isKeg,
+  makeClock,
+  partialHintFor,
+  partialModeFor,
+  partialStepFor,
+  partialUnitFor,
+  quantityPair,
+  signed,
+  signedPct,
+  specLabel,
+  thousands,
+  unitWord,
+  volumeLabel,
+  type Clock,
+  type SkuShape,
+} from './format'
+import {
+  COUNT_LINE_COLUMNS,
+  COUNT_SESSION_COLUMNS,
+  DOCKET_COLUMNS,
+  DOCKET_LINE_COLUMNS,
+  isEmpty,
+  LOCATION_COLUMNS,
+  MEMBERSHIP_COLUMNS,
+  MOVEMENT_COLUMNS,
+  MOVEMENT_LINE_COLUMNS,
+  PERSON_COLUMNS,
+  SKU_COLUMNS,
+  unwrap,
+  type CountLineRow,
+  type CountSessionRow,
+  type DocketLineRow,
+  type DocketRow,
+  type LocationRow,
+  type MembershipRow,
+  type MovementLineRow,
+  type MovementRow,
+  type PersonRow,
+  type SkuRow,
+  type SnapshotRow,
+} from './rows'
+import type {
+  ActivityGroup,
+  Alert,
+  AsOf,
+  BarDetail,
+  BarInventoryLine,
+  BarSummary,
+  CatalogueGroup,
+  CountSession,
+  Custody,
+  LedgerEntry,
+  MovementDetail,
+  Repository,
+  SessionInfo,
+  StockPosition,
+  Tone,
+  VarianceReport,
+} from '../repository'
+
+export type LiveContext = {
+  venueId: string
+  userId: string
+  /** boa_bar_venue.timezone. Never the device's. */
+  timezone: string
+  role: 'crew' | 'warehouse' | 'bar_lead' | 'manager' | 'auditor' | 'admin'
+  /** The membership's assigned location, if it has one. */
+  locationId: string | null
+}
+
+/**
+ * How long a bar may go between counts before the bars list calls it due.
+ *
+ * ASSUMPTION, not derived from the specification: the spec fixes the count
+ * *events* (opening, mid-event, close-out) but never states a maximum interval,
+ * and the design's sample data shows a bar last counted at 15:10 flagged overdue
+ * at 19:43. Two hours reproduces that. It needs the operating decision from the
+ * user before 10 October — recorded in docs/CURRENT-STATE.md.
+ */
+export const COUNT_DUE_AFTER_MINUTES = 120
+
+/**
+ * The docket acceptance SLA the home screen's meter is drawn against. Taken from
+ * the design, which labels that meter `30 MIN SLA` verbatim.
+ */
+export const DOCKET_SLA_MINUTES = 30
+
+/** The count screen's full-container presets. A design constant, not data. */
+const COUNT_PRESETS = [0, 6, 12, 24]
+
+/** Sales and comps are excluded from the activity feed: at festival volume they
+ * would be thousands of rows and the design's feed shows none of them. They
+ * remain in the ledger and in every calculation. */
+const LEDGER_KINDS = ['receipt', 'issue', 'transfer', 'return', 'waste', 'adjustment'] as const
+
+const REFERENCE_TTL_MS = 5 * 60_000
+const SNAPSHOT_TTL_MS = 15_000
+
+type Reference = {
+  locations: LocationRow[]
+  locationById: Map<string, LocationRow>
+  skus: SkuRow[]
+  skuById: Map<string, SkuRow>
+  people: Map<string, PersonRow>
+  memberships: MembershipRow[]
+}
+
+type Snapshot = {
+  rows: SnapshotRow[]
+  /** Server time, so ages and stamps do not depend on the device clock. */
+  now: Date
+}
+
+function client() {
+  if (!supabase) {
+    // Unreachable in practice: RepositoryProvider only builds a live repository
+    // when the client exists. Kept so the failure is a message, not a crash.
+    throw new Error('Live repository requires a configured Supabase client')
+  }
+  return supabase
+}
+
+function toSkuShape(sku: SkuRow): SkuShape {
+  return {
+    categoryKey: sku.category_key,
+    containerType: sku.container_type,
+    mlPerContainer: sku.ml_per_container,
+    unitsPerCase: sku.units_per_case,
+    tareWeightG: sku.tare_weight_g === null ? null : Number(sku.tare_weight_g),
+  }
+}
+
+/** A small time-bounded cache, so one screen render does not fetch the snapshot
+ * five times while a stale figure can never outlive a few seconds. */
+function cached<T>(ttlMs: number, load: () => Promise<T>) {
+  let value: { at: number; promise: Promise<T> } | null = null
+  return (): Promise<T> => {
+    const now = Date.now()
+    if (value && now - value.at < ttlMs) return value.promise
+    const promise = load().catch((error: unknown) => {
+      // A failed load must not be cached, or a single network blip persists for
+      // the whole TTL.
+      value = null
+      throw error
+    })
+    value = { at: now, promise }
+    return promise
+  }
+}
+
+export function createLiveRepository(context: LiveContext): Repository {
+  const db = client()
+  const clock: Clock = makeClock(context.timezone)
+  const { venueId } = context
+
+  // -------------------------------------------------------------------------
+  // Reference data and the position snapshot
+  // -------------------------------------------------------------------------
+
+  const reference = cached<Reference>(REFERENCE_TTL_MS, async () => {
+    const [locations, skus, people, memberships] = await Promise.all([
+      db
+        .from('boa_bar_location')
+        .select(LOCATION_COLUMNS)
+        .eq('venue_id', venueId)
+        .eq('active', true)
+        .order('code')
+        .then((r) => unwrap<LocationRow[]>('locations', r)),
+      db
+        .from('boa_bar_sku')
+        .select(SKU_COLUMNS)
+        .eq('venue_id', venueId)
+        .eq('active', true)
+        .order('code')
+        .then((r) => unwrap<SkuRow[]>('skus', r)),
+      db
+        .from('boa_bar_person')
+        .select(PERSON_COLUMNS)
+        .eq('venue_id', venueId)
+        .then((r) => unwrap<PersonRow[]>('people', r)),
+      db
+        .from('boa_bar_membership')
+        .select(MEMBERSHIP_COLUMNS)
+        .eq('venue_id', venueId)
+        .eq('active', true)
+        .then((r) => unwrap<MembershipRow[]>('memberships', r)),
+    ])
+
+    return {
+      locations,
+      locationById: new Map(locations.map((l) => [l.id, l])),
+      skus,
+      skuById: new Map(skus.map((s) => [s.id, s])),
+      people: new Map(people.map((p) => [p.user_id, p])),
+      memberships,
+    }
+  })
+
+  const snapshot = cached<Snapshot>(SNAPSHOT_TTL_MS, async () => {
+    const [rows, status] = await Promise.all([
+      db
+        .rpc('boa_bar_inventory_snapshot', { p_venue_id: venueId })
+        .then((r) => unwrap<SnapshotRow[]>('inventory snapshot', r)),
+      db
+        .rpc('boa_bar_sync_status', { p_venue_id: venueId })
+        .then((r) => unwrap<{ server_time: string; latest_posted_at: string | null; movement_count: number }[]>(
+          'sync status',
+          r,
+        )),
+    ])
+    const serverTime = status[0]?.server_time
+    if (!serverTime) throw new Error('sync status returned no server time')
+    return { rows, now: new Date(serverTime) }
+  })
+
+  /** First name, upper case, for a user id. */
+  function who(ref: Reference, userId: string | null | undefined): string {
+    if (!userId) return 'UNNAMED'
+    return actorLabel(ref.people.get(userId)?.short_name)
+  }
+
+  function locationName(ref: Reference, id: string | null | undefined): string {
+    if (!id) return 'UNKNOWN'
+    return ref.locationById.get(id)?.name ?? 'UNKNOWN'
+  }
+
+  // -------------------------------------------------------------------------
+  // Movement reads, shared by the ledger, the bar detail and variance
+  // -------------------------------------------------------------------------
+
+  async function movementLinesFor(movementIds: string[]): Promise<MovementLineRow[]> {
+    if (isEmpty(movementIds)) return []
+    return db
+      .from('boa_bar_movement_line')
+      .select(MOVEMENT_LINE_COLUMNS)
+      .in('movement_id', movementIds)
+      .then((r) => unwrap<MovementLineRow[]>('movement lines', r))
+  }
+
+  async function docketsById(ids: string[]): Promise<Map<string, DocketRow>> {
+    if (isEmpty(ids)) return new Map()
+    const rows = await db
+      .from('boa_bar_docket')
+      .select(DOCKET_COLUMNS)
+      .in('id', ids)
+      .then((r) => unwrap<DocketRow[]>('dockets', r))
+    return new Map(rows.map((d) => [d.id, d]))
+  }
+
+  async function awaitingDockets(): Promise<DocketRow[]> {
+    return db
+      .from('boa_bar_docket')
+      .select(DOCKET_COLUMNS)
+      .eq('venue_id', venueId)
+      .eq('status', 'awaiting')
+      .order('issued_at', { ascending: true })
+      .then((r) => unwrap<DocketRow[]>('awaiting dockets', r))
+  }
+
+  async function latestCountSessions(): Promise<CountSessionRow[]> {
+    return db
+      .from('boa_bar_count_session')
+      .select(COUNT_SESSION_COLUMNS)
+      .eq('venue_id', venueId)
+      .order('created_at', { ascending: false })
+      .limit(80)
+      .then((r) => unwrap<CountSessionRow[]>('count sessions', r))
+  }
+
+  /**
+   * The ledger position of one location at an instant, summed from movement
+   * lines. Deliberately NOT read from private.boa_bar_balance: that projection
+   * only holds the position *now*, and a variance report compares against the
+   * position at the moment the count was sealed. Summing the ledger is also the
+   * definition of stock on this project (non-negotiable 2).
+   */
+  async function positionAt(locationId: string, atIso: string) {
+    const movements = await db
+      .from('boa_bar_movement')
+      .select('id, occurred_at, kind')
+      .eq('venue_id', venueId)
+      .lte('occurred_at', atIso)
+      .then((r) => unwrap<{ id: string; occurred_at: string; kind: MovementRow['kind'] }[]>('movements to date', r))
+
+    const lines = await movementLinesFor(movements.map((m) => m.id))
+    const kindById = new Map(movements.map((m) => [m.id, m.kind]))
+
+    const position = new Map<string, { containers: number; ml: number }>()
+    /** Volume that entered this location in the window — the denominator the
+     * variance report can honestly use until POS import lands. */
+    const receivedMl = new Map<string, number>()
+
+    for (const line of lines) {
+      if (line.location_id !== locationId) continue
+      const current = position.get(line.sku_id) ?? { containers: 0, ml: 0 }
+      current.containers += Number(line.container_delta)
+      current.ml += Number(line.ml_delta)
+      position.set(line.sku_id, current)
+
+      const kind = kindById.get(line.movement_id)
+      if (Number(line.ml_delta) > 0 && (kind === 'issue' || kind === 'receipt' || kind === 'transfer')) {
+        receivedMl.set(line.sku_id, (receivedMl.get(line.sku_id) ?? 0) + Number(line.ml_delta))
+      }
+    }
+
+    return { position, receivedMl }
+  }
+
+  // -------------------------------------------------------------------------
+  // The interface
+  // -------------------------------------------------------------------------
+
+  return {
+    kind: 'live',
+
+    async asOf(): Promise<AsOf> {
+      const { now } = await snapshot()
+      return { label: clock.time(now.toISOString()), at: now.toISOString() }
+    },
+
+    async session(): Promise<SessionInfo> {
+      const ref = await reference()
+      const mine = ref.memberships.find((m) => m.user_id === context.userId && m.location_id)
+      /**
+       * The design shows a device identifier (`BAR-3-01`). There is no device
+       * registry in the schema — nothing issues or records one — so the closest
+       * true statement is the location this membership is posted to. A fabricated
+       * `-01` suffix would look like a registered device and is not written.
+       * Device registration is required by BAR-137 (shared devices) and is
+       * recorded as outstanding.
+       */
+      const deviceLabel = mine?.location_id
+        ? (ref.locationById.get(mine.location_id)?.code ?? 'UNPOSTED').toUpperCase()
+        : 'UNPOSTED'
+      return {
+        deviceLabel,
+        signedInName: who(ref, context.userId),
+      }
+    },
+
+    async stockPosition(): Promise<StockPosition> {
+      const { rows, now } = await snapshot()
+
+      const order: { kind: LocationRow['kind']; label: string }[] = [
+        { kind: 'warehouse', label: 'WAREHOUSE' },
+        { kind: 'bar', label: 'BARS' },
+        { kind: 'hospitality', label: 'HOSPITALITY' },
+        { kind: 'lounge', label: 'LOUNGES' },
+        { kind: 'in_transit', label: 'IN TRANSIT' },
+      ]
+
+      const byKind = new Map<string, number>()
+      let total = 0
+      for (const row of rows) {
+        const containers = Number(row.containers)
+        total += containers
+        byKind.set(row.location_kind, (byKind.get(row.location_kind) ?? 0) + containers)
+      }
+
+      return {
+        totalContainers: total,
+        // Warehouse and bars always show, even at zero — a missing WAREHOUSE tile
+        // reads as a layout change rather than as an empty warehouse. The other
+        // kinds appear only where the venue actually uses them.
+        byArea: order
+          .filter((a) => a.kind === 'warehouse' || a.kind === 'bar' || (byKind.get(a.kind) ?? 0) !== 0)
+          .map((a) => ({ label: a.label, containers: byKind.get(a.kind) ?? 0 })),
+        asOf: { label: clock.time(now.toISOString()), at: now.toISOString() },
+      }
+    },
+
+    async alerts(): Promise<Alert[]> {
+      const [ref, snap, awaiting, counts] = await Promise.all([
+        reference(),
+        snapshot(),
+        awaitingDockets(),
+        latestCountSessions(),
+      ])
+      const now = snap.now
+      const alerts: Alert[] = []
+
+      /**
+       * The design's third alert — `Bar 3 · Kingfisher low · 12 LEFT · RUN-OUT
+       * ~20:10 · 26 MIN OF COVER` — is NOT produced here, and this is the single
+       * most visible gap in the live read path.
+       *
+       * It needs two things the schema does not have: a par level or reorder
+       * point per SKU per location (there is no such column), and a depletion
+       * rate, which needs POS sales that only arrive with the import in M5.
+       * Inventing either would put a run-out time on a manager's home screen
+       * that no calculation stands behind. Recorded as outstanding rather than
+       * approximated.
+       */
+
+      const oldest = awaiting[0]
+      if (oldest) {
+        const age = clock.minutesBetween(oldest.issued_at, now) ?? 0
+        alerts.push({
+          id: 'dockets-awaiting',
+          level: age >= DOCKET_SLA_MINUTES ? 'CRITICAL' : 'WARNING',
+          ageLabel: `OLDEST ${age} MIN`,
+          title: awaiting.length === 1 ? 'Docket awaiting acceptance' : 'Dockets awaiting acceptance',
+          subtitle: `${oldest.docket_no} ${locationName(ref, oldest.from_location_id)} → ${locationName(ref, oldest.to_location_id)}`,
+          metric: String(awaiting.length),
+          metricUnit: 'OPEN',
+          meterPct: Math.min(100, Math.round((age / DOCKET_SLA_MINUTES) * 100)),
+          meterNote: `${DOCKET_SLA_MINUTES} MIN SLA`,
+          actionLabel: 'OPEN',
+          tone: age >= DOCKET_SLA_MINUTES ? 'red' : 'gold',
+          target: 'accept',
+        })
+      }
+
+      const bars = ref.locations.filter((l) => l.kind === 'bar')
+      for (const bar of bars) {
+        const last = counts.find((c) => c.location_id === bar.id && c.submitted_at !== null)
+        const age = last ? clock.minutesBetween(last.submitted_at, now) : null
+        const late = age === null ? null : age - COUNT_DUE_AFTER_MINUTES
+        if (late === null || late > 0) {
+          alerts.push({
+            id: `count-due-${bar.code}`,
+            level: 'WARNING',
+            ageLabel: last ? `LAST ${clock.time(last.submitted_at)}` : 'NEVER COUNTED',
+            title: `${bar.name} count overdue`,
+            subtitle: last
+              ? `Last counted ${clock.time(last.submitted_at)} · ${who(ref, last.assigned_to)}`
+              : 'No count has been submitted for this bar',
+            metric: late === null ? '—' : String(late),
+            metricUnit: late === null ? 'NO COUNT' : 'MIN LATE',
+            meterPct: late === null ? 100 : Math.min(100, Math.round((late / COUNT_DUE_AFTER_MINUTES) * 100)),
+            meterNote: `COUNT DUE EVERY ${COUNT_DUE_AFTER_MINUTES} MIN`,
+            actionLabel: 'COUNT',
+            tone: late === null ? 'red' : 'gold',
+            target: 'count',
+          })
+        }
+      }
+
+      // Most urgent first: the home screen shows a short list.
+      const severity = (a: Alert) => (a.level === 'CRITICAL' ? 0 : 1)
+      return alerts.sort((a, b) => severity(a) - severity(b) || b.meterPct - a.meterPct)
+    },
+
+    async listBars(): Promise<BarSummary[]> {
+      const [ref, snap, awaiting, counts] = await Promise.all([
+        reference(),
+        snapshot(),
+        awaitingDockets(),
+        latestCountSessions(),
+      ])
+      const now = snap.now
+
+      const containersByLocation = new Map<string, number>()
+      for (const row of snap.rows) {
+        containersByLocation.set(
+          row.location_id,
+          (containersByLocation.get(row.location_id) ?? 0) + Number(row.containers),
+        )
+      }
+
+      return ref.locations
+        .filter((l) => l.kind === 'bar')
+        .map((bar) => {
+          const lead = ref.memberships.find((m) => m.role === 'bar_lead' && m.location_id === bar.id)
+          const last = counts.find((c) => c.location_id === bar.id && c.submitted_at !== null)
+          const age = last ? clock.minutesBetween(last.submitted_at, now) : null
+          const countDue = age === null || age > COUNT_DUE_AFTER_MINUTES
+          const incoming = awaiting.filter((d) => d.to_location_id === bar.id).length
+
+          /**
+           * The design's third status, `LOW STOCK`, is not produced: it needs a
+           * par level per SKU per location and no such column exists. A bar
+           * therefore reads HEALTHY or COUNT DUE, never LOW STOCK, until par
+           * levels land. Colouring a bar red on a guessed threshold would send
+           * crew to move stock that does not need moving.
+           */
+          const status = countDue ? 'COUNT DUE' : 'HEALTHY'
+          const tone: Tone = countDue ? 'gold' : 'green'
+
+          return {
+            id: bar.id,
+            name: bar.name.toUpperCase(),
+            containers: containersByLocation.get(bar.id) ?? 0,
+            status,
+            tone,
+            // A first name, as the design shows. Not the role, and not an email.
+            lead: ref.people.get(lead?.user_id ?? '')?.short_name ?? 'UNASSIGNED',
+            countedAt: last ? clock.time(last.submitted_at) : 'NEVER',
+            flag: incoming > 0
+              ? `${incoming} DOCKET${incoming === 1 ? '' : 'S'} INCOMING`
+              : countDue
+                ? 'MID-COUNT OVERDUE'
+                : undefined,
+          }
+        })
+    },
+
+    async barDetail(barId: string): Promise<BarDetail | null> {
+      const [ref, snap, awaiting] = await Promise.all([reference(), snapshot(), awaitingDockets()])
+      const bar = ref.locationById.get(barId)
+      if (!bar || bar.kind !== 'bar') return null
+
+      const manager = ref.memberships.find((m) => m.role === 'bar_lead' && m.location_id === bar.id)
+      const here = snap.rows.filter((r) => r.location_id === bar.id)
+
+      const categoryTotals = GROUP_ORDER.map((group) => ({
+        label: group,
+        containers: here
+          .filter((r) => groupKey(r.category_key) === group)
+          .reduce((sum, r) => sum + Number(r.containers), 0),
+      })).filter((g) => g.containers !== 0)
+
+      // The design's per-line summary `RECEIVED 48 · WASTE 2 · RETURNED 0`, from
+      // the ledger rather than from a stored counter.
+      const movements = await db
+        .from('boa_bar_movement')
+        .select('id, kind')
+        .eq('venue_id', venueId)
+        .in('kind', ['receipt', 'issue', 'transfer', 'waste', 'return'])
+        .then((r) => unwrap<{ id: string; kind: MovementRow['kind'] }[]>('bar movements', r))
+      const kindById = new Map(movements.map((m) => [m.id, m.kind]))
+      const lines = await movementLinesFor(movements.map((m) => m.id))
+
+      const tally = new Map<string, { received: number; waste: number; returned: number }>()
+      for (const line of lines) {
+        if (line.location_id !== bar.id) continue
+        const t = tally.get(line.sku_id) ?? { received: 0, waste: 0, returned: 0 }
+        const kind = kindById.get(line.movement_id)
+        const containers = Number(line.container_delta)
+        if (containers > 0 && (kind === 'receipt' || kind === 'issue' || kind === 'transfer')) {
+          t.received += containers
+        }
+        if (kind === 'waste') t.waste += Math.abs(containers)
+        if (kind === 'return' && containers < 0) t.returned += Math.abs(containers)
+        tally.set(line.sku_id, t)
+      }
+
+      const inventory: BarInventoryLine[] = here
+        .filter((r) => Number(r.containers) !== 0 || tally.has(r.sku_id))
+        .map((r) => {
+          const sku = ref.skuById.get(r.sku_id)
+          const shape = sku ? toSkuShape(sku) : null
+          const t = tally.get(r.sku_id) ?? { received: 0, waste: 0, returned: 0 }
+          return {
+            skuId: r.sku_id,
+            name: r.sku_name,
+            quantity: thousands(Number(r.containers)),
+            unit: shape && isKeg(shape) ? 'KEGS' : unitWord(r.container_type),
+            // Tone needs a par level to be meaningful; see listBars.
+            tone: 'muted' as Tone,
+            movementSummary: `RECEIVED ${t.received} · WASTE ${t.waste} · RETURNED ${t.returned}`,
+          }
+        })
+
+      const incoming = awaiting.find((d) => d.to_location_id === bar.id)
+      let incomingSummary: BarDetail['incoming']
+      if (incoming) {
+        const docketLines = await db
+          .from('boa_bar_docket_line')
+          .select(DOCKET_LINE_COLUMNS)
+          .eq('docket_id', incoming.id)
+          .then((r) => unwrap<DocketLineRow[]>('docket lines', r))
+        const first = docketLines[0]
+        const extra = docketLines.length > 1 ? ` +${docketLines.length - 1} more` : ''
+        incomingSummary = {
+          docketNo: incoming.docket_no,
+          fromName: locationName(ref, incoming.from_location_id),
+          toName: locationName(ref, incoming.to_location_id),
+          summary: first
+            ? `${first.issued_containers} × ${ref.skuById.get(first.sku_id)?.name ?? 'unknown SKU'}${extra}`
+            : 'no lines',
+          ageLabel: `${clock.minutesBetween(incoming.issued_at, snap.now) ?? 0} MIN`,
+        }
+      }
+
+      return {
+        id: bar.id,
+        name: bar.name.toUpperCase(),
+        managerName: ref.people.get(manager?.user_id ?? '')?.short_name ?? 'Unassigned',
+        asOf: { label: clock.time(snap.now.toISOString()), at: snap.now.toISOString() },
+        categoryTotals,
+        incoming: incomingSummary,
+        inventory,
+      }
+    },
+
+    async catalogue(): Promise<CatalogueGroup[]> {
+      const [ref, snap] = await Promise.all([reference(), snapshot()])
+
+      // The warehouse screen is the warehouse's own catalogue, so the figures are
+      // the warehouse position — not the venue total, which would tell a
+      // warehouse operator they have stock that is already out at a bar.
+      const warehouseIds = new Set(ref.locations.filter((l) => l.kind === 'warehouse').map((l) => l.id))
+      const containersBySku = new Map<string, number>()
+      for (const row of snap.rows) {
+        if (!warehouseIds.has(row.location_id)) continue
+        containersBySku.set(row.sku_id, (containersBySku.get(row.sku_id) ?? 0) + Number(row.containers))
+      }
+
+      const lastMovement = await db
+        .from('boa_bar_movement')
+        .select('id, occurred_at')
+        .eq('venue_id', venueId)
+        .order('occurred_at', { ascending: false })
+        .limit(400)
+        .then((r) => unwrap<{ id: string; occurred_at: string }[]>('recent movements', r))
+      const atById = new Map(lastMovement.map((m) => [m.id, m.occurred_at]))
+      const recentLines = await movementLinesFor(lastMovement.map((m) => m.id))
+      const lastBySku = new Map<string, string>()
+      for (const line of recentLines) {
+        const at = atById.get(line.movement_id)
+        if (!at) continue
+        const held = lastBySku.get(line.sku_id)
+        if (!held || at > held) lastBySku.set(line.sku_id, at)
+      }
+
+      return GROUP_ORDER.map((group) => {
+        const skus = ref.skus.filter((s) => groupKey(s.category_key) === group)
+        const total = skus.reduce((sum, s) => sum + (containersBySku.get(s.id) ?? 0), 0)
+        return {
+          key: group,
+          name: group,
+          totalLabel: `${thousands(total)} CONTAINERS`,
+          items: skus.map((sku) => {
+            const shape = toSkuShape(sku)
+            const containers = containersBySku.get(sku.id) ?? 0
+            const pair = quantityPair(shape, containers)
+            return {
+              skuId: sku.id,
+              name: sku.name,
+              spec: specLabel(shape),
+              primary: pair.primary,
+              secondary: pair.secondary,
+              lastMovement: `LAST MOVEMENT ${clock.ago(lastBySku.get(sku.id), snap.now)}`,
+              // As with the bar lines: a tone here would be a par-level judgement.
+              tone: 'muted' as Tone,
+            }
+          }),
+        }
+      }).filter((g) => g.items.length > 0)
+    },
+
+    async ledger(group: ActivityGroup = 'All'): Promise<LedgerEntry[]> {
+      const ref = await reference()
+
+      const movements = await db
+        .from('boa_bar_movement')
+        .select(MOVEMENT_COLUMNS)
+        .eq('venue_id', venueId)
+        .in('kind', LEDGER_KINDS as unknown as string[])
+        .order('occurred_at', { ascending: false })
+        .limit(60)
+        .then((r) => unwrap<MovementRow[]>('ledger movements', r))
+
+      const [lines, dockets, counts] = await Promise.all([
+        movementLinesFor(movements.map((m) => m.id)),
+        docketsById(movements.map((m) => m.docket_id).filter((id): id is string => Boolean(id))),
+        latestCountSessions(),
+      ])
+
+      const linesByMovement = new Map<string, MovementLineRow[]>()
+      for (const line of lines) {
+        const held = linesByMovement.get(line.movement_id) ?? []
+        held.push(line)
+        linesByMovement.set(line.movement_id, held)
+      }
+
+      const entries: (LedgerEntry & { sortAt: string })[] = []
+
+      for (const movement of movements) {
+        const own = linesByMovement.get(movement.id) ?? []
+        const first = own[0]
+        const sku = first ? ref.skuById.get(first.sku_id) : undefined
+        const skuName = sku?.name ?? 'unknown SKU'
+        const docket = movement.docket_id ? dockets.get(movement.docket_id) : undefined
+        const leg = typeof movement.metadata?.leg === 'string' ? movement.metadata.leg : null
+        // The design shows the docket's own from -> to, not the in_transit legs
+        // the ledger actually records. Both are true; the docket's is what the
+        // reader means by "where did it go".
+        const route = docket
+          ? `${locationName(ref, docket.from_location_id)} → ${locationName(ref, docket.to_location_id)}`
+          : locationName(ref, first?.location_id)
+        const containers = own
+          .filter((l) => Number(l.container_delta) > 0)
+          .reduce((sum, l) => sum + Number(l.container_delta), 0)
+        const extra = new Set(own.map((l) => l.sku_id)).size > 1
+          ? ` +${new Set(own.map((l) => l.sku_id)).size - 1} more`
+          : ''
+
+        let title: string
+        let detail: string
+        let tone: Tone = 'muted'
+        let entryGroup: Exclude<ActivityGroup, 'All'> = 'Transfers'
+        let flagged = false
+        let actor = who(ref, movement.actor_id)
+
+        switch (movement.kind) {
+          case 'receipt':
+            title = 'Stock received'
+            detail = `${route} · ${containers} ${skuName}${extra}`
+            break
+          case 'issue':
+            if (leg === 'receipt' && docket) {
+              const short = docket.status === 'accepted_short'
+              title = `Docket ${docket.docket_no} accepted${short ? ' short' : ''}`
+              detail = `${route} · ${containers} ${skuName}${extra}${short && docket.difference_reason ? ` · ${docket.difference_reason}` : ''}`
+              tone = short ? 'gold' : 'green'
+              // Both named parties, which is the whole point of a custody record.
+              actor = `${who(ref, docket.issued_by)} → ${who(ref, docket.accepted_by)}`
+            } else {
+              title = 'Stock issued'
+              detail = `${route} · ${containers} ${skuName}${extra}`
+            }
+            break
+          case 'transfer':
+            title = 'Stock transferred'
+            detail = `${route} · ${containers} ${skuName}${extra}`
+            break
+          case 'return':
+            title = 'Stock returned'
+            detail = `${route} · ${containers} ${skuName}${extra}`
+            break
+          case 'waste': {
+            const wasted = own.reduce((sum, l) => sum + Math.abs(Number(l.container_delta)), 0)
+            title = 'Waste recorded'
+            detail = `${route} · ${wasted} ${skuName}${extra}${movement.reason ? ` · ${movement.reason}` : ''}`
+            tone = 'red'
+            entryGroup = 'Waste'
+            break
+          }
+          case 'adjustment': {
+            const delta = own.reduce((sum, l) => sum + Number(l.container_delta), 0)
+            title = 'Adjustment'
+            detail = `${route} · ${signed(delta)} ${skuName}${extra}${movement.reason ? ` · reason: ${movement.reason}` : ''}`
+            tone = 'red'
+            entryGroup = 'Adjustments'
+            // Every adjustment carries the audit badge. An adjustment is somebody
+            // changing stock without a physical event, which is exactly what the
+            // next morning's review exists to look at.
+            flagged = true
+            break
+          }
+          default:
+            continue
+        }
+
+        entries.push({
+          id: movement.id,
+          group: entryGroup,
+          at: clock.time(movement.occurred_at),
+          title,
+          detail,
+          who: actor,
+          tone,
+          flagged,
+          sortAt: movement.occurred_at,
+        })
+      }
+
+      // Counts are not movements — a count observes stock, it does not change it —
+      // so they are unioned in from their own table rather than being derived
+      // from the ledger.
+      for (const count of counts.slice(0, 20)) {
+        const kindLabel = countKindLabel(count.count_kind)
+        const submitted = count.status !== 'draft' && count.submitted_at
+        entries.push({
+          id: `count:${count.id}`,
+          group: 'Counts',
+          at: clock.time(submitted ? count.submitted_at : count.created_at),
+          title: submitted ? `${kindLabel} submitted` : `${kindLabel} started`,
+          detail: `${locationName(ref, count.location_id)} · blind`,
+          who: who(ref, count.assigned_to),
+          tone: 'muted',
+          flagged: false,
+          sortAt: (submitted ? count.submitted_at : count.created_at) ?? count.created_at,
+        })
+      }
+
+      entries.sort((a, b) => (a.sortAt < b.sortAt ? 1 : a.sortAt > b.sortAt ? -1 : 0))
+      const visible: LedgerEntry[] = entries.map((entry) => ({
+        id: entry.id,
+        group: entry.group,
+        at: entry.at,
+        title: entry.title,
+        detail: entry.detail,
+        who: entry.who,
+        tone: entry.tone,
+        flagged: entry.flagged,
+      }))
+      return group === 'All' ? visible : visible.filter((e) => e.group === group)
+    },
+
+    async movementDetail(id: string): Promise<MovementDetail | null> {
+      const ref = await reference()
+
+      const movements = await db
+        .from('boa_bar_movement')
+        .select(MOVEMENT_COLUMNS)
+        .eq('venue_id', venueId)
+        .eq('id', id)
+        .limit(1)
+        .then((r) => unwrap<MovementRow[]>('movement', r))
+      const movement = movements[0]
+      if (!movement) return null
+
+      const lines = await movementLinesFor([movement.id])
+      const docket = movement.docket_id ? (await docketsById([movement.docket_id])).get(movement.docket_id) : undefined
+      const first = lines[0]
+      const sku = first ? ref.skuById.get(first.sku_id) : undefined
+      const containers = lines
+        .filter((l) => Number(l.container_delta) > 0)
+        .reduce((sum, l) => sum + Number(l.container_delta), 0)
+      const ml = lines.filter((l) => Number(l.ml_delta) > 0).reduce((sum, l) => sum + Number(l.ml_delta), 0)
+      const adjustmentDelta = lines.reduce((sum, l) => sum + Number(l.container_delta), 0)
+      const isAdjustment = movement.kind === 'adjustment'
+
+      const rows: MovementDetail['rows'] = [{ label: 'Movement ID', value: movement.id.slice(0, 8).toUpperCase() }]
+
+      if (isAdjustment) {
+        rows.push({ label: 'Signed delta', value: `${signed(adjustmentDelta)} ${sku ? unitWord(sku.container_type) : 'CONTAINERS'}`, tone: 'red' })
+        rows.push({ label: 'Reason', value: (movement.reason ?? 'NO REASON RECORDED').toUpperCase() })
+        rows.push({ label: 'Entered by', value: `${who(ref, movement.actor_id)} · ${clock.time(movement.occurred_at)}` })
+        if (movement.reverses_movement_id) {
+          rows.push({ label: 'Reverses', value: movement.reverses_movement_id.slice(0, 8).toUpperCase() })
+        }
+        rows.push({ label: 'Audit flag', value: 'REVIEW NEXT MORNING', tone: 'red' })
+      } else {
+        rows.push({ label: 'Type', value: movement.kind.toUpperCase(), tone: 'green' })
+        rows.push({ label: 'Containers', value: `${thousands(containers)} ${sku ? unitWord(sku.container_type) : 'CONTAINERS'}` })
+        rows.push({ label: 'Volume', value: `${thousands(ml)} ML` })
+        if (docket) {
+          rows.push({ label: 'Issued by', value: `${who(ref, docket.issued_by)} · ${clock.time(docket.issued_at)}` })
+          if (docket.accepted_by) {
+            rows.push({ label: 'Accepted by', value: `${who(ref, docket.accepted_by)} · ${clock.time(docket.accepted_at)}` })
+          }
+        } else {
+          rows.push({ label: 'Recorded by', value: `${who(ref, movement.actor_id)} · ${clock.time(movement.occurred_at)}` })
+        }
+        rows.push({ label: 'Source', value: movement.source.toUpperCase() })
+      }
+
+      const route = docket
+        ? `${locationName(ref, docket.from_location_id)} → ${locationName(ref, docket.to_location_id)}`
+        : locationName(ref, first?.location_id)
+
+      return {
+        id: movement.id,
+        kindLabel: isAdjustment
+          ? 'ADJUSTMENT · AUDIT'
+          : `${movement.kind.toUpperCase()}${docket ? ` · ${docket.status.replace('_', ' ').toUpperCase()}` : ''}`,
+        tone: isAdjustment ? 'red' : docket?.status === 'accepted' ? 'green' : 'muted',
+        title: isAdjustment
+          ? `ADJUSTMENT ${signed(adjustmentDelta)} ${(sku?.name ?? '').toUpperCase()}`.trim()
+          : docket
+            ? `DOCKET ${docket.docket_no} ${docket.status.replace('_', ' ').toUpperCase()}`
+            : `${movement.kind.toUpperCase()} ${thousands(containers)}`,
+        detail: `${route}${sku ? ` · ${containers} ${sku.name}` : ''}`,
+        rows,
+      }
+    },
+
+    async custody(docketNo?: string): Promise<Custody> {
+      const [ref, snap] = await Promise.all([reference(), snapshot()])
+
+      let query = db.from('boa_bar_docket').select(DOCKET_COLUMNS).eq('venue_id', venueId)
+      if (docketNo) {
+        query = query.eq('docket_no', docketNo)
+      } else if (context.locationId) {
+        // With no docket named, the one that matters to this device is the one
+        // coming to this location.
+        query = query.eq('to_location_id', context.locationId).eq('status', 'awaiting')
+      } else {
+        query = query.eq('status', 'awaiting')
+      }
+      const dockets = await query
+        .order('issued_at', { ascending: false })
+        .limit(1)
+        .then((r) => unwrap<DocketRow[]>('custody docket', r))
+
+      const docket = dockets[0]
+      if (!docket) {
+        throw new Error(docketNo ? `Docket ${docketNo} was not found` : 'No docket is awaiting acceptance')
+      }
+
+      const lines = await db
+        .from('boa_bar_docket_line')
+        .select(DOCKET_LINE_COLUMNS)
+        .eq('docket_id', docket.id)
+        .then((r) => unwrap<DocketLineRow[]>('custody docket lines', r))
+
+      const first = lines[0]
+      if (!first) throw new Error(`Docket ${docket.docket_no} has no lines`)
+      const sku = ref.skuById.get(first.sku_id)
+      if (!sku) throw new Error(`Docket ${docket.docket_no} references an unknown SKU`)
+      const shape = toSkuShape(sku)
+
+      /**
+       * NOTE — the design's custody screens show ONE product per docket, so this
+       * read model carries one. `boa_bar_docket_line` is correctly many-to-one,
+       * and a multi-line docket created outside this app would display only its
+       * first line here. Multi-line custody screens are not in the design and are
+       * recorded as an open question rather than invented.
+       */
+
+      // Warehouse position before the issue. The dispatch leg has already been
+      // posted, so the position now is the position before, less what went out.
+      const sourceNow = snap.rows
+        .filter((r) => r.location_id === docket.from_location_id && r.sku_id === first.sku_id)
+        .reduce((sum, r) => sum + Number(r.containers), 0)
+
+      const statusLabel =
+        docket.status === 'awaiting'
+          ? 'AWAITING ACCEPTANCE'
+          : docket.status === 'accepted'
+            ? 'ACCEPTED'
+            : docket.status === 'accepted_short'
+              ? 'ACCEPTED SHORT'
+              : 'CANCELLED'
+
+      return {
+        docketNo: docket.docket_no,
+        statusLabel,
+        fromName: locationName(ref, docket.from_location_id).toUpperCase(),
+        toName: locationName(ref, docket.to_location_id).toUpperCase(),
+        issuedBy: who(ref, docket.issued_by),
+        issuedAt: clock.time(docket.issued_at),
+        productName: sku.name,
+        productSpec: specLabel(shape),
+        unitsPerCase: sku.units_per_case,
+        mlPerContainer: sku.ml_per_container,
+        expectedContainers: first.issued_containers,
+        warehouseBefore: sourceNow + first.issued_containers,
+        /**
+         * The four reasons in design-script.jsx `diffReasons`. Held here rather
+         * than in the screen because the accept RPC validates against the same
+         * vocabulary — a reason the database rejects must not be offerable.
+         */
+        differenceReasons: ['Short on pallet', 'Breakage in transit', 'Miscount at issue', 'Other'],
+        acceptedBy: docket.accepted_by ? who(ref, docket.accepted_by) : '',
+        acceptedAt: docket.accepted_at ? clock.time(docket.accepted_at) : '',
+      }
+    },
+
+    async countSession(locationId?: string): Promise<CountSession> {
+      const [ref, snap] = await Promise.all([reference(), snapshot()])
+      const target = locationId ?? context.locationId
+
+      let query = db
+        .from('boa_bar_count_session')
+        .select(COUNT_SESSION_COLUMNS)
+        .eq('venue_id', venueId)
+        .eq('status', 'draft')
+      if (target) query = query.eq('location_id', target)
+      const sessions = await query
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .then((r) => unwrap<CountSessionRow[]>('count session', r))
+
+      const session = sessions[0]
+      const locationLabel = (target ? locationName(ref, target) : 'NO LOCATION').toUpperCase()
+
+      /**
+       * BLIND, enforced by omission. Nothing on this read model carries an
+       * expected quantity, and the SKU list is the venue's full active catalogue
+       * rather than "the SKUs with stock here" — because the presence or absence
+       * of a line is itself a disclosure of the expected position for the
+       * location being counted (non-negotiable 3).
+       */
+      const lines = ref.skus.map((sku) => {
+        const shape = toSkuShape(sku)
+        const mode = partialModeFor(shape)
+        return {
+          skuId: sku.id,
+          name: sku.name,
+          spec: specLabel(shape),
+          partial: mode,
+          partialStep: partialStepFor(mode),
+          partialUnit: partialUnitFor(mode),
+          partialHint: partialHintFor(shape, mode),
+        }
+      })
+
+      if (!session) {
+        // Honest empty state. Not an error the screen cannot render, and not a
+        // fabricated session that would accept counts nothing will store.
+        return {
+          locationName: locationLabel,
+          kindLabel: 'NO COUNT SESSION OPEN',
+          scopeLabel: `${locationLabel} · BLIND`,
+          totalLines: 0,
+          presets: COUNT_PRESETS,
+          lines: [],
+          countedBy: who(ref, context.userId),
+          witnessedBy: '',
+          sealedAt: '',
+        }
+      }
+
+      return {
+        locationName: locationName(ref, session.location_id).toUpperCase(),
+        kindLabel: countKindLabel(session.count_kind).toUpperCase(),
+        scopeLabel: `${locationName(ref, session.location_id).toUpperCase()} · BLIND`,
+        totalLines: lines.length,
+        presets: COUNT_PRESETS,
+        lines,
+        countedBy: who(ref, session.assigned_to),
+        /**
+         * The design shows a witness beside the counter. There is no witness
+         * column on boa_bar_count_session — `reviewed_by` is the manager's later
+         * review, which is a different person doing a different thing — so this
+         * is left empty rather than filled with the reviewer. A two-person seal is
+         * a specification requirement and the missing column is recorded.
+         */
+        witnessedBy: '',
+        sealedAt: session.submitted_at ? clock.time(session.submitted_at) : clock.time(snap.now.toISOString()),
+      }
+    },
+
+    async variance(locationId?: string): Promise<VarianceReport> {
+      const ref = await reference()
+      const target = locationId ?? context.locationId
+      if (!target) throw new Error('Variance needs a location')
+
+      const sessions = await db
+        .from('boa_bar_count_session')
+        .select(COUNT_SESSION_COLUMNS)
+        .eq('venue_id', venueId)
+        .eq('location_id', target)
+        .not('submitted_at', 'is', null)
+        .order('submitted_at', { ascending: false })
+        .limit(1)
+        .then((r) => unwrap<CountSessionRow[]>('variance session', r))
+
+      const session = sessions[0]
+      const locationLabel = locationName(ref, target).toUpperCase()
+      if (!session || !session.submitted_at) {
+        return {
+          locationName: locationLabel,
+          bandLabel: 'NO COUNT',
+          bandTone: 'muted',
+          throughputLabel: '—',
+          varianceLabel: '—',
+          basisLabel: 'NO SUBMITTED COUNT FOR THIS LOCATION',
+          lines: [],
+        }
+      }
+
+      const [countLines, ledger] = await Promise.all([
+        db
+          .from('boa_bar_count_line')
+          .select(COUNT_LINE_COLUMNS)
+          .eq('count_session_id', session.id)
+          .then((r) => unwrap<CountLineRow[]>('count lines', r)),
+        positionAt(target, session.submitted_at),
+      ])
+
+      let worst: 'green' | 'amber' | 'red' = 'green'
+      let totalVarianceMl = 0
+      let totalReceiptsMl = 0
+
+      const lines = countLines
+        .map((line) => {
+          const sku = ref.skuById.get(line.sku_id)
+          if (!sku) return null
+          const shape = toSkuShape(sku)
+
+          const expected = ledger.position.get(line.sku_id) ?? { containers: 0, ml: 0 }
+          const countedMl = line.full_containers * sku.ml_per_container + Number(line.partial_ml)
+          const deltaMl = countedMl - expected.ml
+          const receiptsMl = ledger.receivedMl.get(line.sku_id) ?? 0
+          const pct = receiptsMl > 0 ? (deltaMl / receiptsMl) * 100 : null
+
+          totalVarianceMl += deltaMl
+          totalReceiptsMl += receiptsMl
+
+          const band = varianceBand(sku.category_key, pct)
+          if (band === 'red' || (band === 'amber' && worst === 'green')) worst = band
+          const [greenMax, amberMax] = toleranceFor(sku.category_key)
+
+          const note =
+            deltaMl > 0
+              ? 'Positive — check for a missed receipt or a wrong-SKU ring-up'
+              : pct === null
+                ? 'No receipts in the window — a percentage cannot be computed'
+                : band === 'green'
+                  ? 'Within tolerance'
+                  : `Band ${greenMax}–${amberMax}% · above tolerance, investigate`
+
+          return {
+            skuId: line.sku_id,
+            name: sku.name,
+            expected: volumeLabel(shape, expected.ml),
+            counted: volumeLabel(shape, countedMl),
+            delta: signed(isKeg(shape) ? Math.round(deltaMl / 1000) : deltaMl, isKeg(shape) ? ' L' : ' ml'),
+            pct: signedPct(pct),
+            tone: (band === 'green' ? 'green' : band === 'amber' ? 'gold' : 'red') as Tone,
+            note,
+            noteTone: (deltaMl > 0 ? 'gold' : undefined) as Tone | undefined,
+          }
+        })
+        .filter((line): line is NonNullable<typeof line> => line !== null)
+
+      const overallPct = totalReceiptsMl > 0 ? (totalVarianceMl / totalReceiptsMl) * 100 : null
+
+      return {
+        locationName: locationName(ref, session.location_id).toUpperCase(),
+        bandLabel: worst === 'green' ? 'GREEN' : worst === 'amber' ? 'AMBER' : 'RED',
+        bandTone: worst === 'green' ? 'green' : worst === 'amber' ? 'gold' : 'red',
+        throughputLabel: `${thousands(totalReceiptsMl / 1000)} L`,
+        varianceLabel: signedPct(overallPct),
+        /**
+         * The denominator is stated, not assumed. The specification defines
+         * variance as a percentage of *throughput*, which means volume dispensed —
+         * and that is unknowable until POS import lands (M5), because sales are
+         * the only movements that record dispensing. Until then the honest
+         * denominator is volume received into the location over the window, and
+         * this label says exactly that so nobody reads it as a sales figure.
+         */
+        basisLabel: `${countKindLabel(session.count_kind).toUpperCase()} ${clock.time(session.submitted_at)} · COUNTED BY ${who(ref, session.assigned_to)} · % OF RECEIPTS (NO POS DATA)`,
+        lines,
+      }
+    },
+  }
+}
+
+function countKindLabel(kind: CountSessionRow['count_kind']): string {
+  switch (kind) {
+    case 'opening_warehouse':
+      return 'Opening warehouse count'
+    case 'opening_bar':
+      return 'Opening bar count'
+    case 'mid_event':
+      return 'Mid-event count'
+    case 'close_out':
+      return 'Close-out count'
+  }
+}

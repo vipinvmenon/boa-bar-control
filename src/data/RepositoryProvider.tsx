@@ -6,7 +6,8 @@
  * and does not know or care which implementation answers. Critically, the
  * fixture repository can never be reached as a fallback from a failed live load:
  * that path is what rendered fixture stock as live festival inventory (BAR-067),
- * and there is no code path here that can produce it.
+ * and there is no code path here that can produce it. A live read that fails
+ * throws, and the screen shows an error.
  *
  * Uses React Query, which was installed and wired to nothing (an audit finding).
  * It gives loading and error states without every screen hand-rolling them.
@@ -14,6 +15,9 @@
 import { createContext, useContext, useMemo, type PropsWithChildren } from 'react'
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { createFixtureRepository, type FixtureVariant } from './fixture/fixture-repository'
+import { createLiveRepository } from './live/live-repository'
+import { isSupabaseConfigured } from '../lib/supabase'
+import { useAuth } from '../lib/auth'
 import type { Repository } from './repository'
 
 const RepositoryContext = createContext<Repository | null>(null)
@@ -29,10 +33,29 @@ function requestedVariant(): FixtureVariant {
 }
 
 export function RepositoryProvider({ children }: PropsWithChildren) {
-  // TODO(BAR-042): select the live repository when Supabase is configured AND a
-  // membership has loaded. Until that exists this is fixture-only, and the app
-  // says so loudly in the shell rather than implying it is live (BAR-139).
-  const repository = useMemo(() => createFixtureRepository(requestedVariant()), [])
+  const { user, activeMembership } = useAuth()
+
+  /**
+   * Live requires all three: a configured client, a signed-in user, and a loaded
+   * membership. A membership is what names the venue, and without it there is no
+   * venue to read — so this is not a preference but a precondition. Until they
+   * are all present the fixture repository serves and the shell says DEMO DATA ·
+   * NOT LIVE on every screen (BAR-139); a production build with no configuration
+   * refuses to start at all rather than reaching this point.
+   */
+  const repository = useMemo<Repository>(() => {
+    if (isSupabaseConfigured && user && activeMembership) {
+      return createLiveRepository({
+        venueId: activeMembership.venueId,
+        userId: user.id,
+        timezone: activeMembership.venueTimezone,
+        role: activeMembership.role,
+        locationId: activeMembership.locationId ?? null,
+      })
+    }
+    return createFixtureRepository(requestedVariant())
+  }, [user, activeMembership])
+
   return <RepositoryContext.Provider value={repository}>{children}</RepositoryContext.Provider>
 }
 
@@ -48,7 +71,8 @@ export function useRepository(): Repository {
  * Read a value from the repository.
  *
  * `key` must include everything the query depends on, so switching fixture
- * variant or filter refetches rather than serving a stale cache.
+ * variant or filter refetches rather than serving a stale cache. `repository.kind`
+ * is part of the key so that signing in cannot leave a fixture figure on screen.
  */
 export function useRepositoryQuery<T>(
   key: readonly unknown[],

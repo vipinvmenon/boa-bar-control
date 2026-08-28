@@ -188,9 +188,21 @@ const tolerance: Record<string, [number, number]> = {
   mixers: [2, 5],
 }
 
+/**
+ * The tolerance band edges for a category, as [greenMax, amberMax] percentages.
+ *
+ * Exported because the variance report has to *state* the band it judged a line
+ * against — "Draught band 8-15%" in the design. A report that shows a colour
+ * without the threshold behind it cannot be argued with, and the whole point of
+ * the variance screen is that a manager can argue with it.
+ */
+export function toleranceFor(category: string): [number, number] {
+  return tolerance[category] ?? [2, 5]
+}
+
 export function varianceBand(category: string, percentage: number | null): VarianceBand {
   if (percentage === null) return 'amber'
-  const [greenMax, amberMax] = tolerance[category] ?? [2, 5]
+  const [greenMax, amberMax] = toleranceFor(category)
   const absolute = Math.abs(percentage)
   if (absolute <= greenMax) return 'green'
   if (absolute <= amberMax) return 'amber'
