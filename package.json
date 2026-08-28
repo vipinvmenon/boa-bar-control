@@ -24,7 +24,8 @@
     "test:visual": "node scripts/visual-check.mjs",
     "test:db:docker": "supabase test db --linked",
     "bootstrap": "node scripts/bootstrap.mjs",
-    "check:sql": "python3 scripts/sql-arity-check.py"
+    "check:sql": "python3 scripts/sql-arity-check.py",
+    "db:state": "node scripts/db-state.mjs"
   },
   "dependencies": {
     "@fontsource/anton": "^5.2.6",

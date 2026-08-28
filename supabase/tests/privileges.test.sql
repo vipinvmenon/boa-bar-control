@@ -11,7 +11,7 @@
 begin;
 create extension if not exists pgtap;
 
-select plan(37);
+select plan(52);
 
 -- ---------------------------------------------------------------------------
 -- BAR-122 — anon holds nothing at all on any bar table.
@@ -90,6 +90,45 @@ select function_privs_are('public', 'boa_bar_create_docket', array['jsonb'], 'au
 
 select function_privs_are('public', 'boa_bar_accept_docket', array['jsonb'], 'anon', '{}'::text[], 'anon cannot accept dockets');
 select function_privs_are('public', 'boa_bar_accept_docket', array['jsonb'], 'authenticated', '{EXECUTE}'::text[], 'staff may accept dockets');
+
+-- ---------------------------------------------------------------------------
+-- Every function, because the two that were missed were missed the same way.
+-- ---------------------------------------------------------------------------
+-- `create function` grants EXECUTE to PUBLIC by default. Granting to
+-- `authenticated` afterwards does not remove it, so a function is reachable by
+-- `anon` unless its migration explicitly revokes the default grant. Two did not:
+-- boa_bar_submit_movement (27 Aug) and private.boa_bar_post_movement (28 Aug).
+-- Enumerating all of them here means the next omission fails this suite rather
+-- than surviving until somebody thinks to look.
+
+select function_privs_are('public', 'boa_bar_inventory_snapshot', array['uuid'], 'anon', '{}'::text[], 'anon cannot read the position snapshot');
+select function_privs_are('public', 'boa_bar_inventory_snapshot', array['uuid'], 'authenticated', '{EXECUTE}'::text[], 'staff may read the position snapshot');
+
+select function_privs_are('public', 'boa_bar_sync_status', array['uuid'], 'anon', '{}'::text[], 'anon cannot read sync status');
+select function_privs_are('public', 'boa_bar_sync_status', array['uuid'], 'authenticated', '{EXECUTE}'::text[], 'staff may read sync status');
+
+select function_privs_are('public', 'boa_bar_set_person_name', array['uuid','text','uuid'], 'anon', '{}'::text[], 'anon cannot name people');
+select function_privs_are('public', 'boa_bar_set_person_name', array['uuid','text','uuid'], 'authenticated', '{EXECUTE}'::text[], 'staff may name themselves');
+
+select function_privs_are('public', 'boa_bar_claim_venue', array['text','text'], 'anon', '{}'::text[], 'anon cannot claim a venue');
+select function_privs_are('public', 'boa_bar_claim_venue', array['text','text'], 'authenticated', '{EXECUTE}'::text[], 'a signed-in user may claim an unclaimed venue');
+
+select function_privs_are('public', 'boa_bar_open_stock', array['jsonb'], 'anon', '{}'::text[], 'anon cannot post opening stock');
+select function_privs_are('public', 'boa_bar_open_stock', array['jsonb'], 'authenticated', '{EXECUTE}'::text[], 'staff may post opening stock');
+
+-- The internal poster. It takes the actor as a PARAMETER, so anyone who can call
+-- it can forge attribution and skip every role check. Nobody may call it: its
+-- callers are SECURITY DEFINER functions running as the owner, whose privileges
+-- do not come from these grants.
+select function_privs_are('private', 'boa_bar_post_movement', array['jsonb','uuid'], 'anon', '{}'::text[], 'anon cannot reach the internal poster');
+select function_privs_are('private', 'boa_bar_post_movement', array['jsonb','uuid'], 'authenticated', '{}'::text[], 'NO signed-in user may reach the internal poster');
+
+select function_privs_are('private', 'boa_bar_reject_mutation', array[]::text[], 'anon', '{}'::text[], 'anon cannot reach the immutability trigger function');
+
+-- Deliberately executable by staff: every RLS policy calls it, and without the
+-- grant every policy errors at query time (BAR-012). Not by anon.
+select function_privs_are('private', 'boa_bar_has_role', array['uuid','public.boa_bar_role[]'], 'anon', '{}'::text[], 'anon cannot probe role membership');
+select function_privs_are('private', 'boa_bar_has_role', array['uuid','public.boa_bar_role[]'], 'authenticated', '{EXECUTE}'::text[], 'policies can resolve role membership');
 
 select * from finish();
 rollback;
