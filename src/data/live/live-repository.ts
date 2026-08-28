@@ -92,8 +92,10 @@ import type {
   SessionInfo,
   StockPosition,
   SubmitCountCommand,
+  RecordWasteCommand,
   Tone,
   VarianceReport,
+  WasteOptions,
   WriteOutcome,
 } from '../repository'
 
@@ -126,6 +128,13 @@ export const DOCKET_SLA_MINUTES = 30
 
 /** The count screen's full-container presets. A design constant, not data. */
 const COUNT_PRESETS = [0, 6, 12, 24]
+
+/**
+ * design-script.jsx:308. Held here AND enforced by `boa_bar_record_waste`, so a
+ * reason the database will reject is never offerable — the same reasoning as the
+ * docket difference reasons.
+ */
+const WASTE_REASONS = ['Breakage', 'Spillage', 'Foam / line loss', 'Refused pour', 'Other']
 
 /** Sales and comps are excluded from the activity feed: at festival volume they
  * would be thousands of rows and the design's feed shows none of them. They
@@ -727,6 +736,31 @@ export function createLiveRepository(context: LiveContext): Repository {
       }
     },
 
+    /** design-script.jsx:308. Also enforced by boa_bar_record_waste. */
+    async wasteOptions(locationId?: string): Promise<WasteOptions> {
+      const ref = await reference()
+      const target = locationId ?? context.locationId
+      if (!target) throw new Error('Waste must be recorded against a location')
+      const location = ref.locationById.get(target)
+      if (!location) throw new Error('Unknown location')
+
+      return {
+        locationId: location.id,
+        locationName: location.name.toUpperCase(),
+        products: ref.skus.map((sku) => {
+          const shape = toSkuShape(sku)
+          return {
+            skuId: sku.id,
+            name: sku.name,
+            spec: specLabel(shape),
+            containerUnitPlural: unitWord(sku.container_type),
+          }
+        }),
+        defaultProductId: ref.skus[0]?.id ?? '',
+        reasons: WASTE_REASONS,
+      }
+    },
+
     async issueOptions(): Promise<IssueOptions> {
       const [ref, snap] = await Promise.all([reference(), snapshot()])
       const assigned = context.locationId ? ref.locationById.get(context.locationId) : undefined
@@ -1319,6 +1353,36 @@ export function createLiveRepository(context: LiveContext): Repository {
         },
       })
       return settle(outboxId)
+    },
+
+    /**
+     * BAR-063 / BAR-133. Waste, against the location passed in — never a default.
+     */
+    async recordWaste(command: RecordWasteCommand): Promise<CountWriteOutcome> {
+      if (!command.locationId) throw new Error('Waste needs a location')
+      const outboxId = await enqueueCommand({
+        kind: 'record_waste',
+        idempotencyKey: command.idempotencyKey,
+        payload: {
+          venue_id: venueId,
+          location_id: command.locationId,
+          sku_id: command.skuId,
+          containers: command.containers,
+          reason: command.reason,
+          idempotency_key: command.idempotencyKey,
+          source: 'pwa',
+        },
+      })
+      try {
+        const result = (await waitForCommand(outboxId)) as { movement_id?: string } | null
+        if (result?.movement_id) {
+          return { status: 'posted', countSessionId: result.movement_id, lines: 1 }
+        }
+        return { status: 'queued', outboxId }
+      } catch (error) {
+        if (error instanceof OutboxPendingError) return { status: 'queued', outboxId }
+        throw error
+      }
     },
 
     /**

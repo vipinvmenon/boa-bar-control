@@ -190,19 +190,19 @@ States are defined once in the **Status key** above.
 | BAR-020 | Return and transfer paths | `[~]` | Transfer legs exist inside the docket RPCs. No standalone return path |
 | BAR-021 | Adjustment path with role and reason | `[ ]` | No adjustment RPC; `reverses_movement_id` is not unique, so one movement can be reversed twice |
 | BAR-022 | Venue-scope every foreign key | `[!]` | `movement_line.sku_id` and `.location_id` are not venue-scoped — a movement can post against another venue's SKUs |
-| BAR-023 | Server-validate the timestamps | `[!]` | `202608220001:263` still takes `occurred_at` and `business_date` from the client payload unvalidated. History can be backdated around a count |
+| BAR-023 | Server-validate the timestamps | `[~]` | `business_date` is now derived server-side and a timestamp more than an hour in the future is refused. Still unvalidated: nothing checks `occurred_at` against the venue event window, and POS timestamps are unvalidated because POS is cut |
 | BAR-024 | Location-scoped authorisation | `[~]` | `membership.location_id` is now **read** — the live repository uses it for the caller's default docket and count location — but no policy or RPC enforces it |
 | BAR-025 | Tolerance bands in the database | `[ ]` | They exist only in TypeScript (`domain/inventory.ts` `toleranceFor`) |
 | BAR-026 | `excise_category` NOT NULL | `[~]` | Still nullable free text, so the constraint half of the task is undone. But it is no longer NULL for every SKU: the bootstrap populates a **provisional** vocabulary (`beer`, `spirit`, NULL for mixers) so the excise view has a shape to be built against. The vocabulary will change once BAR-158 lands |
 | BAR-027 | Missing spec §13 columns | `[~]` | BAR-124 added display names. `abv`, `supplier_vendor_id`, `is_licenced`, `is_blind`, `witnessed_by`, `counted_at`, empties and delivery-note remain absent |
 | BAR-028 | Non-negative position guard | `[ ]` | Nothing prevents issuing more than is held. The per-column `>= 0` checks are on docket and count lines, not on the position |
 | BAR-029 | Index `movement_line.movement_id` | `[ ]` | The two indexes are `(venue_id, business_date, occurred_at)` and `(location_id, sku_id)`. `movement_id` is still an unindexed FK, evaluated per row by the read policy — and the live repository queries it by `movement_id` on every ledger read |
-| BAR-030 | Behavioural pgTAP suite | `[R]` | `ledger.test.sql`'s 11 assertions are still existence-only. `privileges.test.sql`'s 52 are real privilege checks and earned their keep — they caught two live EXECUTE holes. Still uncovered: nothing attempts an UPDATE to prove the immutability trigger fires, and nothing connects **as** a role to prove an RLS policy returns the right rows |
+| BAR-030 | Behavioural pgTAP suite | `[~]` | `business_date.test.sql` is the first behavioural test: 9 assertions calling a function with real instants. `privileges.test.sql` (52) checks real privileges. `ledger.test.sql` (11) is still existence-only, and nothing yet attempts an UPDATE or connects as a role |
 | BAR-031 | Execute migrations | `[x]` | **All seven migrations applied and confirmed by object existence, 28 Aug.** PostgreSQL 17.6. `pnpm db:state` reports the history and checks that each migration's objects actually exist, rather than trusting the history table |
 | BAR-032 | Deterministic seed that renders the design | `[~]` | **Reference data verified present in the hosted project 28 Aug: 1 venue, 9 locations, 11 SKUs.** Opening ledger not yet posted — blocked on the first `auth.users` row. Still no serve mappings (BAR-159) and no tolerance bands in the database (BAR-025) |
 | BAR-033 | Generate database types | `[ ]` | The client is untyped. `src/data/live/rows.ts` hand-writes every row shape precisely because generated types do not exist — 156 lines that a generator would own |
 | BAR-122 | Revoke `TRUNCATE` everywhere | `[x]` | `3c6acd9` — verified empirically over REST: `anon` receives `HTTP 401 permission denied` |
-| BAR-123 | Business date spans the festival night | `[!]` | Still the IST calendar date, so the night splits at midnight and a close-out count at 01:30 belongs to the wrong day |
+| BAR-123 | Business date spans the festival night | `[x]` | `202608280004` — `business_day_start_hour` on the venue (06:00 default) and `private.boa_bar_business_date` as the only place the rule lives. **Derived server-side and the client value ignored**, which also closes half of BAR-023. 9 behavioural pgTAP assertions in `business_date.test.sql`. **Unapplied** |
 | BAR-124 | Person-name resolution | `[~]` | `202608280001_person_names.sql` written — table, generated first name, append-only history, `boa_bar_set_person_name`. **Unapplied, and `boa_bar_person` is empty, so every live name would render `UNNAMED`** |
 | BAR-125 | Seal submitted counts | `[ ]` | Nothing sets `submitted_at` or freezes a count; there is no count write path at all |
 | BAR-126 | Storage bucket for POS files | `[ ]` | — |
@@ -224,13 +224,13 @@ States are defined once in the **Status key** above.
 | BAR-042 | Repository interface | `[~]` | Interface, fixture and live implementations all exist (`b49768c`, `743a4d4`). **The live implementation has never executed a query** — the database holds nothing to read |
 | BAR-043 | Fixture repository from the design's data | `[x]` | `design-data.ts` with line references; the gate reports 0 hardcoded screens |
 | BAR-044 | Application service layer | `[~]` | `src/services/` exists with `issue.ts` and `accept.ts` — Zod validation, the custody domain rules, then the repository. Both custody writes are now wired and verified in a browser. Commands are on the `Repository` interface, so no screen imports Supabase or Dexie and no service calls an RPC. 13 service tests. Count, waste and the remaining write use cases still have no service-backed screen path |
-| BAR-045 | Remove fixture data from screen files | `[~]` | The issue screen's legacy fixture block is deleted; all 15 data-bearing routes read the repository, the gate reports 0 hardcoded, and BAR-154's lint rule enforces it mechanically for screens and components. `src/features/screens.tsx` still holds waste/report literals — it is not under the rule's file scope because it is being deleted, not fixed (BAR-164) |
-| BAR-046 | Wire the domain layer | `[~]` | Callers now exist for `varianceBand`, `toleranceFor`, `buildQueuedMovement`, and the whole of the new `domain/custody.ts` and `domain/outbox-policy.ts`. Still zero callers outside tests: `derivePositions`, `applyIdempotently`, `reverseMovement`, `theoreticalClosing`, `weightedAverageCost`, **`mlFromGrossWeight`** |
+| BAR-045 | Remove fixture data from screen files | `[~]` | `src/features/screens.tsx` is down from 302 lines to 67 and holds **no** SKU data — only the `reports` honest empty state. All 16 routes read the repository; the gate reports 0 hardcoded and BAR-154's lint rule enforces it |
+| BAR-046 | Wire the domain layer | `[~]` | `mlFromGrossWeight` now has a caller (`services/count.ts`), as do `varianceBand`, `toleranceFor`, the whole of `domain/custody.ts`, `domain/outbox-policy.ts` and `domain/units.ts`. Still zero callers outside tests: `derivePositions`, `applyIdempotently`, `reverseMovement`, `theoreticalClosing`, `weightedAverageCost` |
 | BAR-164 | Delete the legacy parallel live path | `[ ]` | `src/lib/live-repository.ts` and `demo-store`'s snapshot loader are still present and still hardcode `bar_3` |
 | BAR-047 | Error boundary and not-found route | `[x]` | Added 28 Aug. Router-level `defaultErrorComponent` and `defaultNotFoundComponent` so a new route cannot arrive without a boundary, plus `AppErrorBoundary` outside the router for throws in the providers. **Verified in a browser**: a planted throw in a repository read rendered the failure card in-shell with the nav intact, and cleared when the read succeeded. Also `throwOnError: true` on `useRepositoryQuery` — screens render `data?.field ?? '—'`, so a failed live read previously produced a screen of em-dashes and zeroes, visually identical to a venue with no stock |
 | BAR-048 | Zod at every boundary | `[~]` | Zod now validates both write use cases at the service boundary — the first real use outside `domain/inventory.ts`. RPC **responses**, QR payloads, POS rows and local-store reads are still unvalidated; `rows.ts` casts by hand |
-| BAR-129 | Bounded quantity inputs | `[~]` | Verified in the custody chain: issue cannot exceed the warehouse position and accept cannot exceed the docket. Waste remains on the legacy unbounded stepper |
-| BAR-130 | Full SKU catalogue on every screen | `[~]` | Issue and count list the full active catalogue through the repository. The legacy waste screen still slices its store data |
+| BAR-129 | Bounded quantity inputs | `[~]` | Issue cannot exceed the warehouse position, accept cannot exceed the docket, waste floors at 1 and the database refuses more than the location holds. A non-negative position guard on the ledger itself is still BAR-028 |
+| BAR-130 | Full SKU catalogue on every screen | `[x]` | Issue, count and waste all list the full active catalogue through the repository. The `slice(0, 5)` and `slice(0, 3)` screens are deleted |
 | BAR-131 | Remove the fake OS status bar | `[!]` | `AppShell.tsx:59` still renders `status-line` with a hardcoded `19:44` and a fake 4G indicator |
 | BAR-132 | Seven roles, not two | `[~]` | `auth.tsx` carries all seven. `demo-store.tsx:287` still collapses them to a `managerRoles` boolean |
 
@@ -258,7 +258,7 @@ States are defined once in the **Status key** above.
 | --- | --- | --- | --- |
 | BAR-061 | `bar` screen — the bar workspace | `[x]` | `10185b5` |
 | BAR-062 | Bar list navigates to bar detail | `[x]` | Fixed 28 Aug — the `bar.id === 'bar-3'` gate is gone, so every card opens its bar under both fixture and live data |
-| BAR-063 | `waste` screen, three taps | `[R]` | Still `src/features/screens.tsx:87`. Reason vocabulary diverges; line loss missing |
+| BAR-063 | `waste` screen, three taps | `[x]` | Rebuilt as `src/screens/waste/WasteScreen.tsx` from design-markup.html:612-651. The design's five reasons including `Foam / line loss`, the full catalogue instead of `slice(0, 5)`, and a real write through `boa_bar_record_waste`. Verified in a browser: composition matches, CTA disabled until a reason is chosen |
 | BAR-064 | Request top-up | `[ ]` | — |
 | BAR-065 | Bar-to-bar transfer | `[ ]` | — |
 | BAR-066 | Reference cache | `[!]` | `referenceCache` is declared in `offline-db.ts:23` and **written to by nothing** (grep: zero writes) |
@@ -274,15 +274,15 @@ States are defined once in the **Status key** above.
 | BAR-076 | Service worker for a festival network | `[R]` | `06968a4` made an update applicable. No API caching strategy, and still excluded from typecheck and lint |
 | BAR-077 | Remove demo switches from the UI | `[!]` | `AppShell.tsx:85` — the sync line is still a button that toggles offline mode |
 | BAR-078 | Tap targets and focus | `[ ]` | Not measured since the rebuild. Needs a pass |
-| BAR-133 | Waste and accept post to the right location | `[~]` | The three screen literals are fixed (28 Aug): `BarsScreen` opens any bar, and `CountSession.locationId` / `Custody.toLocationId` carry the id the two flow CTAs need, populated by both repositories and shifted in the gate's second fixture variant. **The task is not done: `demo-store.tsx:353` still posts every waste to `bar_3` regardless of which bar recorded it.** That is the legacy path and goes with BAR-164 |
+| BAR-133 | Waste and accept post to the right location | `[x]` | Closed. The three screen literals went on 28 Aug; `boa_bar_record_waste` now takes the location from the command and validates it against the venue, and the legacy `demo-store` waste path that hardcoded `bar_3` is deleted along with the legacy screen |
 | BAR-134 | Idempotent acceptance | `[x]` | The accept RPC rejects a second acceptance and replays idempotently on the client key |
 | BAR-135 | Dead-letter for invalid outbox entries | `[~]` | A permanent failure is now classified as such and marked terminal on the first attempt rather than after eight, with `permanent: true`. Nothing surfaces it yet — the dead-letter view is still missing |
-| BAR-136 | QR scanner | `[ ]` | No `BarcodeDetector`, `getUserMedia` or QR library anywhere. `vercel.json` grants camera permission for a capability that does not exist |
+| BAR-136 | QR scanner | `[~]` | No scanner. `/dockets` is the deliberate substitute — smaller, and it does not depend on a camera focusing in a dark tent. The scanner is still wanted as the fast path, and `vercel.json` already grants camera permission |
 | BAR-137 | Session longevity for shared devices | `[ ]` | Magic-link only, and no device registry — which is why the live `deviceLabel` falls back to the membership's location code |
 | BAR-138 | Security headers and build identity | `[x]` | `06968a4` — a waiting service worker can now actually be activated; previously it could never be replaced |
 | BAR-141 | Attribute movements to their real actor | `[ ]` | The RPC stamps `auth.uid()` at flush time, so a shift handover re-attributes the previous crew member's work |
 | BAR-142 | Outbox visibility and device loss | `[ ]` | — |
-| BAR-146 | Surface `in_transit` stock | `[~]` | `IN TRANSIT` now appears in the live stock-position breakdown when non-zero. No screen shows *which* dockets are parked there |
+| BAR-146 | Surface `in_transit` stock | `[x]` | `BarDetail.incoming` is a list, the bar screen renders all of them with working CTAs, and `/dockets` shows every awaiting docket plus the in-transit container total. Verified in a browser: two dockets listed, the second opens its own contents |
 | BAR-147 | Prevent self-acceptance | `[x]` | The accept RPC rejects acceptance by the issuing user. Enforced in the database, not the client |
 
 ### M5 — Counts and variance
@@ -291,10 +291,10 @@ States are defined once in the **Status key** above.
 | --- | --- | --- | --- |
 | BAR-079 | `count` sequential and blind | `[x]` | `36ffc4f` — inputs start at zero, stepper resets per line, no expected figure in the read model. Verified by driving the browser |
 | BAR-080 | Partial-container capture | `[x]` | `36ffc4f` — all three modes (`none` / `ml` / `litres`) verified in the browser |
-| BAR-081 | Tare weighing | `[~]` | The count screen captures partial millilitres and shows `WEIGH · TARE 480 G`. **`mlFromGrossWeight` still has zero callers** — nothing converts a gross reading to millilitres, so the tare is displayed but not applied |
-| BAR-082 | Count persistence | `[!]` | **There is no count-submit RPC in any migration and no write grant. A submitted count is discarded.** The whole counting chain has no destination |
+| BAR-081 | Tare weighing | `[~]` | `partialMlFromWeight` in `services/count.ts` wraps the domain function, and `partialToMl` converts a keg reading from litres. The count screen still asks for millilitres directly rather than taking a gross weight and a tare — the conversion exists but the input does not use it |
+| BAR-082 | Count persistence | `[x]` | `202608280005` — `boa_bar_submit_count`, a service, and `CountScreen` accumulating its lines and submitting through the outbox. The screen previously reset each line and navigated away, discarding every count. A partial count is refused: 12 of 18 lines reports six SKUs as zero. **Unapplied** |
 | BAR-083 | Blind enforcement in the database | `[!]` | The word "blind" appears nowhere in the SQL, and the snapshot RPC serves the expected position to any role — see BAR-161 |
-| BAR-084 | Seal the theoretical position at submit | `[ ]` | Nothing is sealed. The live variance report recomputes the expected position from the ledger at read time, which is correct but not a seal |
+| BAR-084 | Seal the theoretical position at submit | `[x]` | `private.boa_bar_count_seal`, summed from the ledger at the instant counted, not from the balance projection which only holds "now". No grant to anybody — it IS the expected figure a counter must never see. Append-only. **Unapplied** |
 | BAR-085 | `countDone` screen | `[x]` | `36ffc4f` |
 | BAR-086 | `variance` screen | `[x]` | `36ffc4f` — renders from the repository, signed deltas, banding, notes |
 | BAR-087 | Signed variance banding | `[x]` | Fixed 28 Aug. `varianceBand` bands on magnitude then floors a positive variance at amber — it can still be red, never green. Six new assertions in `inventory.test.ts` cover the sign asymmetry, the red ceiling, exact zero and the null case |
@@ -363,16 +363,16 @@ Computed from the rows above, not asserted.
 
 | | Count |
 | --- | --- |
-| `[x]` done | 42 |
+| `[x]` done | 49 |
 | `[~]` partial | 37 |
-| `[R]` rewrite | 6 |
-| `[!]` defect actively present | 15 |
-| `[ ]` not started | 62 |
+| `[R]` rewrite | 4 |
+| `[!]` defect actively present | 12 |
+| `[ ]` not started | 60 |
 | `[?]` unverifiable today | 2 |
 | **Total** | **164** |
 
-Read the middle three rows as the real position: **59 tasks are neither done nor
-untouched**, and 15 of them are defects sitting in the code right now.
+Read the middle three rows as the real position: **53 tasks are neither done nor
+untouched**, and 12 of them are defects sitting in the code right now.
 
 ## Would stop the event dead
 
@@ -681,6 +681,73 @@ affected.
 the case/bottle unit switch. It is the last thing standing between the custody
 chain and a complete write path, and it also removes the largest remaining block of
 fixture literals (`src/features/screens.tsx`).
+
+### Session — 28 August 2026 (eighth) · Claude — RELEASE-1 items 1 to 4
+
+Done in the order 2 → 1 → 4 → 3. BAR-123 went first because it changes how every
+movement stamps its date, so writing the count and waste RPCs before it would have
+meant rework.
+
+**BAR-123 + half of BAR-023 — the business date.** `business_date` was the IST
+calendar date AND client-supplied. The night split at midnight, so a close-out
+count at 01:30 recorded as 11 October and the identity could not close for the
+event; and because a device supplied it, a wrong clock or an edited payload could
+move a movement to another day and step around a count. Now derived server-side
+from a venue cutoff (06:00 default) and the client value ignored.
+`business_date.test.sql` is the **first behavioural test in this suite** — 9
+assertions calling the function with real instants rather than asserting an object
+exists.
+
+**BAR-082 + BAR-084 — counts are recorded.** `boa_bar_count_line` had no write
+path at all. `CountScreen` collected a blind count, reset each line and navigated
+away, so **every count taken on it was discarded**. Adds `boa_bar_submit_count`
+(one command per user action, so it queues and replays), a service, and a screen
+that accumulates and only navigates after the write is accepted. The expected
+position is sealed at submit from the LEDGER, into `private.boa_bar_count_seal`
+with no grant to anybody — it is the expected figure a counter must never see. A
+partial count is refused: 12 of 18 lines reports six SKUs as zero, and zero reads
+as "all of it is missing".
+
+**BAR-146 + BAR-136 — every docket is reachable.** Three defects. `barDetail`
+surfaced only the first awaiting docket (`.find`) while `listBars` correctly said
+"2 DOCKETS INCOMING". The bar screen's accept CTA was
+`store.flash('RECEIVING SCREEN IS BAR-055')` — a placeholder left behind after
+BAR-055 shipped, so with no scanner either **no path in the app reached the accept
+screen at all**. And `in_transit` held real stock that no screen read. Adds
+`/dockets`, which is **not in the approved design**: the design's mechanism is the
+QR code, and a list is smaller and does not need a camera focusing in a dark tent.
+
+**BAR-063 + the rest of BAR-133 — waste.** Rebuilt from
+design-markup.html:612-651: the design's five reasons including `Foam / line loss`,
+the full catalogue instead of `slice(0, 5)`, and a real write through
+`boa_bar_record_waste`, which enforces the reason vocabulary and takes the location
+from the command. The legacy path that posted every waste to `bar_3` is deleted.
+`src/features/screens.tsx` is down from 302 lines to 67 and holds no SKU data.
+
+**Also closed on the way:** BAR-130 (full catalogue everywhere), BAR-133,
+BAR-081 partially (`mlFromGrossWeight` has its first non-test caller), and
+`partialToMl` moved into the domain — a keg reading of 12 stored as 12 ml rather
+than 12,000 would be a 1000x understatement on the largest container the venue has.
+
+**Verified:** typecheck, lint, **124 tests**, build, `check:sql`, and the fidelity
+gate at 16 routes, 15 reading the data layer, 0 hardcoded, 0 errored. Browser-
+verified: the waste screen's composition and its reason gate, `/dockets` listing
+two dockets with the second opening its own contents, and both incoming sheets on
+the bar screen.
+
+**NOT verified — the whole caveat.** Three new migrations
+(`202608280004`, `_0005`, `_0006`) are **unapplied**, and none of
+`boa_bar_submit_count`, `boa_bar_record_waste` or `boa_bar_business_date` has ever
+executed. `auth.users` is still empty. Everything above is proven against fixtures
+and a type checker only.
+
+**Counts:** 49 done, 37 partial, 4 rewrite, **12 defects present** (was 15), 60
+untouched.
+
+**Recommended next:** RELEASE-1 item 0 — create the auth user, apply the
+migrations with `node_modules/.bin/supabase db push`, then
+`node scripts/bootstrap.mjs` and `node scripts/db-test.mjs`. That is now the only
+thing between four completed items and evidence that any of them work.
 
 ### Session — 28 August 2026 (seventh) · Claude — handover
 

@@ -372,6 +372,36 @@ export type SessionInfo = {
 }
 
 // ---------------------------------------------------------------------------
+// waste
+// ---------------------------------------------------------------------------
+
+export type WasteProduct = {
+  skuId: string
+  name: string
+  spec: string
+  containerUnitPlural: string
+}
+
+/**
+ * What the waste screen needs.
+ *
+ * Deliberately carries **no on-hand position**. The design's waste screen shows
+ * product, quantity and reason only — and a position figure here would be a
+ * disclosure to a bar lead who may be mid-count at that same location, which is
+ * exactly what blind counting forbids (non-negotiable 3). The quantity is bounded
+ * server-side instead: `boa_bar_record_waste` refuses more than the location
+ * holds.
+ */
+export type WasteOptions = {
+  locationId: string
+  locationName: string
+  products: WasteProduct[]
+  defaultProductId: string
+  /** design-script.jsx:308, enforced identically in the database. */
+  reasons: string[]
+}
+
+// ---------------------------------------------------------------------------
 // commands — the write side
 // ---------------------------------------------------------------------------
 
@@ -424,6 +454,15 @@ export type WriteOutcome =
   | { status: 'posted'; docketId: string; docketNo: string; token?: string }
   | { status: 'queued'; outboxId: string }
 
+export type RecordWasteCommand = {
+  idempotencyKey: string
+  /** BAR-133. The bar that recorded it, never a default. */
+  locationId: string
+  skuId: string
+  containers: number
+  reason: string
+}
+
 export type CountLineCommand = {
   skuId: string
   fullContainers: number
@@ -473,6 +512,9 @@ export interface Repository {
   /** Every docket awaiting acceptance, and what is sitting in transit (BAR-146). */
   custodyOverview(): Promise<CustodyOverview>
 
+  /** Products and reasons for the waste screen. Carries no position figure. */
+  wasteOptions(locationId?: string): Promise<WasteOptions>
+
   /** Source, destinations and SKU positions for the issue-stock draft screen. */
   issueOptions(): Promise<IssueOptions>
 
@@ -503,4 +545,7 @@ export interface Repository {
    * seals the ledger-derived expected position server-side (BAR-082/BAR-084).
    */
   submitCount(command: SubmitCountCommand): Promise<CountWriteOutcome>
+
+  /** Record waste against the recording location (BAR-063/BAR-133). */
+  recordWaste(command: RecordWasteCommand): Promise<CountWriteOutcome>
 }

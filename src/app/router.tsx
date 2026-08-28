@@ -12,15 +12,13 @@ import { DocketScreen } from '../screens/custody/DocketScreen'
 import { AcceptScreen } from '../screens/custody/AcceptScreen'
 import { ReceivedScreen } from '../screens/custody/ReceivedScreen'
 import { DocketsScreen } from '../screens/custody/DocketsScreen'
+import { WasteScreen } from '../screens/waste/WasteScreen'
 import { CountScreen } from '../screens/count/CountScreen'
 import { CountDoneScreen } from '../screens/count/CountDoneScreen'
 import { VarianceScreen } from '../screens/count/VarianceScreen'
 import { IssueScreen } from '../screens/issue/IssueScreen'
 import { parseIssueDraftSearch } from '../screens/issue/draft'
-import {
-  ReportsScreen,
-  WasteScreen,
-} from '../features/screens'
+import { ReportsScreen } from '../features/screens'
 
 const rootRoute = createRootRoute({ component: AppShell })
 const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: HomeScreen })

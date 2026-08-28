@@ -62,6 +62,15 @@ Not verified, and this is the single largest unknown in the repository:
 
 ## 4. The blocking list, in order
 
+> **Items 1–4 were completed on 28 August**, in the order 2 → 1 → 4 → 3, because
+> BAR-123 changes how every movement stamps its date and writing the count and
+> waste RPCs first would have meant rework. All four are written, gated and
+> browser-verified against fixtures. **None has executed against the database** —
+> three new migrations are unapplied and `auth.users` is still empty. Item 0 is
+> therefore now the only thing standing between this work and evidence that it
+> works. Start there.
+
+
 Ordering is my judgement, not the specification's. The reasoning is given so it
 can be overruled. Each item names how to know it is done.
 

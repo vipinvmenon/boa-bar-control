@@ -26,6 +26,7 @@ import type {
   Custody,
   CustodyOverview,
   IssueOptions,
+  WasteOptions,
   MovementDetail,
   StockPosition,
   VarianceReport,
@@ -278,6 +279,22 @@ export const CUSTODY: Custody = {
   acceptedAt: '19:38',
 }
 
+/** design-script.jsx:308 — the waste screen's five reasons, and the bar's SKUs. */
+export const WASTE_OPTIONS: WasteOptions = {
+  locationId: 'bar-3',
+  locationName: 'BAR 3',
+  products: CATALOGUE.flatMap((group) =>
+    group.items.map((item) => ({
+      skuId: item.skuId,
+      name: item.name,
+      spec: item.spec,
+      containerUnitPlural: /can$/i.test(item.spec) ? 'CANS' : /keg$/i.test(item.spec) ? 'KEGS' : 'BOTTLES',
+    })),
+  ),
+  defaultProductId: 'corona',
+  reasons: ['Breakage', 'Spillage', 'Foam / line loss', 'Refused pour', 'Other'],
+}
+
 /**
  * BAR-146. A second docket, so the fixture walkthrough is honest.
  *
@@ -412,6 +429,13 @@ export function variant() {
       toLocationId: 'bar-1',
     },
     catalogue,
+    wasteOptions: {
+      ...WASTE_OPTIONS,
+      locationId: 'bar-1',
+      locationName: 'BAR 1',
+      products: WASTE_OPTIONS.products.map((p) => ({ ...p, name: `${p.name} (v2)` })),
+      defaultProductId: 'kf',
+    },
     custodyOverview: {
       dockets: CUSTODY_OVERVIEW.dockets.map((d, i) => ({
         ...d,
