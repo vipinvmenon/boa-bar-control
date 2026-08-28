@@ -8,6 +8,40 @@ because three separate descriptions of this system is how the project broke.
 
 ---
 
+## Resuming — start here, every session
+
+1. Read `docs/CURRENT-STATE.md`. The session log at the bottom is newest-first.
+2. Read `docs/RELEASE-1.md` section 4 and take the **first open item**. That
+   ordering already accounts for what the specification says to cut; do not
+   re-derive it, and do not pick a task because it looks tractable.
+3. Confirm the gates are green before you start, so you know what you broke:
+   `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build`
+4. One task, by `BAR-nnn` id. Commit with the id in the message.
+5. Before finishing, append a session entry to `docs/CURRENT-STATE.md` using the
+   template at the bottom of that file, and say plainly what you did **not**
+   verify.
+
+**Claude is off this project from 29 August 2026.** Anywhere the docs say to hand
+something to Claude — architecture, schema, the ledger, offline and sync — that
+instruction is dead. Do not follow it; following it now means the work stops.
+Instead: say in the chat that the change is bigger than a contained fix, state
+what you propose and the risk, and get the user's agreement before writing it. An
+accepted ADR in `docs/DECISIONS.md` is still the user's to change, never an
+agent's.
+
+## What you cannot verify, and must not claim
+
+- **Anything touching the database.** The password lives only in the user's shell.
+  `test:db`, `db:state` and `bootstrap` will fail for you. Say so and ask; never
+  record a database task as verified because the code looks right.
+- **Live reads and writes.** `auth.users` is empty as of 28 August, so no live
+  read or write has ever executed. Fixture-mode success is not evidence the live
+  path works, and the fixture commands deliberately record nothing.
+
+This project's original failure was a document asserting a verification nobody
+performed. Writing "verified" without having verified is the one unrecoverable
+mistake here.
+
 ## Where the truth is
 
 `/docs` is canonical. Read these before writing code:
@@ -15,6 +49,7 @@ because three separate descriptions of this system is how the project broke.
 | File | Read it when |
 | --- | --- |
 | [docs/CURRENT-STATE.md](docs/CURRENT-STATE.md) | **Always, first** |
+| [docs/RELEASE-1.md](docs/RELEASE-1.md) | **Second.** What must work on 10 October, in order, and what is deliberately cut |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | To find your task ID and acceptance criteria |
 | [docs/PRODUCT.md](docs/PRODUCT.md) | What we are building and why |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layering, structure, dependencies |

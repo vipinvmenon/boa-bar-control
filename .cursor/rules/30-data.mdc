@@ -6,8 +6,41 @@ globs: supabase/**,src/domain/**,src/data/**,src/services/**,src/lib/offline-db.
 # Data, ledger and sync
 
 Read `docs/DATA-MODEL.md` and `docs/OFFLINE-SYNC.md` before touching anything
-here. Schema changes belong to Claude, not to an IDE session — if a fix needs a
-migration, stop and hand it over.
+here.
+
+**Schema changes no longer get handed to Claude** — Claude is off this project
+from 29 August 2026. A migration is written here, but only after saying in the
+chat what it does and getting the user's agreement, and never against an accepted
+ADR. Before pushing one: `corepack pnpm check:sql`, then
+`corepack pnpm test:db` once it is applied.
+
+## The write path, as it now stands
+
+There is exactly one, and it has three layers. Do not add a fourth.
+
+```
+screen  ->  service (src/services/)  ->  repository command  ->  outbox  ->  RPC
+```
+
+- A screen never calls Supabase, Dexie, or an RPC. It calls a service through
+  `useRepositoryMutation`.
+- A service validates with Zod, applies the rules in `src/domain/`, then calls a
+  repository command. It takes the repository as an argument and is testable
+  without React.
+- The live repository appends to the outbox (`src/lib/offline-db.ts`) and waits
+  briefly for the drain. **Every write goes to the outbox, online or offline.**
+  There is no fast path.
+- The outbox drains in causal order and stops at the first blocked entry. The
+  rules are pure functions in `src/domain/outbox-policy.ts` and are tested there.
+- Idempotency keys identify the user's ACTION, minted once when a flow starts,
+  reused on retry. Never mint one per network call.
+
+`src/services/accept.ts` plus `boa_bar_accept_docket` is the worked example.
+Copy its shape.
+
+**Do not extend `src/lib/live-repository.ts` or `demo-store`'s snapshot loader.**
+They are a second, older live data path that hardcodes `bar_3`; BAR-164 deletes
+them.
 
 ## The ledger
 

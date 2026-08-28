@@ -32,9 +32,38 @@ specification. `design-script.jsx` is the interaction contract (22 screens),
 Do not build from `docs/archive/` — those documents are retained as evidence of
 what went wrong, not as guidance.
 
-## Role in this project
+## Role in this project — changed 28 August 2026
 
-Cursor is the everyday IDE pair: small fixes, exploring code, debugging, tests,
-and refactors contained within one module. Architecture, schema, offline/sync and
-the ledger belong to Claude. If a change crosses module boundaries or touches the
-schema, stop and hand it over.
+**Claude is no longer available on this project.** Development continues in Codex
+and Cursor only, so the previous instruction to "hand it over to Claude" is dead
+and must not be followed — following it now means the work simply stops.
+
+Cursor is still the everyday IDE pair: small fixes, exploring code, debugging,
+tests, refactors inside one module. What changed is what happens when a change is
+bigger than that. Instead of handing it over:
+
+1. Say plainly, in the chat, that the change crosses a module boundary or touches
+   the schema, the ledger, RLS or sync.
+2. State what you propose and what you believe the risk is.
+3. Get the user's agreement before writing it.
+4. If it changes an accepted decision in `docs/DECISIONS.md`, do not proceed —
+   an ADR is the user's to change, not an agent's.
+
+The gate is a human's agreement, not another model's availability.
+
+## Resuming a session
+
+1. `docs/CURRENT-STATE.md` — what is done, what is broken, what is next
+2. `docs/RELEASE-1.md` — the ordered blocking list for the first release, and
+   what has been deliberately cut. **Work from section 4, in order.**
+3. One task at a time, by `BAR-nnn` id, committed with that id in the message.
+
+## Running anything
+
+**`pnpm` is not on the PATH here.** `corepack enable` needs sudo on this machine,
+so every script runs as `corepack pnpm <script>`. Bare `pnpm` fails with
+`command not found`. Never hand the user a command starting with `pnpm`.
+
+`corepack pnpm test:visual` does **not** start a dev server — run
+`corepack pnpm dev` in another terminal first, or it fails with a connection error
+that looks like a code failure and is not.

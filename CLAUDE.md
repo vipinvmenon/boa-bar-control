@@ -26,6 +26,13 @@ once already. It tells you where the truth is and what you may not do.
 specification. It is the **UI contract** and the **domain contract**. It is not
 inspiration.
 
+> **28 August 2026 — Claude is off this project from 29 August.** This file is
+> retained because its non-negotiables and its account of how the project went
+> wrong still apply to every agent. The role description below no longer allocates
+> work: Codex and Cursor now own everything, and the approval gate for
+> architecture, schema and ADR changes is the **user**, not Claude. See
+> `AGENTS.md` and `.cursor/rules/00-truth.mdc`.
+
 ## Your role: architect and difficult implementation
 
 You own:
