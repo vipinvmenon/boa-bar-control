@@ -175,7 +175,7 @@ States are defined once in the **Status key** above.
 | Task | Title | State | Evidence |
 | --- | --- | --- | --- |
 | BAR-155 | Command RPCs as the only write path | `[~]` | `e087d10` — `boa_bar_create_docket` and `boa_bar_accept_docket` exist and enforce their rules. **No application code calls either.** The count-submit and POS-post RPCs do not exist |
-| BAR-156 | Interim opening-stock bootstrap | `[ ]` | Nothing seeds a venue, location, SKU or membership. **The single highest-priority blocker** — until it exists the live repository cannot execute one query |
+| BAR-156 | Interim opening-stock bootstrap | `[~]` | Written 28 Aug: `202608280002_bootstrap.sql` adds `boa_bar_claim_venue` (single-use, advisory-locked), `boa_bar_open_stock` (a receipt movement with a derived idempotency key, so a second run replays rather than doubling the warehouse) and the reference data. `pnpm bootstrap` drives it and reconciles the projection against a ledger sum. **Not applied and never executed** — no Docker and no psql on this machine, so `db push` will be the first thing to parse it |
 | BAR-011 | Verify no table-level write grants | `[x]` | `supabase/tests/privileges.test.sql` asserts SELECT-only on all 13 tables and fails on a future INSERT grant |
 | BAR-161 | Location-scope the snapshot RPC | `[ ]` | Raised 28 Aug. `boa_bar_inventory_snapshot` still cross-joins every location and authorises on any role at the venue |
 | BAR-163 | Count witness column | `[ ]` | `boa_bar_count_session` has `assigned_to` and `reviewed_by`; no witness column |
@@ -183,7 +183,7 @@ States are defined once in the **Status key** above.
 | BAR-013 | Harden ledger immutability | `[~]` | Row triggers on `movement`, `movement_line` and now `person_name_history`; `alter default privileges … revoke truncate` present. Still no `ENABLE ALWAYS` and no `FORCE ROW LEVEL SECURITY`, so a table owner bypasses both |
 | BAR-014 | `v_position` sums the ledger | `[ ]` | **No view of any kind exists in any migration** (grep `create .*view` → 0 hits). `boa_bar_inventory_snapshot` reads the projection exclusively |
 | BAR-015 | Reconciliation view and test | `[ ]` | Same. Nothing compares the projection against a ledger sum |
-| BAR-016 | Protect the balance projection | `[!]` | `private.boa_bar_balance` is a freely mutable stock level with no trigger and no reconciliation, and it is the sole source for every position the app displays |
+| BAR-016 | Protect the balance projection | `[~]` | `private.boa_bar_balance` now has exactly one writer, `private.boa_bar_post_movement`, instead of the insert being duplicated per entry point. Still no trigger and no scheduled reconciliation — `pnpm bootstrap` compares the projection against a ledger sum once, at bootstrap, which is not the same as protecting it |
 | BAR-017 | Fix `comp` to a two-leg move | `[!]` | `202608220001:256` still forces `comp` to net negative, so hospitality separation is unrecordable |
 | BAR-018 | Restrict `sale` to the POS path | `[!]` | `boa_bar_submit_movement` accepts `kind = 'sale'` from `crew`, `warehouse` and `bar_lead`. Violates non-negotiable 8 |
 | BAR-019 | Receipt movement path | `[ ]` | No receipt RPC and no receipt screen |
@@ -193,13 +193,13 @@ States are defined once in the **Status key** above.
 | BAR-023 | Server-validate the timestamps | `[!]` | `202608220001:263` still takes `occurred_at` and `business_date` from the client payload unvalidated. History can be backdated around a count |
 | BAR-024 | Location-scoped authorisation | `[~]` | `membership.location_id` is now **read** — the live repository uses it for the caller's default docket and count location — but no policy or RPC enforces it |
 | BAR-025 | Tolerance bands in the database | `[ ]` | They exist only in TypeScript (`domain/inventory.ts` `toleranceFor`) |
-| BAR-026 | `excise_category` NOT NULL | `[!]` | Still nullable free text, NULL for every seeded SKU |
+| BAR-026 | `excise_category` NOT NULL | `[~]` | Still nullable free text, so the constraint half of the task is undone. But it is no longer NULL for every SKU: the bootstrap populates a **provisional** vocabulary (`beer`, `spirit`, NULL for mixers) so the excise view has a shape to be built against. The vocabulary will change once BAR-158 lands |
 | BAR-027 | Missing spec §13 columns | `[~]` | BAR-124 added display names. `abv`, `supplier_vendor_id`, `is_licenced`, `is_blind`, `witnessed_by`, `counted_at`, empties and delivery-note remain absent |
 | BAR-028 | Non-negative position guard | `[ ]` | Nothing prevents issuing more than is held. The per-column `>= 0` checks are on docket and count lines, not on the position |
 | BAR-029 | Index `movement_line.movement_id` | `[ ]` | The two indexes are `(venue_id, business_date, occurred_at)` and `(location_id, sku_id)`. `movement_id` is still an unindexed FK, evaluated per row by the read policy — and the live repository queries it by `movement_id` on every ledger read |
 | BAR-030 | Behavioural pgTAP suite | `[R]` | 11 assertions, all existence-only. Nothing attempts an UPDATE and nothing connects as a role |
 | BAR-031 | Execute migrations | `[x]` | `897cdc0` — applied to PostgreSQL 17.6, ap-southeast-1. **Migration `202608280001_person_names.sql` is NOT applied** |
-| BAR-032 | Deterministic seed that renders the design | `[R]` | Produces an empty ledger, no serve mappings, no excise categories, no people |
+| BAR-032 | Deterministic seed that renders the design | `[~]` | Reference data moved out of `supabase/seed.sql`, which `db push` never applies, into the bootstrap migration — that is why the hosted project has had no venue, location or SKU since 27 Aug. 1 venue, 9 locations, 11 SKUs; three seeded values corrected (`container_type` conflated the size, Kingfisher `units_per_case` was 12 not 24, five design SKUs missing). Still no serve mappings (blocked on BAR-159) and no tolerance bands in the database (BAR-025) |
 | BAR-033 | Generate database types | `[ ]` | The client is untyped. `src/data/live/rows.ts` hand-writes every row shape precisely because generated types do not exist — 156 lines that a generator would own |
 | BAR-122 | Revoke `TRUNCATE` everywhere | `[x]` | `3c6acd9` — verified empirically over REST: `anon` receives `HTTP 401 permission denied` |
 | BAR-123 | Business date spans the festival night | `[!]` | Still the IST calendar date, so the night splits at midnight and a close-out count at 01:30 belongs to the wrong day |
@@ -250,7 +250,7 @@ States are defined once in the **Status key** above.
 | BAR-058 | Short-acceptance ownership | `[~]` | The accept RPC rejects an unexplained shortfall. It does not assign the shortfall an owner or post a compensating adjustment |
 | BAR-059 | Docket SLA alert | `[~]` | Derived in the live repository's `alerts()` from the oldest awaiting docket against a 30-minute SLA. The legacy home path is still static |
 | BAR-060 | `receipt` screen | `[ ]` | — |
-| BAR-140 | Opening stock entry | `[ ]` | **Would stop the event dead.** No path loads the warehouse |
+| BAR-140 | Opening stock entry | `[~]` | `boa_bar_open_stock` is the write path and `pnpm bootstrap` is an operator route to it. **There is still no screen** — a warehouse operator cannot enter opening stock from the app, only an operator with the database password can |
 
 ### M4 — Bar operations and offline
 
@@ -364,15 +364,15 @@ Computed from the rows above, not asserted.
 | | Count |
 | --- | --- |
 | `[x]` done | 39 |
-| `[~]` partial | 32 |
-| `[R]` rewrite | 8 |
-| `[!]` defect actively present | 17 |
-| `[ ]` not started | 66 |
+| `[~]` partial | 37 |
+| `[R]` rewrite | 7 |
+| `[!]` defect actively present | 15 |
+| `[ ]` not started | 64 |
 | `[?]` unverifiable today | 2 |
 | **Total** | **164** |
 
-Read the middle three rows as the real position: **57 tasks are neither done nor
-untouched**, and 17 of them are defects sitting in the code right now.
+Read the middle three rows as the real position: **59 tasks are neither done nor
+untouched**, and 15 of them are defects sitting in the code right now.
 
 ## Would stop the event dead
 
@@ -382,7 +382,7 @@ original audit.
 
 | # | Problem | Task |
 | --- | --- | --- |
-| 1 | **There is no way to enter opening stock.** On a freshly migrated database every location reads zero and every writable movement only *removes* stock. The warehouse can never be loaded, so the system cannot be started at all | BAR-140 |
+| 1 | ~~**There is no way to enter opening stock.**~~ **Half addressed 28 Aug.** `boa_bar_open_stock` posts opening stock as a receipt through the ledger, and `pnpm bootstrap` drives it. Still an operator-only path needing the database password: **there is no screen**, so a warehouse lead cannot do it from the app, and the migration has not been applied | BAR-156 / BAR-140 |
 | 2 | **Every bar-side write is hardcoded to Bar 3.** Waste and counts from Bars 1, 2 and 4 post against Bar 3's ledger. Bar 1's variance is understated by exactly what Bar 3's is overstated — both indefensible | BAR-133 |
 | 3 | **Demo mode announces itself as live.** `src/app/AppShell.tsx:45` renders `SYNCED` when `backendMode === 'live'` and `LIVE · 19:44 IST` when it is not — exactly backwards. One missing environment variable gives twenty staff a twelve-hour shift against hardcoded fixtures under a label that says live, with total unrecoverable loss discovered on 11 October. **The most dangerous single line in the codebase** | BAR-139 |
 | 4 | **Queued movements are attributed to whoever is signed in when the queue flushes**, not who created them. A shift handover on a shared phone re-attributes the outgoing crew member's work. The ledger's "named person" — the entire value of §4 and §5 — becomes wrong | BAR-141 |
@@ -457,13 +457,27 @@ none exist" and the real work moves to BAR-155.
    project linked; both migrations applied; pgTAP runs Docker-free.
 3. **Rotate the database password.** It was exposed in a shared terminal
    screenshot on 27 August. Settings → Database → Reset database password.
-4. **BAR-140 — opening stock.** Decide how the warehouse gets loaded on the day:
-   a receipt flow, an opening count, or a seeded import.
-5. **Open decision 5 — the excise return template.** Six weeks out, unowned and
+4. **Apply the two new migrations and run the bootstrap.** This is the one thing
+   blocking all verification, and it needs the database password, which I do not
+   have:
+
+   ```
+   node_modules/.bin/supabase db push
+   read -s "SUPABASE_DB_PASSWORD?Database password: " && export SUPABASE_DB_PASSWORD
+   pnpm bootstrap
+   ```
+
+   `db push` applies `202608280001_person_names.sql` and
+   `202608280002_bootstrap.sql`. `pnpm bootstrap` needs at least one sign-in to
+   have happened first, because it needs an `auth.users` row to make admin — it
+   says so and changes nothing if there is none.
+5. **BAR-140 — a screen for opening stock.** The RPC exists; a warehouse lead
+   still cannot enter opening stock without the database password.
+6. **Open decision 5 — the excise return template.** Six weeks out, unowned and
    undated. The return's category vocabulary and its treatment of empties dictate
    what must be physically observed on the night. A wrong category set is
    backfillable per SKU; a missing physical observation is not.
-6. **The six open decisions** below.
+7. **The six open decisions** below.
 
 ## Open decisions
 
@@ -531,6 +545,95 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 28 August 2026 (fourth) · Claude
+
+**Completed: BAR-156 — the system can now be started.** Written, not yet run.
+
+**The finding that mattered most.** `supabase/seed.sql` is applied by
+`supabase db reset` against a **local** database only — never by `db push`. So the
+hosted project has had no venue, no location and no SKU since the schema was
+applied on 27 August. That is the whole reason nothing has ever been verified
+against real data, and it was invisible because the file exists, is correct, and
+is in the repository. Reference data now lives in the bootstrap migration so local
+and hosted come from one source, and `seed.sql` is reduced to a pointer.
+
+**Three defects in the previously seeded values**, all surfaced by reading them
+against the live repository's formatting rules rather than by inspection:
+
+1. `container_type` was `'650 ml bottle'`. The column is the container *type*; the
+   size is already `ml_per_container`. Conflated, the unit rendered as
+   `650 ML BOTTLES` and the spec line as `Beer · 650 ml 650 ml bottle`.
+2. Kingfisher's `units_per_case` was 12. The design shows 288 bottles as
+   `12 cases` and its own docket states 24, so an issue would have printed
+   `24 cases`.
+3. Five SKUs the design's catalogue shows were missing (Bira, Signature Rare,
+   Smirnoff, Tonic Water, Soda).
+
+**One movement poster, three entry points.** `boa_bar_submit_movement` took its
+actor from `auth.uid()` and did validation, the ledger insert and the balance
+upsert in one body. Opening stock needs the same writes but has to run from a
+direct database session during bootstrap, when `auth.uid()` is null and no user
+exists yet. Copying those twenty lines would have put two writers on
+`private.boa_bar_balance` — the drift non-negotiable 2 exists to prevent — so the
+body moved to `private.boa_bar_post_movement(payload, actor)`.
+`boa_bar_submit_movement` keeps its signature and behaviour exactly.
+
+**Opening stock is a receipt movement, not a starting quantity.** Stock is derived
+by summing the ledger, so a position that did not enter through the ledger would
+be invisible to every calculation and to the excise return. The idempotency key is
+derived from venue + location + business date, so the second run an operator makes
+at 06:00 when unsure the first worked is a replay, not a doubled warehouse.
+
+**`boa_bar_claim_venue`** breaks the membership circle exactly once: it grants the
+caller `admin` only while the venue has no active membership, under an advisory
+lock. The residual risk — whoever signs in first during that window becomes admin —
+is stated in the migration, and `pnpm bootstrap` prints whether the window is
+closed.
+
+**The seed is a verification artefact.** Opening quantities are the design's own
+warehouse catalogue, so after bootstrap the live warehouse screen must show
+BEER 380, SPIRITS 142, MIXERS 116, total 638 — matching
+`references/ui/warehouse.png`. If it shows anything else the live repository is
+wrong in a way somebody can see. Seven tests assert the seed still agrees with the
+design, sharing one JSON list with the script, and were confirmed to fail when a
+quantity is altered.
+
+**A bug I introduced and caught.** `scripts/bootstrap.mjs` reimplemented
+`db-test.mjs`'s connection-string logic and got it wrong: `supabase link` writes
+`postgresql://user@host` with **no** password segment, and the copy assumed a
+`[YOUR-PASSWORD]` placeholder was there, so it would have connected with no
+password. Both scripts now share `scripts/lib/db-url.mjs`. This is the second time
+today duplication produced a defect.
+
+**New gate: `pnpm check:sql`.** A static arity check over every migration —
+VALUES-tuple length against the column list, balanced `$$`, one begin/commit pair
+per file. It exists because this machine has neither Docker nor psql, so
+`db push` will be the first thing that ever parses these files. Confirmed to catch
+a planted column-count error. It does **not** validate SQL and must not be read as
+doing so.
+
+**Verified:** `typecheck`, `lint`, `test` (62 tests, 7 new), `build`,
+`check:sql`. Both scripts' credential-failure paths exercised by hand.
+
+**NOT verified, and this is the whole caveat:** the two new migrations have never
+been applied and the three new functions have never executed. Nothing here has
+touched a database.
+
+**Files changed:** `supabase/migrations/202608280002_bootstrap.sql`,
+`supabase/seed.sql`, `supabase/bootstrap/opening-warehouse.json`,
+`scripts/bootstrap.mjs`, `scripts/lib/db-url.mjs`, `scripts/db-test.mjs`,
+`scripts/sql-arity-check.py`,
+`src/data/bootstrap/opening-warehouse.test.ts`, `package.json`,
+`docs/CURRENT-STATE.md`
+
+**Architecture changes:** none, but note one structural change inside the
+database: `private.boa_bar_post_movement` is now the sole writer of the ledger and
+its projection. That is consistent with ADR-013 rather than a change to it.
+
+**Recommended next:** the three commands under "Blockers needing a human" — they
+are now the only thing standing between this repository and its first verified
+behaviour.
 
 ### Session — 28 August 2026 (third) · Claude
 
