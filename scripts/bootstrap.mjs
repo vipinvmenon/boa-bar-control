@@ -100,9 +100,20 @@ try {
   } else {
     const users = await client.query('select id, email, created_at from auth.users order by created_at limit 5')
     if (users.rowCount === 0) {
+      // The magic-link route needs the app configured, an email to arrive, and a
+      // link to be opened on this machine. The dashboard needs none of that, so it
+      // is named first — an earlier version of this message mentioned only the
+      // magic link and sent the operator down the slow path.
       fail(
         'No auth.users row exists, so there is nobody to make admin.',
-        'Sign in to the app once (magic link), then run this again.',
+        '',
+        'Fastest route, no email needed:',
+        '  Supabase dashboard -> Authentication -> Users -> Add user',
+        '  Use your own email address and TICK "Auto Confirm User".',
+        '',
+        'Then run this again:',
+        '  node scripts/bootstrap.mjs',
+        '',
         'Nothing has been changed.',
       )
     }
