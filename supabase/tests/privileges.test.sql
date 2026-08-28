@@ -11,7 +11,7 @@
 begin;
 create extension if not exists pgtap;
 
-select plan(52);
+select plan(54);
 
 -- ---------------------------------------------------------------------------
 -- BAR-122 — anon holds nothing at all on any bar table.
@@ -129,6 +129,18 @@ select function_privs_are('private', 'boa_bar_reject_mutation', array[]::text[],
 -- grant every policy errors at query time (BAR-012). Not by anon.
 select function_privs_are('private', 'boa_bar_has_role', array['uuid','public.boa_bar_role[]'], 'anon', '{}'::text[], 'anon cannot probe role membership');
 select function_privs_are('private', 'boa_bar_has_role', array['uuid','public.boa_bar_role[]'], 'authenticated', '{EXECUTE}'::text[], 'policies can resolve role membership');
+
+-- ---------------------------------------------------------------------------
+-- Functions called from an RLS POLICY need EXECUTE for the QUERYING role.
+-- ---------------------------------------------------------------------------
+-- A policy is evaluated as the querying role, not as the table owner, so a
+-- `revoke all` on a function a policy calls is not hardening — it is an outage.
+-- This has now happened twice: BAR-012 for boa_bar_has_role, and BAR-161 for
+-- boa_bar_is_blinded, which shipped to the database and broke every
+-- movement_line read until 202608280008. Both are asserted here so a third
+-- occurrence fails the suite instead of reaching production.
+select function_privs_are('private', 'boa_bar_is_blinded', array['uuid','uuid'], 'authenticated', '{EXECUTE}'::text[], 'the movement_line policy can resolve the blind predicate');
+select function_privs_are('private', 'boa_bar_is_blinded', array['uuid','uuid'], 'anon', '{}'::text[], 'anon cannot probe the blind predicate');
 
 select * from finish();
 rollback;
