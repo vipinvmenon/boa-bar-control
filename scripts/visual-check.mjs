@@ -37,7 +37,17 @@ const SCREENS = [
   { key: 'warehouse', label: 'WAREHOUSE', route: '/warehouse' },
   { key: 'sku', label: 'SKU LEDGER', route: null },
   { key: 'issue', label: 'ISSUE STOCK', route: '/issue' },
-  { key: 'review', label: 'REVIEW ISSUE', route: '/issue/review' },
+  // The review screen requires an explicit draft and refuses to invent one: reached
+  // bare it renders "NO ISSUE TO REVIEW", which is identical under both fixture sets
+  // and so reads to this gate as a hardcoded screen. The draft below is how the
+  // screen is actually reached, and its ids exist in BOTH fixture variants (variant
+  // b renames bars and products but keeps their ids), so the two renders still
+  // differ and the derivation check remains meaningful.
+  {
+    key: 'review',
+    label: 'REVIEW ISSUE',
+    route: '/issue/review?fromLocationId=warehouse&toLocationId=bar-3&skuId=kf&containers=36&unit=container',
+  },
   { key: 'docket', label: 'DOCKET CREATED', route: '/dockets/D-0184' },
   { key: 'bars', label: 'BARS', route: '/bars' },
   { key: 'bar', label: 'BAR 3', route: '/bars/bar-3' },

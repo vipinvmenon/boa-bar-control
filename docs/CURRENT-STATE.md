@@ -240,7 +240,7 @@ States are defined once in the **Status key** above.
 | --- | --- | --- | --- |
 | BAR-049 | `warehouse` from the data layer | `[x]` | `c4728ad` — category groups, totals and rows all derived; gate passes both fixture states |
 | BAR-050 | `sku` screen — SKU ledger | `[ ]` | Screen missing. Warehouse rows have nowhere to navigate |
-| BAR-051 | `issue` with case/bottle unit switch | `[x]` | Rebuilt 28 Aug — exact design composition, repository-backed full SKU/destination options, case↔container equivalence, bounded design presets and warehouse-after. The validated draft carries action/source/destination/SKU/containers to Review; browser-driven through to Docket |
+| BAR-051 | `issue` with case/bottle unit switch | `[x]` | Rebuilt by Codex 28 Aug; **reviewed and three defects fixed** the same day. Presets, steps, the minimum clamp and the equivalence strings were checked against design-script.jsx:216-241 and match exactly. Verified by driving the browser end to end: /issue -> /issue/review -> /dockets/D-0184, with `1.50 cases · 650 ml · 23.4 L` reproducing the design's own formula |
 | BAR-052 | `review` screen | `[x]` | `c987c24` — derives cases, litres and warehouse-after from the repository |
 | BAR-053 | Docket persistence | `[~]` | Both creation and acceptance now call their services through the durable outbox, and posted creation navigates by the server-minted docket number. The live create path remains unexercised because `auth.users` is still empty; behavioural database coverage is BAR-030 |
 | BAR-054 | `docket` screen with QR | `[x]` | `c987c24` |
@@ -681,6 +681,60 @@ affected.
 the case/bottle unit switch. It is the last thing standing between the custody
 chain and a complete write path, and it also removes the largest remaining block of
 fixture literals (`src/features/screens.tsx`).
+
+### Session — 28 August 2026 (sixth) · Claude — review of Codex's BAR-051
+
+**Codex's work is good and its documentation was honest.** It did not overclaim:
+it recorded the live create path as unexercised, and its design-fact claims
+(presets `[1,2,4,6]` / `[24,48,96,144]`, step +1 / +6, the minimum clamp) all check
+out against `design-script.jsx:216-241`. Gates were green on arrival: typecheck,
+lint, 114 tests, build, and the fidelity gate at 0 hardcoded / 0 errored.
+
+**Three defects found by review and by driving the browser, all now fixed.**
+
+1. **`/issue/review` invented a draft and offered to post it.** Reached without
+   search params — a stale bookmark, a shared link, a back-navigation — the screen
+   fell back to `defaultDestinationId`, `defaultProductId` and a computed quantity,
+   rendering `48 × KINGFISHER` with the create button **enabled**. It would have
+   posted a real ledger movement nobody selected. The worst of the three, because
+   it is a write rather than a display. A picker may default; a confirmation step
+   that writes to the ledger may not. Now shows an explicit "NO ISSUE TO REVIEW"
+   state.
+
+2. **The quantity stepper lost taps.** `changeQuantity` computed from the
+   render-scoped `containers`, so two taps inside one React batch both read the
+   same figure and only one applied: four rapid taps on minus moved 42 to 36
+   instead of 42 to 18. Someone tapping quickly to reach six cases would have
+   issued the wrong quantity, with the docket agreeing with the mistake. Now a
+   functional update.
+
+3. **`caseCountLabel` deviated from the design's formula.** It stripped the
+   trailing zero, so 36 bottles read `1.5 cases` where the design's own expression
+   — `(bottles / 24).toFixed(2).replace(/\.00$/, '')` — yields `1.50 cases`. A
+   test had codified the deviation. Non-negotiable 5; the design's inconsistency
+   (its hand-written catalogue string says `1.5`) is not licence to choose.
+
+**One consequence worth recording.** Fixing defect 1 made the fidelity gate report
+`review` as hardcoded, because the gate visited the route bare and got the
+identical empty state under both fixture sets. That was the gate being right about
+what it saw: the screen's entry contract had changed. The gate's route now carries
+a draft whose ids exist in both fixture variants, and the count is back to 15
+reading the data layer, 0 hardcoded.
+
+**Still true after this review:** no live read and no live write has executed.
+`auth.users` is empty, so the fixture path is all that has been exercised. In
+fixture mode the docket screen shows the design's 48 after issuing 36, because the
+fixture commands deliberately record nothing — correct, and stated in
+`fixture-repository.ts`, but worth knowing before reading a demo as evidence.
+
+**Files changed by this review:** `src/domain/units.ts`,
+`src/domain/units.test.ts`, `src/screens/issue/IssueScreen.tsx`,
+`src/screens/custody/ReviewScreen.tsx`, `scripts/visual-check.mjs`,
+`docs/CURRENT-STATE.md`
+
+**Recommended next:** unchanged — BAR-082 (a count-submit RPC), then BAR-161. And
+the one thing no agent can do: create an `auth.users` row and run
+`node scripts/bootstrap.mjs`.
 
 ### Session — 28 August 2026 (fifth) · Claude
 

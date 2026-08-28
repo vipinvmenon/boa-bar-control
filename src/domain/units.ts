@@ -27,6 +27,19 @@ export function issueStep(unit: IssueUnit, unitsPerCase: number): number {
   return unit === 'case' ? unitsPerCase : Math.max(1, Math.floor(unitsPerCase / 4))
 }
 
+/**
+ * Cases, as the design writes them.
+ *
+ * The formula is transcribed from design-script.jsx:222 and :241 —
+ * `(bottles / 24).toFixed(2).replace(/\.00$/, '')` — and the two decimals are
+ * deliberate: 36 bottles reads `1.50 cases`, not `1.5 cases`.
+ *
+ * A stripped trailing zero looks tidier and was what this function did first, but
+ * it is a visual deviation from the approved design (non-negotiable 5), and the
+ * design's own inconsistency is not licence to pick: the warehouse catalogue's
+ * sample data says `1.5 cases` because it is a hand-written string, while every
+ * figure the issue and review screens COMPUTE goes through this formula.
+ */
 export function caseCountLabel(containers: number, unitsPerCase: number): string {
-  return (containers / unitsPerCase).toFixed(2).replace(/\.00$/, '').replace(/0$/, '')
+  return (containers / unitsPerCase).toFixed(2).replace(/\.00$/, '')
 }

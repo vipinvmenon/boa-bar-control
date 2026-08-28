@@ -65,8 +65,20 @@ export function IssueScreen() {
     }
   }
 
+  /**
+   * Functional update, not `containers + step`.
+   *
+   * `containers` is a render-scoped value, so two taps inside one React batch both
+   * computed from the same figure and only one of them applied: four rapid taps on
+   * the minus button moved 42 to 36 instead of 42 to 18. A crew member holding the
+   * button down to reach 6 cases would have landed somewhere lower and issued the
+   * wrong quantity, with the docket agreeing with the mistake.
+   */
   const changeQuantity = (direction: -1 | 1) => {
-    setChosenContainers(Math.max(minimum, Math.min(maximum, containers + direction * step)))
+    setChosenContainers((previous) => {
+      const current = previous ?? initialContainers(product.unitsPerCase, product.warehouseContainers)
+      return Math.max(minimum, Math.min(maximum, current + direction * step))
+    })
   }
 
   const chooseNextDestination = () => {

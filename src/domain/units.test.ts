@@ -21,9 +21,13 @@ describe('issue unit conversion', () => {
     expect(issueStep('case', 24)).toBe(24)
   })
 
-  it('formats exact and fractional cases without trailing zeroes', () => {
+  it("formats cases with the design's own formula, two decimals and all", () => {
+    // design-script.jsx:222 — `(bottles / 24).toFixed(2).replace(/\.00$/, '')`.
+    // A whole number loses its decimals; a fraction keeps both digits. `1.5` was
+    // what this returned first, and it is a visual deviation (non-negotiable 5).
     expect(caseCountLabel(48, 24)).toBe('2')
-    expect(caseCountLabel(36, 24)).toBe('1.5')
+    expect(caseCountLabel(36, 24)).toBe('1.50')
     expect(caseCountLabel(25, 24)).toBe('1.04')
+    expect(caseCountLabel(12, 24)).toBe('0.50')
   })
 })

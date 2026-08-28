@@ -23,16 +23,27 @@ export function ReviewScreen() {
   const [fallbackActionId] = useState(() => crypto.randomUUID())
 
   const options = issue.data
+
+  /**
+   * The draft is taken from the URL and NOT defaulted.
+   *
+   * This screen previously fell back to `defaultDestinationId`, `defaultProductId`
+   * and a computed quantity when the search was empty — so opening `/issue/review`
+   * directly, from a stale bookmark or a shared link, rendered `48 × KINGFISHER`
+   * with the create button enabled and would have posted a real ledger movement
+   * nobody selected. A picker may default; a confirmation step that writes to the
+   * ledger may not. If the draft is not explicit, there is nothing to confirm.
+   */
   const destination = options?.destinations.find((item) => item.id === search.toLocationId)
-    ?? options?.destinations.find((item) => item.id === options.defaultDestinationId)
   const product = options?.products.find((item) => item.skuId === search.skuId)
-    ?? options?.products.find((item) => item.skuId === options.defaultProductId)
-  const containers = search.containers
-    ?? (product ? Math.min(product.unitsPerCase * 2, product.warehouseContainers) : 0)
+  const containers = search.containers ?? 0
+  const hasDraft = Boolean(destination && product && containers > 0)
 
   const submit = useRepositoryMutation((repository, input: void) => {
     void input
-    if (!options || !destination || !product) throw new Error('The issue draft is still loading')
+    if (!options || !destination || !product || containers <= 0) {
+      throw new Error('There is no issue draft to confirm')
+    }
     return issueStock({
       repository,
       actionId: search.actionId ?? fallbackActionId,
@@ -42,13 +53,34 @@ export function ReviewScreen() {
     })
   })
 
-  if (!options || !destination || !product) {
+  if (!options) {
     return (
       <div className="flow-screen">
         <FlowHeader title="Review issue" onBack={() => void navigate({ to: '/issue', search })} />
         <div className="flow-body">
           <p className="section-empty">Loading issue draft…</p>
         </div>
+      </div>
+    )
+  }
+
+  // Reached without a draft. Says so, and offers the only sensible way forward,
+  // rather than presenting an invented issue as though somebody had chosen it.
+  if (!hasDraft || !destination || !product) {
+    return (
+      <div className="flow-screen">
+        <FlowHeader title="Review issue" onBack={() => void navigate({ to: '/issue' })} />
+        <div className="flow-body">
+          <Advisory tone="gold">
+            NO ISSUE TO REVIEW. Choose a destination, a product and a quantity first — this screen
+            confirms an issue, it does not invent one.
+          </Advisory>
+        </div>
+        <FlowFooter>
+          <button className="flow-cta" onClick={() => void navigate({ to: '/issue' })}>
+            Start an issue
+          </button>
+        </FlowFooter>
       </div>
     )
   }
