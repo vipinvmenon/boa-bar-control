@@ -113,7 +113,30 @@ understated by exactly what Bar 3's is overstated. Phase 2 is "accept, count
 the reason vocabulary matches `references/design-source/`, and the fidelity gate
 counts `waste` as reading the data layer.
 
-### 4. BAR-161 / BAR-083 — blind counting enforced by the database
+### 4. BAR-136 or a docket list, plus BAR-146 — a second incoming docket is unreachable
+
+Found 28 August while checking whether the custody chain is actually complete. It
+is not.
+
+`listBars` correctly reports `2 DOCKETS INCOMING`, but `barDetail` surfaces only
+the **first** (`live-repository.ts:590` uses `.find`), there is no `/dockets` list
+route, and there is no QR scanner (BAR-136). So when two dockets are issued to one
+bar — which will happen on the night — the second cannot be opened, cannot be
+accepted, and its stock sits in `in_transit`, which no screen reads (BAR-146).
+
+That is stock which has left the warehouse and can never arrive: exactly the case
+specification §5 exists to resolve, and it is worse than not shipping the feature,
+because the ledger says the stock exists.
+
+Either build the QR scanner (the design's own mechanism — `vercel.json` already
+grants camera permission for a capability that was never built) or add a plain
+list of dockets awaiting acceptance at this bar. **A list is the smaller, safer
+choice** and does not depend on a camera working in a dark tent.
+
+**Done when:** two dockets issued to one bar can both be opened and accepted, and
+`in_transit` stock is visible somewhere in the app.
+
+### 5. BAR-161 / BAR-083 — blind counting enforced by the database
 
 **These two task ids are the same work.** BAR-083 is the general requirement;
 BAR-161 is the concrete hole: `boa_bar_inventory_snapshot` cross-joins every
@@ -126,7 +149,7 @@ enforce this.
 they hold an open count session on, proven by a pgTAP test that connects as a
 role.
 
-### 5. BAR-145 — a way to fix a bad count during the event
+### 6. BAR-145 — a way to fix a bad count during the event
 
 A crew member types 110 instead of 11 and submits. There is no edit, no recount,
 no void, no adjustment. The choice is a knowingly false record or abandoning the
@@ -135,7 +158,7 @@ app mid-event.
 **Done when:** a submitted count can be superseded by a recount, the original
 remains in the ledger, and the variance report uses the later one.
 
-### 6. BAR-060 — a receipt screen
+### 7. BAR-060 — a receipt screen
 
 Phase 1 is "receipt + issue + docket". Issue and docket are done; receipt is not.
 `boa_bar_open_stock` covers the *opening* load via the bootstrap script, but a
@@ -145,7 +168,7 @@ password.
 **Done when:** a warehouse user can record a delivery against an invoice number
 from the app, and it lands as a `receipt` movement.
 
-### 7. BAR-092 — paper fallback sheets
+### 8. BAR-092 — paper fallback sheets
 
 Phase 2 says "Paper sheets printed", and the whole fallback plan is paper counts.
 There is no print view anywhere in the app.
@@ -153,7 +176,7 @@ There is no print view anywhere in the app.
 **Done when:** count sheets and docket sheets print legibly from the app at A4,
 with SKU, location, and space for two names — and **empties** (see 9).
 
-### 8. BAR-143 + BAR-144 + BAR-137 — twenty temporary staff can actually sign in
+### 9. BAR-143 + BAR-144 + BAR-137 — twenty temporary staff can actually sign in
 
 Onboarding is email magic-link only, on congested cellular at load-in, for staff
 many of whom have no work email. Roles cannot be granted from inside the app, so
@@ -164,14 +187,14 @@ are short-lived on shared phones.
 without a database password, and a shared phone survives a shift without
 re-authenticating.
 
-### 9. BAR-148 + BAR-160 — empties
+### 10. BAR-148 + BAR-160 — empties
 
 A physical observation that exists only between 23:00 and 03:00 on 10 October and
 cannot be reconstructed afterwards. Both the excise return and the STOK settlement
 have a line for it. **BAR-160 is a decision only the user can make**, and it must
 be made before the paper sheets are printed.
 
-### 10. Offline hardening — BAR-072, BAR-066, BAR-067, BAR-068, BAR-071
+### 11. Offline hardening — BAR-072, BAR-066, BAR-067, BAR-068, BAR-071
 
 The outbox is now durable, ordered, idempotent, and stops on an auth failure. What
 remains: dockets and counts live only in React memory so a reload mid-count loses
@@ -184,7 +207,7 @@ Placed here rather than higher because a festival network mostly works and the
 outbox already protects the writes that matter. Move it up if load-in testing shows
 the venue has no signal.
 
-### 11. BAR-164 — delete the legacy path
+### 12. BAR-164 — delete the legacy path
 
 `src/lib/live-repository.ts` and `demo-store`'s snapshot loader are a second, older
 live data path. It is the remaining half of BAR-133 and of BAR-071. Do this once
@@ -214,6 +237,8 @@ is satisfied by "it should work".
 - [ ] The five figures on the home screen reconcile against a hand-summed ledger
 - [ ] A close-out count taken after midnight carries the event's business date
 - [ ] Two named people appear on every docket; no docket accepted by its issuer
+- [ ] Two dockets issued to the same bar can both be found and accepted
+- [ ] Stock sitting in `in_transit` is visible on some screen
 - [ ] A counting user's device cannot fetch the expected position for their bar
 - [ ] Paper count sheets and docket sheets print, including empties
 - [ ] Twenty staff can be onboarded and given roles without a database password

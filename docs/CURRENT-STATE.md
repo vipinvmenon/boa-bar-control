@@ -682,6 +682,50 @@ the case/bottle unit switch. It is the last thing standing between the custody
 chain and a complete write path, and it also removes the largest remaining block of
 fixture literals (`src/features/screens.tsx`).
 
+### Session — 28 August 2026 (seventh) · Claude — handover
+
+Last Claude session on this project. Development continues in Codex and Cursor.
+
+**Three instruction surfaces contained a dead instruction.**
+`.cursor/rules/30-data.mdc` told Cursor to hand migrations to Claude,
+`.cursor/rules/00-truth.mdc` gave architecture, schema, sync and the ledger to
+Claude, and `CLAUDE.md`'s role section allocated work to it. Following any of them
+after today means the work simply stops. All three now say the approval gate is the
+**user**, and that an accepted ADR remains the user's to change.
+
+**Added `docs/RELEASE-1.md`.** Release 1 is Phases 1–2 of specification §15,
+quoted rather than paraphrased, on the specification's own reasoning: "Phases 1–2
+with paper counts and a manual POS reconciliation the following week still produces
+a defensible audit. Nothing else does." It names roughly 40 tasks cut in the spec's
+own cut order, thirteen blocking items in judgement order with acceptance criteria
+each, the user-only items, and a release-ready checklist where every line is
+checkable.
+
+**One release blocker found while writing it, not previously recorded.** The
+custody chain is not complete: `listBars` reports `2 DOCKETS INCOMING`, but
+`barDetail` surfaces only the first (`.find`), there is no `/dockets` list route
+and no QR scanner. A second docket issued to the same bar cannot be opened or
+accepted, and its stock sits in `in_transit`, which no screen reads. That is stock
+which has left the warehouse and can never arrive — worse than not shipping the
+feature, because the ledger says it exists. Recorded as item 4 in RELEASE-1;
+a plain awaiting-dockets list is the smaller fix and does not need a camera to work
+in a dark tent.
+
+**State at handover, verified:** 7 migrations applied, 63 pgTAP assertions green,
+1 venue / 9 locations / 11 SKUs, 114 unit tests, typecheck, lint, build,
+`check:sql`, and the fidelity gate at 16 routes, 15 reading the data layer,
+**0 hardcoded, 0 errored**. Working tree clean, everything pushed.
+
+**Still not verified, and the largest unknown in the repository:** `auth.users` is
+empty, so no live read and no live write has ever executed. Fixture-mode success is
+not evidence the live path works.
+
+**Files changed:** `docs/RELEASE-1.md` (new), `AGENTS.md`,
+`.cursor/rules/00-truth.mdc`, `.cursor/rules/30-data.mdc`, `CLAUDE.md`,
+`docs/CURRENT-STATE.md`
+
+**Recommended next:** `docs/RELEASE-1.md` section 4, item 0, then item 1.
+
 ### Session — 28 August 2026 (sixth) · Claude — review of Codex's BAR-051
 
 **Codex's work is good and its documentation was honest.** It did not overclaim:
