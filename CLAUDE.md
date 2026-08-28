@@ -126,6 +126,9 @@ supabase/
 
 ## Current state, in one line
 
-44 days to the event. The schema is salvageable but has no write policies and has
-never been executed. The UI is a stub: 11 of 22 screens missing, 11 to rewrite.
-The domain layer is dead code. Start with `docs/CURRENT-STATE.md`.
+The event is 10 October 2026. The schema is executed and locked down, and writes
+go through command RPCs. 16 of 22 screens are built and read the data layer;
+6 are missing and 2 need rewriting. The live repository exists but has never run
+a query — the database holds no venue, SKU or membership, so nothing has been
+proven against real data, and no service calls the write RPCs yet. Start with
+`docs/CURRENT-STATE.md`; do not trust this paragraph over it.

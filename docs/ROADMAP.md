@@ -3,7 +3,9 @@
 Status: canonical. Agents implement from this file; they do not decide what to
 build next.
 
-**Event: Saturday 10 October 2026.** Today: 27 August 2026 — **44 days out.**
+**Event: Saturday 10 October 2026.** Last reviewed: 28 August 2026 — **43 days out.**
+Count the days from today's date rather than trusting this line; a stale countdown
+in a document is how this project acquired its first set of false claims.
 
 Live status per task lives in [CURRENT-STATE.md](CURRENT-STATE.md). This file
 defines the plan and the acceptance criteria; that file records where each task
@@ -89,7 +91,7 @@ design** — do not start any of it while an M1–M5 task is open. Paper fallbac
 (BAR-092) is promoted to a blocker and is **never** cut: it is the thing that
 makes cutting everything else survivable.
 
-Show-ready is not the right frame at 44 days. **A defensible audit is**, and the
+Show-ready is not the right frame at six weeks out. **A defensible audit is**, and the
 specification says so itself.
 
 ---
@@ -139,6 +141,8 @@ run once.** Do BAR-031 first, not last.
 | BAR-155 | **Command RPCs as the only write path** | claude | Per ADR-013 (accepted). One `SECURITY DEFINER` RPC per use case, each authorising including location scope, validating against the domain rules, writing all affected tables in one transaction, and idempotent on a client key. Order: docket create/accept (unblocks BAR-053 and the whole custody chain), then count submit, then POS post. This is now the largest single piece of M1 |
 | BAR-156 | Interim opening-stock bootstrap | claude | A script or RPC that loads the warehouse from a SKU list, so the system can be started before BAR-060's receipt screen exists. Unblocks every downstream milestone |
 | BAR-011 | **Verify** no table-level write grants exist | claude | Per ADR-013, `authenticated` holds no INSERT/UPDATE/DELETE/TRUNCATE on any `boa_bar_` table. `supabase/tests/privileges.test.sql` asserts this and fails if a future migration grants one. **Done as a test, not a feature** — the write path itself is BAR-155 |
+| BAR-161 | **Location-scope `boa_bar_inventory_snapshot`** | claude | **Blind counting is currently a UI convention, not a control.** The snapshot RPC cross-joins every location against every SKU and authorises on "holds any role at this venue", so a bar lead's own device can read the expected position for the bar they are about to count — one REST call, no UI involved. Non-negotiable 3 says the database enforces this. Scope the RPC by the caller's membership location, and deny the location of any count session assigned to them that is still `draft`. Found 28 August while building the live read path |
+| BAR-163 | Count witness on the count session | claude | `boa_bar_count_session` has `assigned_to` and `reviewed_by` but no witness. `reviewed_by` is the manager's later review, which is a different person doing a different thing, so the specification's two-person seal — and the second name the design prints beside the counter — has nowhere to be stored. The live repository leaves `witnessedBy` empty rather than presenting the reviewer as a witness |
 | BAR-012 | `GRANT USAGE ON SCHEMA private TO authenticated` | claude | A policy-exercising test passes as `authenticated` (currently every policy would error) |
 | BAR-013 | Harden ledger immutability | claude | Triggers `ENABLE ALWAYS`; statement-level TRUNCATE guard; `FORCE ROW LEVEL SECURITY`; tests attempt UPDATE, DELETE and TRUNCATE and assert failure |
 | BAR-014 | `boa_bar_v_position` sums the ledger | claude | View derives position from `movement_line`, not from the projection; a test asserts equality with the projection |
@@ -183,6 +187,7 @@ find-and-replace, a repository boundary is not.
 | Task | Title | Owner | Acceptance |
 | --- | --- | --- | --- |
 | BAR-157 | Per-location position model | claude | The scalar `warehouse` / `bar3` fields are replaced by a position keyed by `locationId`. The current model discards seven of the nine locations that exist in the schema and the design |
+| BAR-162 | Par levels per SKU per location | claude | No column holds a par level or reorder point, so two things the design displays cannot be produced from the database: the home screen's CRITICAL run-out alert, and the `LOW STOCK` status on the bars list. The live repository omits both rather than colouring a bar red on a guessed threshold. The run-out *time* additionally needs a depletion rate, which needs POS sales (M6) — the par level alone restores the status and the "below par" alert |
 | BAR-036 | Restore the radius vocabulary | codex | **Unblocked by ADR-009 (accepted 27 Aug).** Flow screens use the design's soft 12/14/15/16/18 px and 999 px pills. Ritual's sharp 2/4/8 px tokens do not apply to the app. Mechanical — fold into the M0 token pass |
 | BAR-037 | Restore glass material and ambient field | codex | `backdrop-filter` on cards, bands and nav; **all three** ambient gradient layers present; live dot pulses |
 | BAR-038 | Component primitives | codex | Panel, Chip, Pill, Stepper, StatusDot, Metric, SectionLabel, FooterCTA built from design values and used by every screen |
@@ -194,6 +199,7 @@ find-and-replace, a repository boundary is not.
 | BAR-044 | Application service layer | claude | `services/` holds the use cases; no screen imports Supabase or Dexie |
 | BAR-045 | Remove all fixture data from screen files | claude | No literal SKU, stock figure or bar name in `src/screens/`; a lint rule or test enforces it (ADR-010) |
 | BAR-046 | Wire the domain layer | claude | Every function in `src/domain/` has a caller in `services/`; dead-code check passes |
+| BAR-164 | Delete the legacy parallel live path | claude | `src/lib/live-repository.ts` and `demo-store`'s own snapshot loader are a second, older live data path that hardcodes `bar_3` and sets `backendMode: 'live'` independently of which repository is actually serving. Two live paths mean two answers to "what is the stock", and the older one is the wrong answer. Delete it once the screens still reading `demo-store` read the repository instead |
 | BAR-047 | Error boundary and not-found route | codex | An uncaught render error shows a recoverable screen, not a blank app |
 | BAR-048 | Zod at every boundary | codex | RPC responses, QR payloads, POS rows and local-store reads all validated |
 | BAR-129 | Bounded quantity inputs | codex | Every Stepper takes a max: cannot issue more than held, cannot accept more than issued. An over-receipt is not classified as a shortfall |

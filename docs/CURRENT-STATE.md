@@ -1,6 +1,6 @@
 # BOA Bar Control — Current State
 
-**Last updated: 27 August 2026 (M0 in progress)** · Event: 10 October 2026 — **44 days out**
+**Last updated: 28 August 2026 (M0 in progress)** · Event: 10 October 2026 — **43 days out**
 
 This is the single handoff record. Read it first, before writing any code.
 
@@ -17,7 +17,7 @@ This is the single handoff record. Read it first, before writing any code.
 > reach 10 October with no way to enter opening stock. The reprioritised order is
 > in [ROADMAP.md](ROADMAP.md); read its severity note first.
 >
-> Show-ready is not the right frame at 44 days. **A defensible audit is** — and
+> Show-ready is not the right frame at six weeks out. **A defensible audit is** — and
 > specification §15 says so: Phases 1–2 plus paper counts and a manual POS
 > reconciliation the following week still produce one. Nothing else does.
 
@@ -289,10 +289,11 @@ original audit.
 | 10 | **Onboarding is email magic-link only** — ~20 temporary staff, many without a work email, on congested cellular at load-in. Those who installed the PWA find the installed app still signed out while the browser tab is in | BAR-143 |
 | 11 | **Nobody can change a role from inside the app.** When the manager leaves at 23:00, variance, reports and count sign-off leave with them | BAR-144 |
 | 12 | **`business_date` is the IST calendar date**, so the festival night splits at midnight and the identity cannot close for the event. A close-out count at 01:30 belongs to 10 October | BAR-123 |
-| 13 | **Nothing resolves a user id to a person's name**, so chain of custody renders as "Authenticated staff" and the issuing half of every live docket is the literal string `'Chandan'` | BAR-124 |
+| 13 | ~~**Nothing resolves a user id to a person's name**~~ **Addressed 28 Aug, unapplied.** `boa_bar_person` plus an append-only name history and `boa_bar_set_person_name` are written in `supabase/migrations/202608280001_person_names.sql`. The migration has **not been executed** — until it is, this row still stands | BAR-124 |
 | 14 | **Empties are never counted** and cannot be reconstructed afterwards. This is a physical observation that exists only between 23:00 and 03:00 on 10 October, and both the excise return and the STOK settlement have a line for it | BAR-148 |
 | 15 | **There is no QR scanner anywhere in the app** — so the acceptance side of two-party custody has no input device, while `vercel.json` already grants camera permission for the capability that was never built | BAR-136 |
 | 16 | **No alert reaches anyone.** Every alert is passive, existing only while someone holds the phone on the home screen. The warehouse never learns Bar 3 is 26 minutes from dry, and the bar has no way to ask | BAR-149 |
+| 17 | **Blind counting is not enforced by the database.** `boa_bar_inventory_snapshot` cross-joins every location against every SKU and authorises on "holds any role at this venue", so a bar lead's own device can fetch the expected position for the bar it is about to count — one REST call, no UI involved. Non-negotiable 3 requires the database to enforce this, and the UI's careful omission of expected figures is worth nothing while the API hands them over. Found 28 August while building the live read path | BAR-161 |
 
 ## Resolved — BAR-011 vs BAR-155
 
@@ -351,7 +352,7 @@ none exist" and the real work moves to BAR-155.
    screenshot on 27 August. Settings → Database → Reset database password.
 4. **BAR-140 — opening stock.** Decide how the warehouse gets loaded on the day:
    a receipt flow, an opening count, or a seeded import.
-5. **Open decision 5 — the excise return template.** 44 days out, unowned and
+5. **Open decision 5 — the excise return template.** Six weeks out, unowned and
    undated. The return's category vocabulary and its treatment of empties dictate
    what must be physically observed on the night. A wrong category set is
    backfillable per SKU; a missing physical observation is not.
@@ -416,6 +417,95 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 28 August 2026 · Claude
+
+**Completed:**
+
+- **BAR-124 — person-name resolution.** `supabase/migrations/202608280001_person_names.sql`:
+  `boa_bar_person` (venue-scoped `display_name`, generated `short_name` because
+  the design renders first names and two screens must not split the string
+  differently), an append-only `boa_bar_person_name_history` with the immutability
+  trigger, and `boa_bar_set_person_name` — you may name yourself with any
+  membership, only a manager may name anyone else, and the target must hold an
+  active membership at that venue. No write grant on either table.
+- **BAR-042 — the live repository.** `src/data/live/` — `format.ts` (the design's
+  display vocabulary, pure), `rows.ts` (explicit column lists and the `unwrap`
+  guard), `live-repository.ts` (all thirteen interface methods).
+  `RepositoryProvider` now selects live when a configured client, a signed-in user
+  and a loaded membership are all present. The fixture repository is still
+  unreachable as a fallback from a failed live read — a live failure throws.
+- **`AppShell` now derives DEMO/LIVE from `repository.kind`**, not from
+  `demo-store.backendMode`. `backendMode` flips to `live` when its own legacy
+  snapshot load succeeds, which is a different question from which repository is
+  answering reads, and it would have labelled fixture-served screens as live.
+- Partial **BAR-046**: `varianceBand` and the newly exported `toleranceFor` now
+  have a live caller. They were dead code.
+
+**Verified:** `typecheck`, `lint`, `test` (50 tests, 38 of them new), `build` all
+pass. `test:visual` unchanged and stable — 16 routes, 15 reading the data layer,
+**0 hardcoded, 0 errored**, 6 missing.
+
+**NOT verified — read this before trusting anything above.** The live repository
+has never executed a single query. The migration is unapplied, and the database
+holds no venue, no SKU, no location and no membership, so there is nothing for it
+to read and no way to exercise it. It is typechecked, linted and its pure
+formatting rules are tested against every quantity the design renders — that is
+all. Treat every live read as unproven until a seeded venue exists (BAR-156).
+
+**Findings — five things the schema cannot produce that the design displays.**
+Each is omitted in live mode rather than approximated:
+
+1. **No par level or reorder point** per SKU per location. This removes the home
+   screen's CRITICAL run-out alert (`Kingfisher low · 12 LEFT · RUN-OUT ~20:10`)
+   and the `LOW STOCK` status on the bars list. A bar reads HEALTHY or COUNT DUE
+   and never LOW STOCK. → **BAR-162**
+2. **No count witness column.** The specification's two-person seal and the second
+   name the design prints have nowhere to be stored; `reviewed_by` is the
+   manager's later review, a different person doing a different thing.
+   `witnessedBy` is returned empty. → **BAR-163**
+3. **No device registry.** The design shows `BAR-3-01`; nothing issues or records
+   a device identity, so `deviceLabel` is the membership's location code and no
+   `-01` suffix is fabricated. Needed by BAR-137 for shared devices.
+4. **Throughput is unknowable until POS import.** Variance is specified as a
+   percentage of throughput, which means volume dispensed, and only `sale`
+   movements record dispensing. The live report therefore uses volume received
+   into the location over the window and labels itself
+   `% OF RECEIPTS (NO POS DATA)` so the denominator cannot be misread as sales.
+5. **Multi-line dockets have no design.** `boa_bar_docket_line` is correctly
+   many-to-one; the design's four custody screens show one product. Live
+   `custody()` displays the first line only. An open question, not a decision.
+
+**Also found:** two parallel live data paths now exist — the new repository and
+the older `src/lib/live-repository.ts` + `demo-store` snapshot loader, which
+hardcodes `bar_3`. Two paths mean two answers to "what is the stock". → **BAR-164**
+
+**Assumption needing the user's operating policy:** `COUNT_DUE_AFTER_MINUTES = 120`
+in `live-repository.ts`. The specification fixes the count *events* but never a
+maximum interval, and the design's sample data shows a bar last counted at 15:10
+flagged overdue at 19:43 — two hours reproduces that. It drives the COUNT DUE
+status, the overdue alert and its meter, so a wrong value sends crew to count
+bars that do not need counting.
+
+**Files changed:** `supabase/migrations/202608280001_person_names.sql`,
+`src/data/live/{format.ts,format.test.ts,rows.ts,live-repository.ts}`,
+`src/data/RepositoryProvider.tsx`, `src/lib/auth.tsx` (venue timezone),
+`src/app/AppShell.tsx`, `src/domain/inventory.ts` (export `toleranceFor`),
+`docs/ROADMAP.md` (BAR-161 through BAR-164), `docs/CURRENT-STATE.md`
+
+**Architecture changes:** none. No ADR added or altered.
+
+**Known issues:** everything under NOT verified above. `boa_bar_person` is empty,
+so every live name would render `UNNAMED` until someone is named. Six screens are
+still missing (`sku`, `mv`, `control`, `cowork`, `rep`, `reports`) and two need
+rewriting (`issue`, `waste`). No service calls the docket command RPCs yet, so
+the custody chain remains a walkthrough that records nothing.
+
+**Recommended next:** apply the migration, then **BAR-156** (seed a venue, its
+locations, its SKUs and a membership) — without it the live repository cannot be
+tested at all and everything above stays unproven. Then **BAR-161**, because
+blind counting is the product's core integrity control and it is currently
+unenforced.
 
 ### Session — 27 August 2026 (later) · Claude
 
