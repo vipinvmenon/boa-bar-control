@@ -273,9 +273,13 @@ export type CountLine = {
   partialHint: string
 }
 
+export type CountKind = 'opening_warehouse' | 'opening_bar' | 'mid_event' | 'close_out'
+
 export type CountSession = {
   /** BAR-133. The counted location's id, for the same reason as `Custody.toLocationId`. */
   locationId: string
+  /** Which count this is, for the submit command. */
+  countKind: CountKind
   locationName: string
   /** 'MID-EVENT COUNT' */
   kindLabel: string
@@ -385,6 +389,33 @@ export type WriteOutcome =
   | { status: 'posted'; docketId: string; docketNo: string; token?: string }
   | { status: 'queued'; outboxId: string }
 
+export type CountLineCommand = {
+  skuId: string
+  fullContainers: number
+  /** Millilitres in the open container, 0 when there is none. */
+  partialMl: number
+  /** The scale reading, kept as evidence where a partial was weighed. */
+  grossWeightG?: number
+}
+
+export type SubmitCountCommand = {
+  idempotencyKey: string
+  locationId: string
+  countKind: CountKind
+  lines: CountLineCommand[]
+}
+
+/**
+ * What submitting a count returns.
+ *
+ * Carries no expected figure and no variance, deliberately: the device that
+ * submitted a blind count must not learn the expected position from the reply
+ * (non-negotiable 3).
+ */
+export type CountWriteOutcome =
+  | { status: 'posted'; countSessionId: string; lines: number }
+  | { status: 'queued'; outboxId: string }
+
 // ---------------------------------------------------------------------------
 // The contract
 // ---------------------------------------------------------------------------
@@ -428,4 +459,10 @@ export interface Repository {
 
   /** The second named person takes custody, posting leg 2 (in_transit -> destination). */
   acceptDocket(command: AcceptDocketCommand): Promise<WriteOutcome>
+
+  /**
+   * Record a blind count. Creates the session, writes the observed lines and
+   * seals the ledger-derived expected position server-side (BAR-082/BAR-084).
+   */
+  submitCount(command: SubmitCountCommand): Promise<CountWriteOutcome>
 }

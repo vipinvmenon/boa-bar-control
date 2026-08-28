@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { caseCountLabel, containersFor, issuePresets, issueStep, quantityFor } from './units'
+import { caseCountLabel, containersFor, issuePresets, issueStep, partialToMl, quantityFor } from './units'
 
 describe('issue unit conversion', () => {
   it('reproduces the design default in both modes', () => {
@@ -29,5 +29,28 @@ describe('issue unit conversion', () => {
     expect(caseCountLabel(36, 24)).toBe('1.50')
     expect(caseCountLabel(25, 24)).toBe('1.04')
     expect(caseCountLabel(12, 24)).toBe('0.50')
+  })
+})
+
+describe('partialToMl', () => {
+  it('converts a keg reading from litres, because the ledger holds millilitres', () => {
+    // A keg read as `12` stored as 12 ml rather than 12,000 ml is a 1000x
+    // understatement on the largest container the venue has.
+    expect(partialToMl(12, 'litres')).toBe(12_000)
+    expect(partialToMl(0.5, 'litres')).toBe(500)
+  })
+
+  it('passes a weighed spirit reading through unchanged', () => {
+    expect(partialToMl(550, 'ml')).toBe(550)
+  })
+
+  it('treats a line with no partial as zero', () => {
+    expect(partialToMl(0, 'none')).toBe(0)
+    expect(partialToMl(-3, 'ml')).toBe(0)
+  })
+
+  it('never stores a fractional millilitre', () => {
+    expect(partialToMl(1.4, 'litres')).toBe(1_400)
+    expect(partialToMl(12.7, 'ml')).toBe(13)
   })
 })

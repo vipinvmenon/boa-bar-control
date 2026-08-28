@@ -36,9 +36,9 @@ import {
   selectDrainBatch,
   type OutboxEntryState,
 } from '../domain/outbox-policy'
-import { acceptDocketRpc, createDocketRpc, submitMovement } from './supabase'
+import { acceptDocketRpc, createDocketRpc, submitCountRpc, submitMovement } from './supabase'
 
-export type CommandKind = 'movement' | 'create_docket' | 'accept_docket'
+export type CommandKind = 'movement' | 'create_docket' | 'accept_docket' | 'submit_count'
 
 export type QueuedCommand = {
   id: string
@@ -104,6 +104,7 @@ const DISPATCH: Record<CommandKind, (payload: unknown) => Promise<unknown>> = {
   movement: submitMovement,
   create_docket: createDocketRpc,
   accept_docket: acceptDocketRpc,
+  submit_count: submitCountRpc,
 }
 
 function announce() {

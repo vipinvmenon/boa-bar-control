@@ -43,3 +43,17 @@ export function issueStep(unit: IssueUnit, unitsPerCase: number): number {
 export function caseCountLabel(containers: number, unitsPerCase: number): string {
   return (containers / unitsPerCase).toFixed(2).replace(/\.00$/, '')
 }
+
+/**
+ * The millilitres a partial-container reading represents.
+ *
+ * The count screen shows litres for a keg and millilitres for a weighed spirit,
+ * because that is what the meter and the scale report — but the ledger holds
+ * millilitres only. Converting in the screen put unit arithmetic in a component
+ * and risked a keg reading of `12` being stored as 12 ml rather than 12 litres,
+ * which is a 1000x understatement on the single largest container the venue has.
+ */
+export function partialToMl(reading: number, mode: 'none' | 'ml' | 'litres'): number {
+  if (reading <= 0) return 0
+  return mode === 'litres' ? Math.round(reading * 1000) : Math.round(reading)
+}

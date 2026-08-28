@@ -55,6 +55,13 @@ export async function acceptDocketRpc(payload: unknown) {
   return data
 }
 
+export async function submitCountRpc(payload: unknown) {
+  if (!supabase) throw new Error('Supabase is not configured')
+  const { data, error } = await supabase.rpc('boa_bar_submit_count', { p_payload: payload })
+  if (error) throw error
+  return data
+}
+
 export async function submitMovement(payload: unknown) {
   if (!supabase) throw new Error('Supabase is not configured')
   const { data, error } = await supabase.rpc('boa_bar_submit_movement', {

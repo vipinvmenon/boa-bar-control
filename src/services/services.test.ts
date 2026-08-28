@@ -10,6 +10,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { CreateDocketCommand, AcceptDocketCommand, Repository } from '../data/repository'
 import { issueStock } from './issue'
 import { acceptDocket } from './accept'
+import { submitCount } from './count'
 
 const ACTION = '3f1c9a52-8d4e-4b21-9f77-1c2b6d5a0e33'
 
@@ -185,5 +186,97 @@ describe('acceptDocket', () => {
     expect(repository.acceptDocket).toHaveBeenCalledWith(
       expect.objectContaining({ lines: [{ skuId: 'kf', containers: 0 }] }),
     )
+  })
+})
+
+describe('submitCount', () => {
+  const sheet = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({ skuId: `sku-${i}`, fullContainers: i, partialMl: 0 }))
+
+  function countStub() {
+    const submitCountFn = vi.fn(async () => ({
+      status: 'posted' as const,
+      countSessionId: 'cs-1',
+      lines: 3,
+    }))
+    return { submitCount: submitCountFn } as unknown as Repository & { submitCount: typeof submitCountFn }
+  }
+
+  const valid = {
+    actionId: ACTION,
+    locationId: 'bar-3',
+    countKind: 'mid_event' as const,
+    lines: sheet(3),
+    expectedLineCount: 3,
+  }
+
+  it('submits a complete sheet and passes the action id as the key', async () => {
+    const repository = countStub()
+    await submitCount({ repository, ...valid })
+    expect(repository.submitCount).toHaveBeenCalledWith(
+      expect.objectContaining({ idempotencyKey: ACTION, locationId: 'bar-3', countKind: 'mid_event' }),
+    )
+  })
+
+  it('REFUSES a partial count, because a missing line records as zero', async () => {
+    // The most damaging wrong number this system can produce: 12 of 18 lines
+    // submitted reports six SKUs as zero, and zero reads as "all of it is
+    // missing". Refused rather than warned about.
+    const repository = countStub()
+    await expect(
+      submitCount({ repository, ...valid, lines: sheet(2), expectedLineCount: 3 }),
+    ).rejects.toThrow(/2 of 3 lines/)
+    expect(repository.submitCount).not.toHaveBeenCalled()
+  })
+
+  it('rejects a negative counted quantity', async () => {
+    const repository = countStub()
+    await expect(
+      submitCount({
+        repository,
+        ...valid,
+        lines: [{ skuId: 'a', fullContainers: -1, partialMl: 0 }],
+        expectedLineCount: 1,
+      }),
+    ).rejects.toThrow(/cannot be negative/)
+  })
+
+  it('rejects a fractional container count — weigh the open one instead', async () => {
+    const repository = countStub()
+    await expect(
+      submitCount({
+        repository,
+        ...valid,
+        lines: [{ skuId: 'a', fullContainers: 2.5, partialMl: 0 }],
+        expectedLineCount: 1,
+      }),
+    ).rejects.toThrow(/whole/)
+  })
+
+  it('rejects the same product counted twice', async () => {
+    const repository = countStub()
+    await expect(
+      submitCount({
+        repository,
+        ...valid,
+        lines: [
+          { skuId: 'a', fullContainers: 1, partialMl: 0 },
+          { skuId: 'a', fullContainers: 2, partialMl: 0 },
+        ],
+        expectedLineCount: 2,
+      }),
+    ).rejects.toThrow(/counted twice/)
+  })
+
+  it('accepts a genuine zero — a bar that has run dry', async () => {
+    // Distinct from a missing line: zero counted is a real observation.
+    const repository = countStub()
+    await submitCount({
+      repository,
+      ...valid,
+      lines: [{ skuId: 'a', fullContainers: 0, partialMl: 0 }],
+      expectedLineCount: 1,
+    })
+    expect(repository.submitCount).toHaveBeenCalled()
   })
 })

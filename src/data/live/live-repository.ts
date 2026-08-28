@@ -79,7 +79,9 @@ import type {
   BarInventoryLine,
   BarSummary,
   CatalogueGroup,
+  CountKind,
   CountSession,
+  CountWriteOutcome,
   Custody,
   IssueOptions,
   LedgerEntry,
@@ -88,6 +90,7 @@ import type {
   Repository,
   SessionInfo,
   StockPosition,
+  SubmitCountCommand,
   Tone,
   VarianceReport,
   WriteOutcome,
@@ -1032,31 +1035,26 @@ export function createLiveRepository(context: LiveContext): Repository {
       }
     },
 
+    /**
+     * BAR-082. The count sheet for a location.
+     *
+     * There is no longer a draft-session prerequisite: `boa_bar_submit_count`
+     * creates the session at submit time, so a counter can start counting without
+     * anybody having provisioned a session first. That matters operationally —
+     * the previous version returned an empty sheet with "NO COUNT SESSION OPEN"
+     * and no way to open one, so a bar lead could not count at all.
+     *
+     * BLIND, enforced by omission. Nothing on this read model carries an expected
+     * quantity, and the SKU list is the venue's full active catalogue rather than
+     * "the SKUs with stock here" — the presence or absence of a line is itself a
+     * disclosure of the expected position for the location being counted
+     * (non-negotiable 3).
+     */
     async countSession(locationId?: string): Promise<CountSession> {
-      const [ref, snap] = await Promise.all([reference(), snapshot()])
+      const ref = await reference()
       const target = locationId ?? context.locationId
-
-      let query = db
-        .from('boa_bar_count_session')
-        .select(COUNT_SESSION_COLUMNS)
-        .eq('venue_id', venueId)
-        .eq('status', 'draft')
-      if (target) query = query.eq('location_id', target)
-      const sessions = await query
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .then((r) => unwrap<CountSessionRow[]>('count session', r))
-
-      const session = sessions[0]
       const locationLabel = (target ? locationName(ref, target) : 'NO LOCATION').toUpperCase()
 
-      /**
-       * BLIND, enforced by omission. Nothing on this read model carries an
-       * expected quantity, and the SKU list is the venue's full active catalogue
-       * rather than "the SKUs with stock here" — because the presence or absence
-       * of a line is itself a disclosure of the expected position for the
-       * location being counted (non-negotiable 3).
-       */
       const lines = ref.skus.map((sku) => {
         const shape = toSkuShape(sku)
         const mode = partialModeFor(shape)
@@ -1071,41 +1069,32 @@ export function createLiveRepository(context: LiveContext): Repository {
         }
       })
 
-      if (!session) {
-        // Honest empty state. Not an error the screen cannot render, and not a
-        // fabricated session that would accept counts nothing will store.
-        return {
-          locationId: target ?? '',
-          locationName: locationLabel,
-          kindLabel: 'NO COUNT SESSION OPEN',
-          scopeLabel: `${locationLabel} · BLIND`,
-          totalLines: 0,
-          presets: COUNT_PRESETS,
-          lines: [],
-          countedBy: who(ref, context.userId),
-          witnessedBy: '',
-          sealedAt: '',
-        }
-      }
+      // Which count this is remains an open operating question: the schema
+      // distinguishes opening, mid-event and close-out, but nothing in the app
+      // tells the counter which one they are doing. `mid_event` is the one taken
+      // repeatedly during the night and so the safe default; scheduling the others
+      // is BAR-150.
+      const countKind: CountKind = 'mid_event'
 
       return {
-        locationId: session.location_id,
-        locationName: locationName(ref, session.location_id).toUpperCase(),
-        kindLabel: countKindLabel(session.count_kind).toUpperCase(),
-        scopeLabel: `${locationName(ref, session.location_id).toUpperCase()} · BLIND`,
+        locationId: target ?? '',
+        countKind,
+        locationName: locationLabel,
+        kindLabel: countKindLabel(countKind).toUpperCase(),
+        scopeLabel: `${locationLabel} · BLIND`,
         totalLines: lines.length,
         presets: COUNT_PRESETS,
         lines,
-        countedBy: who(ref, session.assigned_to),
+        countedBy: who(ref, context.userId),
         /**
          * The design shows a witness beside the counter. There is no witness
          * column on boa_bar_count_session — `reviewed_by` is the manager's later
-         * review, which is a different person doing a different thing — so this
-         * is left empty rather than filled with the reviewer. A two-person seal is
-         * a specification requirement and the missing column is recorded.
+         * review, a different person doing a different thing — so this is left
+         * empty rather than filled with the reviewer. The two-person seal is a
+         * specification requirement and the missing column is BAR-163.
          */
         witnessedBy: '',
-        sealedAt: session.submitted_at ? clock.time(session.submitted_at) : clock.time(snap.now.toISOString()),
+        sealedAt: '',
       }
     },
 
@@ -1281,6 +1270,51 @@ export function createLiveRepository(context: LiveContext): Repository {
         },
       })
       return settle(outboxId)
+    },
+
+    /**
+     * BAR-082. One command for the whole count: the RPC creates the session,
+     * writes the observed lines and seals the expected position.
+     *
+     * Through the outbox like every other write, so a count taken in a dead spot
+     * is durable on the device and posts when signal returns — which is the
+     * ordinary case at a festival bar, not an edge case.
+     */
+    async submitCount(command: SubmitCountCommand): Promise<CountWriteOutcome> {
+      if (!command.locationId) throw new Error('A count needs a location')
+      const outboxId = await enqueueCommand({
+        kind: 'submit_count',
+        idempotencyKey: command.idempotencyKey,
+        payload: {
+          venue_id: venueId,
+          location_id: command.locationId,
+          count_kind: command.countKind,
+          idempotency_key: command.idempotencyKey,
+          lines: command.lines.map((line) => ({
+            sku_id: line.skuId,
+            full_containers: line.fullContainers,
+            partial_ml: line.partialMl,
+            gross_weight_g: line.grossWeightG ?? null,
+          })),
+        },
+      })
+
+      try {
+        const result = (await waitForCommand(outboxId)) as
+          | { count_session_id?: string; lines?: number }
+          | null
+        if (result?.count_session_id) {
+          return {
+            status: 'posted',
+            countSessionId: result.count_session_id,
+            lines: Number(result.lines ?? command.lines.length),
+          }
+        }
+        return { status: 'queued', outboxId }
+      } catch (error) {
+        if (error instanceof OutboxPendingError) return { status: 'queued', outboxId }
+        throw error
+      }
     },
   }
 }

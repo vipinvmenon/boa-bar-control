@@ -252,6 +252,7 @@ export const CUSTODY: Custody = {
  */
 export const COUNT_SESSION: CountSession = {
   locationId: 'bar-3',
+  countKind: 'mid_event',
   locationName: 'BAR 3',
   kindLabel: 'MID-EVENT COUNT',
   scopeLabel: 'BAR 3 · BLIND',

@@ -19,6 +19,7 @@ import type {
   BarSummary,
   CatalogueGroup,
   CountSession,
+  CountWriteOutcome,
   Custody,
   IssueOptions,
   LedgerEntry,
@@ -26,6 +27,7 @@ import type {
   Repository,
   SessionInfo,
   StockPosition,
+  SubmitCountCommand,
   VarianceReport,
   WriteOutcome,
 } from '../repository'
@@ -105,6 +107,15 @@ export function createFixtureRepository(which: FixtureVariant = 'a'): Repository
     async createDocket(): Promise<WriteOutcome> {
       const custody = v?.custody ?? CUSTODY
       return { status: 'posted', docketId: custody.docketId, docketNo: custody.docketNo }
+    },
+
+    /**
+     * Records nothing, like the other fixture commands, and reports the design's
+     * own line count so the confirmation screen has something true to show about
+     * the walkthrough. The shell says DEMO DATA · NOTHING IS RECORDED throughout.
+     */
+    async submitCount(command: SubmitCountCommand): Promise<CountWriteOutcome> {
+      return { status: 'posted', countSessionId: 'CT-0041', lines: command.lines.length }
     },
 
     async acceptDocket(command: AcceptDocketCommand): Promise<WriteOutcome> {

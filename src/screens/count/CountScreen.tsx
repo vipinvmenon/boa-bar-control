@@ -27,7 +27,10 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { ChevronLeft, EyeOff, Minus, Plus } from 'lucide-react'
-import { useRepositoryQuery } from '../../data/RepositoryProvider'
+import { useRepositoryMutation, useRepositoryQuery } from '../../data/RepositoryProvider'
+import { submitCount } from '../../services/count'
+import type { CountLineCommand } from '../../data/repository'
+import { partialToMl } from '../../domain/units'
 
 export function CountScreen() {
   const navigate = useNavigate()
@@ -36,6 +39,28 @@ export function CountScreen() {
   const [lineIndex, setLineIndex] = useState(0)
   const [full, setFull] = useState(0)
   const [partial, setPartial] = useState(0)
+
+  /**
+   * BAR-082. The counted lines, accumulated.
+   *
+   * This screen previously collected `full` and `partial`, reset them on Save &
+   * next, and navigated to the confirmation screen — so **every count taken on it
+   * was discarded**. Nothing was accumulated and nothing was ever written; the
+   * schema had no write path for a count either.
+   */
+  const [counted, setCounted] = useState<Record<string, CountLineCommand>>({})
+
+  /**
+   * One id for this COUNT, created once when the screen mounts and reused for
+   * every submit attempt, so a double tap or a retry after a lost reply produces
+   * one count rather than two (BAR-069). It does not survive a reload — that is
+   * BAR-072 — but the RPC's unique idempotency key refuses the duplicate.
+   */
+  const [actionId] = useState(() => crypto.randomUUID())
+
+  const submit = useRepositoryMutation((repository, input: { lines: CountLineCommand[]; locationId: string; countKind: Parameters<typeof submitCount>[0]['countKind']; expectedLineCount: number }) =>
+    submitCount({ repository, actionId, ...input }),
+  )
 
   const s = session.data
   if (!s) {
@@ -54,15 +79,43 @@ export function CountScreen() {
   const isLast = done >= s.totalLines - 1
   const pct = Math.round((done / s.totalLines) * 100)
 
+  /**
+   * Record this line, then either advance or submit.
+   *
+   * The count is only navigated away from AFTER the write is accepted. Showing
+   * COUNT SUBMITTED before the outbox has the count would be a claim of success
+   * this app is not entitled to make (non-negotiable 6), and a count is not
+   * re-creatable — the stock has moved by the time anybody notices.
+   */
   const saveNext = () => {
-    if (isLast) {
-      void navigate({ to: '/count/submitted' })
+    const next: Record<string, CountLineCommand> = {
+      ...counted,
+      [line.skuId]: {
+        skuId: line.skuId,
+        fullContainers: full,
+        // A keg is metered in litres on screen; the ledger holds millilitres.
+        partialMl: partialToMl(partial, line.partial),
+      },
+    }
+    setCounted(next)
+
+    if (!isLast) {
+      setLineIndex((i) => i + 1)
+      // Reset per line. A carried-over value is a silent miscount.
+      setFull(0)
+      setPartial(0)
       return
     }
-    setLineIndex((i) => i + 1)
-    // Reset per line. A carried-over value is a silent miscount.
-    setFull(0)
-    setPartial(0)
+
+    submit.mutate(
+      {
+        lines: Object.values(next),
+        locationId: s.locationId,
+        countKind: s.countKind,
+        expectedLineCount: s.lines.length,
+      },
+      { onSuccess: () => void navigate({ to: '/count/submitted' }) },
+    )
   }
 
   return (
@@ -145,8 +198,11 @@ export function CountScreen() {
       </div>
 
       <footer className="flow-foot">
-        <button className="flow-cta" onClick={saveNext}>
-          {isLast ? 'Submit count' : 'Save & next'}
+        {submit.isError && (
+          <p className="flow-error" role="alert">NOT SUBMITTED · {submit.error.message}</p>
+        )}
+        <button className="flow-cta" onClick={saveNext} disabled={submit.isPending}>
+          {submit.isPending ? 'Recording…' : isLast ? 'Submit count' : 'Save & next'}
         </button>
       </footer>
     </div>
