@@ -114,6 +114,16 @@ async function main() {
     } catch (err) {
       console.log(`  ERROR  ${String(err.message).split('\n')[0]}\n`)
       allFailures.push(`${file}: ${err.message}`)
+      // Every suite is begin/…/rollback on ONE shared connection, so a statement
+      // that errors leaves the transaction aborted and every later file returns
+      // "current transaction is aborted" — one broken file reported the other
+      // three as broken too, and turned 72 passing assertions into "0 passed,
+      // 4 failed". Clear it so each file's result is its own.
+      try {
+        await client.query('rollback')
+      } catch {
+        // Nothing to roll back; the file may have failed before its BEGIN.
+      }
     }
   }
 
