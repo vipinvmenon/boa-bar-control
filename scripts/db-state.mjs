@@ -39,6 +39,18 @@ const WITNESS = [
   ['202608280003_revoke_function_execute', 'privilege', 'anon-cannot-submit'],
 ]
 
+/**
+ * The two EXECUTE holes 202608280003 closes, checked directly rather than
+ * inferred from reading the migrations. The second is the serious one: the
+ * internal poster takes the actor as a parameter, so any role that can execute it
+ * can forge attribution and skip every role check.
+ */
+const HOLES = [
+  ['anon', 'public.boa_bar_submit_movement(jsonb)', 'anon can post movements'],
+  ['authenticated', 'private.boa_bar_post_movement(jsonb, uuid)', 'ANY SIGNED-IN USER can post a forged movement'],
+  ['anon', 'private.boa_bar_post_movement(jsonb, uuid)', 'anon can post a forged movement'],
+]
+
 const client = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } })
 await client.connect()
 
@@ -105,6 +117,26 @@ try {
       note = r.rows[0].anon_can ? 'anon STILL holds EXECUTE on boa_bar_submit_movement' : 'anon holds no EXECUTE'
     }
     console.log(`    ${present ? 'yes' : ' NO'}  ${migration.padEnd(38)} ${note}`)
+  }
+
+  // ---- the holes -----------------------------------------------------------
+  console.log('\n  EXECUTE HOLES (202608280003)')
+  for (const [role, signature, description] of HOLES) {
+    let held
+    try {
+      const r = await client.query('select has_function_privilege($1, $2, $3) as held', [role, signature, 'EXECUTE'])
+      held = r.rows[0].held
+    } catch (e) {
+      console.log(`    ?    ${signature} — ${e.message}`)
+      continue
+    }
+    // A role needs USAGE on the schema as well as EXECUTE to actually call it.
+    const schema = signature.split('.')[0]
+    const usage = (await client.query('select has_schema_privilege($1, $2, $3) as ok', [role, schema, 'USAGE'])).rows[0].ok
+    const reachable = held && usage
+    console.log(
+      `    ${reachable ? 'OPEN' : 'shut'}  ${role.padEnd(14)} ${signature.padEnd(44)} ${reachable ? description : ''}`,
+    )
   }
 
   // ---- data ----------------------------------------------------------------
