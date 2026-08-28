@@ -96,13 +96,40 @@ Violating any of these is a defect regardless of how good the reason seemed.
 If the design or the docs appear wrong, **say so and stop**. Do not fix it
 silently.
 
+## Running anything on this machine
+
+**`pnpm` is NOT on the PATH.** `corepack enable` needs sudo here, so every script
+is invoked as `corepack pnpm <script>`. Bare `pnpm` fails with
+`command not found` — do not put a command starting with `pnpm` in front of the
+user. Node scripts can also be run directly (`node scripts/db-state.mjs`), which
+avoids the question.
+
+```bash
+corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build
+corepack pnpm check:sql     # migrations — static arity check, no database needed
+corepack pnpm test:visual   # UI tasks — NEEDS A DEV SERVER ALREADY RUNNING
+corepack pnpm test:db       # needs SUPABASE_DB_PASSWORD
+corepack pnpm db:state      # read-only: what is actually in the database
+```
+
+`test:visual` does **not** start a server. Run `corepack pnpm dev` in another
+terminal first, or it fails with a connection error that looks like a code
+failure and is not.
+
+`test:db`, `db:state` and `bootstrap` need the database password, which lives only
+in the user's shell. If you do not have it, say so and ask — do not report a
+database task as verified when you could not connect.
+
 ## Definition of done
 
 1. The task's acceptance criteria in `docs/ROADMAP.md` are met.
-2. `pnpm typecheck && pnpm lint && pnpm test && pnpm build` all pass.
-3. Database tasks: `pnpm test:db` passes against a real PostgreSQL.
+2. `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build`
+   all pass.
+3. Database tasks: `corepack pnpm test:db` passes against a real PostgreSQL, and
+   `corepack pnpm check:sql` passes before any migration is pushed.
 4. UI tasks: the screen renders from the **fixture repository** — not from
-   literals — and is compared against `references/ui/<screen>.png`.
+   literals — and `corepack pnpm test:visual` still reports **0 hardcoded, 0
+   errored** with the screen counted under "reading the data layer".
 5. No new hardcoded fixture data, no new palette colour, no architecture change.
 6. `docs/CURRENT-STATE.md` updated with the evidence.
 
@@ -150,5 +177,10 @@ The most important consequences for you:
   `docs/CURRENT-STATE.md` supersedes both.
 - **Do not build from `docs/archive/`.** Those documents are retained as
   evidence of what went wrong.
-- **`src/features/screens.tsx` is not a model to follow.** It is 302 lines
-  standing in for 22 screens, full of hardcoded fixtures. It is being replaced.
+- **`src/features/screens.tsx` is not a model to follow.** 167 lines still
+  standing in for the `issue`, `waste` and `reports` screens, full of hardcoded
+  fixtures and the last file reading `demo-store` for SKU data. It is being
+  deleted, not improved (BAR-051, BAR-063, BAR-164).
+- **`src/lib/live-repository.ts` and `demo-store`'s snapshot loader are a second,
+  older live data path** that hardcodes `bar_3`. Do not extend them; BAR-164
+  deletes them. The live path is `src/data/live/`.

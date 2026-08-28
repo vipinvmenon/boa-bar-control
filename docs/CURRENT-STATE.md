@@ -516,33 +516,47 @@ schema. Confirm or correct them rather than assuming they are still open.
 
 ## Recommended next actions
 
-Rewritten 28 August. The three cheap fixes (BAR-087, BAR-133's screen literals,
-BAR-154) are done, so the list now starts at what was item 4.
+Rewritten 28 August, end of session. The write path is half built: an acceptance
+is recorded, an issue is not.
 
-1. **BAR-156** — seed a venue, its locations, SKUs, memberships and people, and
-   apply `202608280001_person_names.sql`. **Nothing built in the last two sessions
-   has executed a single query against real data.** This gates all verification,
-   and it is the only item here whose absence makes every other item unprovable.
-2. **BAR-044 + the write path** — there is no `src/services/` directory, and
-   nothing calls `boa_bar_create_docket` or `boa_bar_accept_docket`. The custody
-   chain is five working screens that record nothing.
-3. **BAR-082** — a count-submit RPC. The counting chain has no destination, so a
-   submitted count is discarded.
-4. **BAR-161** — location-scope the snapshot RPC. Blind counting is the product's
-   core integrity control and it is currently a UI convention, not a control.
-5. **BAR-047** — an error boundary. The live repository throws by design on a
-   failed read, and an uncaught throw currently blanks the app. This becomes
-   urgent the moment item 1 lands.
-6. **BAR-164** — delete the legacy path. It is the remaining half of BAR-133
-   (every waste still posts to `bar_3`), of BAR-071 (a write inside an unawaited
-   `void`) and of BAR-157.
-7. **BAR-140** — opening stock, without which the event cannot start.
-8. **BAR-081** — apply `mlFromGrossWeight`. The count screen shows the tare weight
-   and never uses it, so a weighed partial is entered as a raw gross reading.
+**1. BAR-051 — rebuild the `issue` screen.** The single highest-value task, and it
+is a `codex` task in the roadmap. It is the last thing standing between the custody
+chain and a complete write path: `ReviewScreen` currently reads `custody()`, an
+*existing* docket, so `issueStock` cannot be wired until the issue screen produces
+a real draft (SKU id, destination location id, container count) and passes it
+forward. It also removes the largest remaining block of fixture literals and the
+last screen reading `demo-store` for SKU data.
 
-Do **not** start the five missing screens (`sku`, `mv`, `control`, `cowork`,
-`rep`) before items 1–3. They add surface, not capability, and every one of them
-would be built against a data layer that has never run.
+Acceptance, beyond the roadmap's criteria: `ReviewScreen` takes its product,
+destination and quantity from the draft rather than from `custody()`, and its CTA
+calls `issueStock` from `src/services/issue.ts` — which already exists and is
+tested.
+
+**2. BAR-082 — a count-submit RPC.** The counting chain has no destination, so a
+submitted count is discarded. `boa_bar_count_line` has no write path at all.
+
+**3. BAR-161 — location-scope `boa_bar_inventory_snapshot`.** Blind counting is the
+product's core integrity control and is currently a UI convention: any member can
+read the expected position for the location they are about to count.
+
+**4. BAR-164 — delete the legacy path.** `src/lib/live-repository.ts` and
+`demo-store`'s snapshot loader are a second live data path that hardcodes `bar_3`.
+It is the remaining half of BAR-133, of BAR-071 (a write inside an unawaited
+`void`) and of BAR-157.
+
+**5. BAR-081 — apply `mlFromGrossWeight`.** The count screen shows the tare weight
+and never uses it, so a weighed partial is entered as a raw gross reading.
+
+Do **not** start the five missing screens (`sku`, `mv`, `control`, `cowork`, `rep`)
+before 1 and 2. They add surface, not capability.
+
+### Blocked on the user, not on code
+
+- **One `auth.users` row.** Dashboard -> Authentication -> Users -> Add user, Auto
+  Confirm ticked. Then `node scripts/bootstrap.mjs`. Until this exists **no live
+  read and no live write has ever executed**, and everything in `src/data/live/`
+  and `src/services/` is verified against fixtures only.
+- **BAR-158, the excise return template.** Target was 31 August.
 
 ---
 
