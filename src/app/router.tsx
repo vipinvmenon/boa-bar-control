@@ -1,5 +1,6 @@
 import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router'
 import { AppShell } from './AppShell'
+import { NotFound, RouteError } from './ErrorScreen'
 import { BarsScreen } from '../screens/bars/BarsScreen'
 import { BarScreen } from '../screens/bar/BarScreen'
 import { ActivityScreen } from '../screens/activity/ActivityScreen'
@@ -88,7 +89,16 @@ const routeTree = rootRoute.addChildren([
   barRoute,
 ])
 
-export const router = createRouter({ routeTree })
+/**
+ * BAR-047. Router-level defaults rather than per-route components: a new route
+ * must not be able to arrive without an error boundary, and 16 routes each
+ * declaring their own would be 16 chances to forget.
+ */
+export const router = createRouter({
+  routeTree,
+  defaultErrorComponent: ({ error, reset }) => <RouteError error={error} reset={reset} />,
+  defaultNotFoundComponent: () => <NotFound />,
+})
 
 declare module '@tanstack/react-router' {
   interface Register {

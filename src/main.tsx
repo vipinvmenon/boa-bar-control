@@ -21,6 +21,7 @@ import { startMovementSync } from './lib/offline-db'
 import { AuthProvider } from './lib/auth'
 import { AuthGate } from './features/AuthGate'
 import { setPendingUpdate } from './lib/pwa-update'
+import { AppErrorBoundary } from './app/ErrorScreen'
 import './styles.css'
 
 const queryClient = new QueryClient({
@@ -42,6 +43,12 @@ startMovementSync()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
+    {/*
+      BAR-047. Outside the router on purpose: it has to catch a throw from the
+      providers themselves — the auth gate, or repository selection — which the
+      router's own error component cannot see.
+    */}
+    <AppErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <AuthGate>
@@ -53,5 +60,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         </AuthGate>
       </AuthProvider>
     </QueryClientProvider>
+    </AppErrorBoundary>
   </React.StrictMode>,
 )

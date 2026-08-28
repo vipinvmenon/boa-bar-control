@@ -83,5 +83,20 @@ export function useRepositoryQuery<T>(
     queryKey: [repository.kind, requestedVariant(), ...key],
     queryFn: () => read(repository),
     staleTime: 30_000,
+    /**
+     * BAR-047. A failed read is raised to the route's error boundary instead of
+     * being handed back as `data === undefined`.
+     *
+     * Every screen renders `query.data?.field ?? '—'`, so before this a live read
+     * that failed produced a screen of em-dashes and zeroes — visually identical
+     * to a venue with no stock. On this project that is the whole problem: a
+     * warehouse showing 0 because the network dropped, and a warehouse showing 0
+     * because it is empty, must not look the same. The live repository already
+     * refuses to invent a figure; this makes the refusal visible.
+     *
+     * Retries are still 1 (from the QueryClient default), so a single blip does
+     * not surface at all.
+     */
+    throwOnError: true,
   })
 }

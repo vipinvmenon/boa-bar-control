@@ -227,7 +227,7 @@ States are defined once in the **Status key** above.
 | BAR-045 | Remove fixture data from screen files | `[~]` | 13 screens read the repository, the gate reports 0 hardcoded, and BAR-154's lint rule now enforces it mechanically for screens and components. `src/features/screens.tsx` still holds literals — it is not under the rule's file scope because it is being deleted, not fixed (BAR-164) |
 | BAR-046 | Wire the domain layer | `[~]` | `varianceBand`, `toleranceFor` and `buildQueuedMovement` have callers. Still zero outside tests: `derivePositions`, `applyIdempotently`, `reverseMovement`, `theoreticalClosing`, `weightedAverageCost`, **`mlFromGrossWeight`** — the tare conversion BAR-081 should use |
 | BAR-164 | Delete the legacy parallel live path | `[ ]` | `src/lib/live-repository.ts` and `demo-store`'s snapshot loader are still present and still hardcode `bar_3` |
-| BAR-047 | Error boundary and not-found route | `[ ]` | Neither exists. An uncaught render error blanks the app — and the live repository throws by design on a failed read |
+| BAR-047 | Error boundary and not-found route | `[x]` | Added 28 Aug. Router-level `defaultErrorComponent` and `defaultNotFoundComponent` so a new route cannot arrive without a boundary, plus `AppErrorBoundary` outside the router for throws in the providers. **Verified in a browser**: a planted throw in a repository read rendered the failure card in-shell with the nav intact, and cleared when the read succeeded. Also `throwOnError: true` on `useRepositoryQuery` — screens render `data?.field ?? '—'`, so a failed live read previously produced a screen of em-dashes and zeroes, visually identical to a venue with no stock |
 | BAR-048 | Zod at every boundary | `[~]` | Zod is used only in `domain/inventory.ts`. RPC responses, QR payloads, POS rows and local-store reads are all unvalidated; `rows.ts` casts by hand |
 | BAR-129 | Bounded quantity inputs | `[~]` | Verified in the custody chain: plus disabled at the issued quantity. The legacy issue screen is still unbounded |
 | BAR-130 | Full SKU catalogue on every screen | `[~]` | The live count session lists the full active catalogue. The legacy issue screen shows `store.stock.slice(0, 5)` |
@@ -262,7 +262,7 @@ States are defined once in the **Status key** above.
 | BAR-064 | Request top-up | `[ ]` | — |
 | BAR-065 | Bar-to-bar transfer | `[ ]` | — |
 | BAR-066 | Reference cache | `[!]` | `referenceCache` is declared in `offline-db.ts:23` and **written to by nothing** (grep: zero writes) |
-| BAR-067 | Offline reads from cache | `[~]` | The dangerous half is fixed: `RepositoryProvider` cannot fall back to fixtures, so demo stock can no longer render as live inventory. The useful half does not exist — there is no cache to read, so a failed live read simply throws |
+| BAR-067 | Offline reads from cache | `[~]` | The dangerous half is fixed: `RepositoryProvider` cannot fall back to fixtures, and as of BAR-047 a failed read now *surfaces* instead of rendering as empty data. The useful half still does not exist — there is no cache to read, so a failed read shows an error rather than the last known position |
 | BAR-068 | Cold-start offline | `[!]` | Membership load needs the network; an offline cold start locks every staff member out |
 | BAR-069 | Stable idempotency keys | `[~]` | The queue dedupes on `idempotencyKey` (`offline-db.ts:37`), but `lib/live-repository.ts:83` mints a fresh key on every invocation, so a double tap still produces two rows |
 | BAR-070 | Ordered outbox replay | `[~]` | `offline-db.ts:68` replays in `createdAt` order, so within one device an acceptance cannot overtake its issue. Nothing enforces causal order across devices |
@@ -363,11 +363,11 @@ Computed from the rows above, not asserted.
 
 | | Count |
 | --- | --- |
-| `[x]` done | 39 |
+| `[x]` done | 40 |
 | `[~]` partial | 37 |
 | `[R]` rewrite | 7 |
 | `[!]` defect actively present | 15 |
-| `[ ]` not started | 64 |
+| `[ ]` not started | 63 |
 | `[?]` unverifiable today | 2 |
 | **Total** | **164** |
 
