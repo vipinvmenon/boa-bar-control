@@ -2,14 +2,12 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import {
   ArrowLeft,
-  ArrowRight,
   Check,
   ShieldCheck,
 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { Chip, Panel, RitualButton, StatusDot, Stepper } from '../components/ui'
 import { useDemoStore } from '../lib/demo-store'
-import { useRepositoryQuery } from '../data/RepositoryProvider'
 
 
 function BackTitle({ children }: { children: string }) {
@@ -17,39 +15,6 @@ function BackTitle({ children }: { children: string }) {
     <div className="flow-title">
       <Link to="/" aria-label="Back to home"><ArrowLeft size={21} /></Link>
       <h1>{children}</h1>
-    </div>
-  )
-}
-
-export function IssueScreen() {
-  const store = useDemoStore()
-  const navigate = useNavigate()
-  // BAR-051 rebuilds this screen properly. Until then read destinations from the
-  // repository rather than a hardcoded const, so ADR-010 holds meanwhile.
-  const barsQuery = useRepositoryQuery(['bars'], (r) => r.listBars())
-  const destinations = barsQuery.data ?? []
-  const [destination, setDestination] = useState('BAR 3')
-  const [skuId, setSkuId] = useState(() => store.stock[0]?.id ?? '')
-  const [quantity, setQuantity] = useState(24)
-  const selectedSkuId = store.stock.some((candidate) => candidate.id === skuId) ? skuId : store.stock[0]?.id ?? ''
-  const item = store.stock.find((candidate) => candidate.id === selectedSkuId)
-  // BAR-052: the design requires a review step before a docket exists. The old
-  // flow created one straight from the quantity picker.
-  const submit = () => {
-    if (!item) return
-    void navigate({ to: '/issue/review', search: { qty: quantity } })
-  }
-  return (
-    <div className="screen flow-screen">
-      <BackTitle>Issue stock</BackTitle>
-      <p className="step-label">1 / 3 · Destination</p>
-      <div className="chips wrap">{destinations.map((bar) => <Chip key={bar.id} active={destination === bar.name} onClick={() => setDestination(bar.name)}>{bar.name}</Chip>)}</div>
-      <p className="step-label">2 / 3 · SKU</p>
-      <div className="select-list">{store.stock.slice(0, 4).map((candidate) => <button key={candidate.id} className={selectedSkuId === candidate.id ? 'selected' : ''} onClick={() => setSkuId(candidate.id)}><span>{candidate.name}<small>{candidate.container}</small></span><strong>{candidate.warehouse}</strong></button>)}</div>
-      <p className="step-label">3 / 3 · Quantity</p>
-      <Panel className="quantity-panel"><span>{item?.name ?? 'No active SKU'}</span><Stepper label="issue quantity" value={quantity} min={1} onChange={setQuantity} /><div className="presets">{[12, 24, 48].map((value) => <button key={value} onClick={() => setQuantity(value)}>+{value}</button>)}</div></Panel>
-      <Panel className="review-card"><span>Warehouse <ArrowRight size={15} /> {destination}</span><strong>{quantity} × {item?.name ?? 'No active SKU'}</strong><small>{item ? quantity * item.mlPerContainer / 1000 : 0} L total · issued by Chandan</small></Panel>
-      <RitualButton wide onClick={submit} disabled={quantity < 1 || !item}>Review issue</RitualButton>
     </div>
   )
 }

@@ -93,7 +93,7 @@ The design is now recovered to `references/design-source/`. See
 | `home` | LIVE HOME | `[x]` | rebuilt — every figure from the repository; alert CTAs route per the design; bar cards open their own bar |
 | `warehouse` | WAREHOUSE | `[x]` | rebuilt — catalogue and totals from the repository; search and ALL/BEER/SPIRITS filters work |
 | `sku` | SKU LEDGER | `[ ]` | Missing. Warehouse and bar rows lead nowhere |
-| `issue` | ISSUE STOCK | `[R]` | No case/bottle unit switch, no equivalence, no warehouse-after row, wrong presets |
+| `issue` | ISSUE STOCK | `[x]` | rebuilt — repository-backed source, full SKU catalogue and destinations; case/container switch, equivalence, bounded presets and warehouse-after; passes a validated draft to review |
 | `review` | REVIEW ISSUE | `[x]` | built — derived cases/litres/warehouse-after, and the design's in-transit advisory |
 | `docket` | DOCKET CREATED | `[x]` | rebuilt as its own screen — identity treatment, real QR encoding a route that exists, two-button footer |
 | `bars` | BARS | `[x]` | `b49768c` — rebuilt. Leads, count times and flags restored; decorative progress bars removed; cards tappable |
@@ -127,8 +127,8 @@ prose, which is what drifts:
 defect that let `home` and `warehouse` pass design QA while displaying literals
 no longer exists anywhere in the codebase.
 
-Rebuilt or built to the design: `home`, `warehouse`, `bars`, `bar`, `activity`,
-`more`, the shell's bottom navigation, and the full custody chain
+Rebuilt or built to the design: `home`, `warehouse`, `issue`, `bars`, `bar`,
+`activity`, `more`, the shell's bottom navigation, and the full custody chain
 (`review` → `docket` → `accept` → `diff` → `received`).
 
 Still missing (6): `sku`, `mv`, `control`, `cowork`, `rep`, and `reports` needs
@@ -223,14 +223,14 @@ States are defined once in the **Status key** above.
 | BAR-041 | Toast system | `[~]` | `demo-store.tsx:309` expires at **2400 ms**; the design and the acceptance criterion are 2600 ms |
 | BAR-042 | Repository interface | `[~]` | Interface, fixture and live implementations all exist (`b49768c`, `743a4d4`). **The live implementation has never executed a query** — the database holds nothing to read |
 | BAR-043 | Fixture repository from the design's data | `[x]` | `design-data.ts` with line references; the gate reports 0 hardcoded screens |
-| BAR-044 | Application service layer | `[~]` | `src/services/` exists with `issue.ts` and `accept.ts` — Zod validation, the custody domain rules, then the repository. Commands are on the `Repository` interface, so no screen imports Supabase or Dexie and no service calls an RPC. 13 service tests. **The accept screen is wired and verified in a browser; the issue screen is not** — see BAR-051 |
-| BAR-045 | Remove fixture data from screen files | `[~]` | 13 screens read the repository, the gate reports 0 hardcoded, and BAR-154's lint rule now enforces it mechanically for screens and components. `src/features/screens.tsx` still holds literals — it is not under the rule's file scope because it is being deleted, not fixed (BAR-164) |
+| BAR-044 | Application service layer | `[~]` | `src/services/` exists with `issue.ts` and `accept.ts` — Zod validation, the custody domain rules, then the repository. Both custody writes are now wired and verified in a browser. Commands are on the `Repository` interface, so no screen imports Supabase or Dexie and no service calls an RPC. 13 service tests. Count, waste and the remaining write use cases still have no service-backed screen path |
+| BAR-045 | Remove fixture data from screen files | `[~]` | The issue screen's legacy fixture block is deleted; all 15 data-bearing routes read the repository, the gate reports 0 hardcoded, and BAR-154's lint rule enforces it mechanically for screens and components. `src/features/screens.tsx` still holds waste/report literals — it is not under the rule's file scope because it is being deleted, not fixed (BAR-164) |
 | BAR-046 | Wire the domain layer | `[~]` | Callers now exist for `varianceBand`, `toleranceFor`, `buildQueuedMovement`, and the whole of the new `domain/custody.ts` and `domain/outbox-policy.ts`. Still zero callers outside tests: `derivePositions`, `applyIdempotently`, `reverseMovement`, `theoreticalClosing`, `weightedAverageCost`, **`mlFromGrossWeight`** |
 | BAR-164 | Delete the legacy parallel live path | `[ ]` | `src/lib/live-repository.ts` and `demo-store`'s snapshot loader are still present and still hardcode `bar_3` |
 | BAR-047 | Error boundary and not-found route | `[x]` | Added 28 Aug. Router-level `defaultErrorComponent` and `defaultNotFoundComponent` so a new route cannot arrive without a boundary, plus `AppErrorBoundary` outside the router for throws in the providers. **Verified in a browser**: a planted throw in a repository read rendered the failure card in-shell with the nav intact, and cleared when the read succeeded. Also `throwOnError: true` on `useRepositoryQuery` — screens render `data?.field ?? '—'`, so a failed live read previously produced a screen of em-dashes and zeroes, visually identical to a venue with no stock |
 | BAR-048 | Zod at every boundary | `[~]` | Zod now validates both write use cases at the service boundary — the first real use outside `domain/inventory.ts`. RPC **responses**, QR payloads, POS rows and local-store reads are still unvalidated; `rows.ts` casts by hand |
-| BAR-129 | Bounded quantity inputs | `[~]` | Verified in the custody chain: plus disabled at the issued quantity. The legacy issue screen is still unbounded |
-| BAR-130 | Full SKU catalogue on every screen | `[~]` | The live count session lists the full active catalogue. The legacy issue screen shows `store.stock.slice(0, 5)` |
+| BAR-129 | Bounded quantity inputs | `[~]` | Verified in the custody chain: issue cannot exceed the warehouse position and accept cannot exceed the docket. Waste remains on the legacy unbounded stepper |
+| BAR-130 | Full SKU catalogue on every screen | `[~]` | Issue and count list the full active catalogue through the repository. The legacy waste screen still slices its store data |
 | BAR-131 | Remove the fake OS status bar | `[!]` | `AppShell.tsx:59` still renders `status-line` with a hardcoded `19:44` and a fake 4G indicator |
 | BAR-132 | Seven roles, not two | `[~]` | `auth.tsx` carries all seven. `demo-store.tsx:287` still collapses them to a `managerRoles` boolean |
 
@@ -240,9 +240,9 @@ States are defined once in the **Status key** above.
 | --- | --- | --- | --- |
 | BAR-049 | `warehouse` from the data layer | `[x]` | `c4728ad` — category groups, totals and rows all derived; gate passes both fixture states |
 | BAR-050 | `sku` screen — SKU ledger | `[ ]` | Screen missing. Warehouse rows have nowhere to navigate |
-| BAR-051 | `issue` with case/bottle unit switch | `[R]` | Still `src/features/screens.tsx:24`, and now also the blocker for the issue half of the write path: it picks an SKU from `demo-store` and passes only `qty` in the URL, so no draft reaches `ReviewScreen`. Rebuilding it is what lets `issueStock` be wired |
+| BAR-051 | `issue` with case/bottle unit switch | `[x]` | Rebuilt 28 Aug — exact design composition, repository-backed full SKU/destination options, case↔container equivalence, bounded design presets and warehouse-after. The validated draft carries action/source/destination/SKU/containers to Review; browser-driven through to Docket |
 | BAR-052 | `review` screen | `[x]` | `c987c24` — derives cases, litres and warehouse-after from the repository |
-| BAR-053 | Docket persistence | `[~]` | The RPC exists and `acceptDocket` now calls it through the outbox, so an acceptance is recorded. **Docket creation is still not wired**: `ReviewScreen` reads `custody()`, an existing docket, so calling `createDocket` there would create a duplicate. Needs a draft from the issue screen (BAR-051) |
+| BAR-053 | Docket persistence | `[~]` | Both creation and acceptance now call their services through the durable outbox, and posted creation navigates by the server-minted docket number. The live create path remains unexercised because `auth.users` is still empty; behavioural database coverage is BAR-030 |
 | BAR-054 | `docket` screen with QR | `[x]` | `c987c24` |
 | BAR-055 | `accept` screen | `[x]` | `c987c24` — verified by driving the browser: CTA disabled without a reason |
 | BAR-056 | `diff` screen | `[x]` | `c987c24` — correctly the accept screen's difference panel, not a route (BAR-007 finding) |
@@ -363,9 +363,9 @@ Computed from the rows above, not asserted.
 
 | | Count |
 | --- | --- |
-| `[x]` done | 41 |
+| `[x]` done | 42 |
 | `[~]` partial | 37 |
-| `[R]` rewrite | 7 |
+| `[R]` rewrite | 6 |
 | `[!]` defect actively present | 15 |
 | `[ ]` not started | 62 |
 | `[?]` unverifiable today | 2 |
@@ -516,35 +516,22 @@ schema. Confirm or correct them rather than assuming they are still open.
 
 ## Recommended next actions
 
-Rewritten 28 August, end of session. The write path is half built: an acceptance
-is recorded, an issue is not.
+Rewritten 28 August after BAR-051. The custody write chain is now complete in
+application code; neither half has executed under a real signed-in user.
 
-**1. BAR-051 — rebuild the `issue` screen.** The single highest-value task, and it
-is a `codex` task in the roadmap. It is the last thing standing between the custody
-chain and a complete write path: `ReviewScreen` currently reads `custody()`, an
-*existing* docket, so `issueStock` cannot be wired until the issue screen produces
-a real draft (SKU id, destination location id, container count) and passes it
-forward. It also removes the largest remaining block of fixture literals and the
-last screen reading `demo-store` for SKU data.
-
-Acceptance, beyond the roadmap's criteria: `ReviewScreen` takes its product,
-destination and quantity from the draft rather than from `custody()`, and its CTA
-calls `issueStock` from `src/services/issue.ts` — which already exists and is
-tested.
-
-**2. BAR-082 — a count-submit RPC.** The counting chain has no destination, so a
+**1. BAR-082 — a count-submit RPC.** The counting chain has no destination, so a
 submitted count is discarded. `boa_bar_count_line` has no write path at all.
 
-**3. BAR-161 — location-scope `boa_bar_inventory_snapshot`.** Blind counting is the
+**2. BAR-161 — location-scope `boa_bar_inventory_snapshot`.** Blind counting is the
 product's core integrity control and is currently a UI convention: any member can
 read the expected position for the location they are about to count.
 
-**4. BAR-164 — delete the legacy path.** `src/lib/live-repository.ts` and
+**3. BAR-164 — delete the legacy path.** `src/lib/live-repository.ts` and
 `demo-store`'s snapshot loader are a second live data path that hardcodes `bar_3`.
 It is the remaining half of BAR-133, of BAR-071 (a write inside an unawaited
 `void`) and of BAR-157.
 
-**5. BAR-081 — apply `mlFromGrossWeight`.** The count screen shows the tare weight
+**4. BAR-081 — apply `mlFromGrossWeight`.** The count screen shows the tare weight
 and never uses it, so a weighed partial is entered as a raw gross reading.
 
 Do **not** start the five missing screens (`sku`, `mv`, `control`, `cowork`, `rep`)
@@ -573,6 +560,50 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 28 August 2026 · codex
+
+**Completed: BAR-051 — the issue side of custody is now a real write path.**
+
+The legacy `IssueScreen` was removed from `src/features/screens.tsx` and rebuilt
+from the approved `issue` branch. Source, destination, current actor, the complete
+SKU catalogue, case size, container vocabulary and warehouse position all come
+from the new `Repository.issueOptions()` read model; the screen contains no
+fixture SKU, location or stock figure. The design's case/container switch,
+equivalence, quarter-case container step, 1/2/4/6-case presets and warehouse-after
+row are derived and bounded by the held position.
+
+The route now carries a Zod-validated draft — stable action id, source,
+destination, SKU, whole containers and entry unit. `ReviewScreen` resolves those
+ids through the repository instead of reading `custody()`, preserves the draft on
+back, and calls `issueStock`. A posted result navigates using the server-minted
+docket number; a durable-but-not-posted result remains on Review and explicitly
+says it is queued rather than claiming a docket exists.
+
+**Browser verification at 390×844:** CASE → BOTTLE preserved the 48-container
+equivalence; plus advanced by 6 to 54 and displayed `2.25 cases`; product and
+destination controls changed to repository values; Review showed the drafted 48
+bottles, BAR 3 and warehouse-after 240; CREATE DOCKET & ISSUE reached
+`/dockets/D-0184`. No console warnings or errors. The two-fixture visual gate
+reports **15 reading the data layer, 0 hardcoded, 0 errored**.
+
+**Verified:** `typecheck`, `lint`, `test` (114 tests), `build`, `test:visual`.
+
+**Files changed:** `src/screens/issue/{IssueScreen,draft}.ts` and draft test,
+`src/screens/custody/ReviewScreen.tsx`, `src/domain/units.ts` and test,
+`src/data/repository.ts`, fixture/live repository and formatting files plus tests,
+`src/app/router.tsx`, `src/features/screens.tsx`, `src/styles.css`,
+`docs/CURRENT-STATE.md`.
+
+**Architecture changes:** none. The read model, service call, typed route draft
+and outbox path implement the existing architecture.
+
+**Known issue:** the live create-docket path is still unexercised because there is
+no `auth.users` row. Queued docket creation cannot open the Docket screen until
+the server mints a number; Review states that honestly and stays put.
+
+**Recommended next:** **BAR-082** — add and wire the count-submit RPC. The count
+flow currently discards its result.
 
 ### Session — 28 August 2026 (sixth) · Claude
 

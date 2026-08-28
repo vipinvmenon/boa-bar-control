@@ -395,6 +395,44 @@ h1 { font: 400 31px/1 'Anton', sans-serif; letter-spacing: .035em; text-transfor
 .advisory-gold { border: 1px solid rgba(227,187,114,.35); background: rgba(227,187,114,.08); color: var(--gold); }
 .advisory-sage { border: 1px solid rgba(166,201,180,.2); background: rgba(27,27,36,.5); color: rgba(166,201,180,.8); }
 
+/* issue */
+.issue-body { flex: 1; overflow-y: auto; scrollbar-width: none; padding: 14px 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+.issue-body::-webkit-scrollbar { display: none; }
+.issue-route-picker { display: flex; align-items: stretch; gap: 10px; }
+.issue-route-picker > svg { align-self: center; flex: none; color: rgba(166,201,180,.5); }
+.issue-route-from, .issue-route-to { flex: 1; min-width: 0; padding: 11px 13px; text-align: left; border-radius: 15px; }
+.issue-route-from { border: 1px solid rgba(166,201,180,.2); background: linear-gradient(160deg, rgba(23,24,31,.94) 0%, rgba(13,13,18,.9) 100%); backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%); box-shadow: inset 0 1px 0 rgba(242,239,226,.06), 0 12px 32px rgba(0,0,0,.45); }
+.issue-route-to { border: 1px solid rgba(0,245,165,.7); background: rgba(0,245,165,.1); }
+.issue-route-from span, .issue-route-to span, .issue-label { display: block; color: rgba(166,201,180,.62); font: 500 9px/1 'Oswald', sans-serif; letter-spacing: .18em; }
+.issue-route-from strong, .issue-route-to strong { display: block; margin-top: 7px; color: var(--bone); font: 600 15px/1 'Oswald', sans-serif; letter-spacing: .06em; }
+.issue-route-to strong { color: var(--green); }
+.issue-product, .issue-quantity { padding: 13px; border: 1px solid rgba(166,201,180,.2); border-radius: 15px; background: linear-gradient(160deg, rgba(23,24,31,.94) 0%, rgba(13,13,18,.9) 100%); backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%); box-shadow: inset 0 1px 0 rgba(242,239,226,.06), 0 12px 32px rgba(0,0,0,.45); }
+.issue-product { width: 100%; display: block; text-align: left; color: inherit; }
+.issue-product-row { margin-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.issue-product-row > span:first-child { min-width: 0; }
+.issue-product-row strong { display: block; color: var(--bone); font: 600 15px/1.2 'Archivo', sans-serif; }
+.issue-product-row small { display: block; margin-top: 3px; color: rgba(166,201,180,.62); font: 400 11px/1.3 'Archivo', sans-serif; }
+.issue-product-row .issue-change { flex: none; color: rgba(166,201,180,.6); font: 600 11px/1 'Oswald', sans-serif; letter-spacing: .1em; }
+.issue-quantity-head { display: flex; align-items: center; justify-content: space-between; }
+.issue-unit-tabs { display: flex; overflow: hidden; border: 1px solid rgba(166,201,180,.22); border-radius: 999px; }
+.issue-unit-tabs button { height: 30px; padding: 0 14px; border: 0; background: transparent; color: rgba(166,201,180,.8); font: 600 10px/1 'Oswald', sans-serif; letter-spacing: .12em; }
+.issue-unit-tabs button.active { background: var(--green); color: var(--ink); }
+.issue-stepper { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.issue-stepper > button { width: 64px; height: 64px; flex: none; display: grid; place-items: center; border-radius: 16px; }
+.issue-stepper > button:disabled, .issue-presets button:disabled { opacity: .35; }
+.issue-minus { border: 1px solid rgba(166,201,180,.24); background: rgba(27,27,36,.72); color: var(--bone); }
+.issue-plus { border: 1px solid rgba(0,245,165,.7); background: rgba(0,245,165,.1); color: var(--green); box-shadow: 0 0 10px rgba(0,245,165,.2); }
+.issue-stepper > div { flex: 1; text-align: center; }
+.issue-stepper strong { display: block; color: var(--bone); font: 400 46px/1 'Anton', sans-serif; }
+.issue-stepper span { display: block; margin-top: 6px; color: rgba(166,201,180,.6); font: 500 10px/1 'Oswald', sans-serif; letter-spacing: .14em; }
+.issue-equivalence { margin-top: 14px; text-align: center; color: var(--green); font: 600 13px/1 'Oswald', sans-serif; letter-spacing: .08em; }
+.issue-presets { margin-top: 14px; display: flex; gap: 8px; }
+.issue-presets button { flex: 1; height: 40px; border: 1px solid rgba(166,201,180,.22); border-radius: 999px; background: transparent; color: rgba(166,201,180,.8); font: 600 12px/1 'Oswald', sans-serif; letter-spacing: .08em; }
+.issue-presets button.active { border-color: var(--green); background: var(--green); color: var(--ink); }
+.issue-after { padding: 12px 13px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px dashed rgba(166,201,180,.24); border-radius: 15px; }
+.issue-after span { color: rgba(166,201,180,.72); font: 400 12px/1.3 'Archivo', sans-serif; }
+.issue-after strong { flex: none; color: var(--bone); font: 600 14px/1 'Oswald', sans-serif; letter-spacing: .04em; text-transform: lowercase; }
+
 /* review */
 .review-hero { padding: 18px; text-align: center; border: 1px solid rgba(166,201,180,.2); border-radius: 18px; background: linear-gradient(160deg, rgba(23,24,31,.94) 0%, rgba(13,13,18,.9) 100%); backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%); box-shadow: inset 0 1px 0 rgba(242,239,226,.06), 0 12px 32px rgba(0,0,0,.45); }
 .review-hero-qty { color: var(--bone); font: 400 34px/1 'Anton', sans-serif; }

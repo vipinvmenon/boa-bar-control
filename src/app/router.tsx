@@ -14,8 +14,9 @@ import { ReceivedScreen } from '../screens/custody/ReceivedScreen'
 import { CountScreen } from '../screens/count/CountScreen'
 import { CountDoneScreen } from '../screens/count/CountDoneScreen'
 import { VarianceScreen } from '../screens/count/VarianceScreen'
+import { IssueScreen } from '../screens/issue/IssueScreen'
+import { parseIssueDraftSearch } from '../screens/issue/draft'
 import {
-  IssueScreen,
   ReportsScreen,
   WasteScreen,
 } from '../features/screens'
@@ -33,7 +34,12 @@ const barRoute = createRoute({
 })
 const activityRoute = createRoute({ getParentRoute: () => rootRoute, path: '/activity', component: ActivityScreen })
 const moreRoute = createRoute({ getParentRoute: () => rootRoute, path: '/more', component: MoreScreen })
-const issueRoute = createRoute({ getParentRoute: () => rootRoute, path: '/issue', component: IssueScreen })
+const issueRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/issue',
+  component: IssueScreen,
+  validateSearch: parseIssueDraftSearch,
+})
 const wasteRoute = createRoute({ getParentRoute: () => rootRoute, path: '/waste', component: WasteScreen })
 const countRoute = createRoute({ getParentRoute: () => rootRoute, path: '/count', component: CountScreen })
 const reportsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/reports', component: ReportsScreen })
@@ -46,9 +52,7 @@ const reviewRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/issue/review',
   component: ReviewScreen,
-  validateSearch: (search: Record<string, unknown>): { qty?: number } => ({
-    qty: search.qty === undefined ? undefined : Number(search.qty),
-  }),
+  validateSearch: parseIssueDraftSearch,
 })
 const docketRoute = createRoute({
   getParentRoute: () => rootRoute,

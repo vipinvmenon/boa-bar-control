@@ -29,6 +29,7 @@ import {
   groupKey,
   GROUP_ORDER,
   isKeg,
+  issueSpecLabel,
   makeClock,
   partialHintFor,
   partialModeFor,
@@ -80,6 +81,7 @@ import type {
   CatalogueGroup,
   CountSession,
   Custody,
+  IssueOptions,
   LedgerEntry,
   MovementDetail,
   CreateDocketCommand,
@@ -671,6 +673,58 @@ export function createLiveRepository(context: LiveContext): Repository {
           }),
         }
       }).filter((g) => g.items.length > 0)
+    },
+
+    async issueOptions(): Promise<IssueOptions> {
+      const [ref, snap] = await Promise.all([reference(), snapshot()])
+      const assigned = context.locationId ? ref.locationById.get(context.locationId) : undefined
+      const source = assigned?.kind === 'warehouse'
+        ? assigned
+        : ref.locations.find((location) => location.kind === 'warehouse')
+      if (!source) throw new Error('No active warehouse is configured for this venue')
+
+      const destinations = ref.locations
+        .filter((location) => location.kind === 'bar' || location.kind === 'hospitality')
+        .map((location) => ({ id: location.id, name: location.name.toUpperCase() }))
+      if (destinations.length === 0) throw new Error('No issue destination is configured for this venue')
+
+      const containersBySku = new Map<string, number>()
+      for (const row of snap.rows) {
+        if (row.location_id !== source.id) continue
+        containersBySku.set(row.sku_id, (containersBySku.get(row.sku_id) ?? 0) + Number(row.containers))
+      }
+
+      const products = ref.skus.map((sku) => {
+        const shape = toSkuShape(sku)
+        return {
+          skuId: sku.id,
+          name: sku.name,
+          reviewName: sku.name,
+          issueSpec: issueSpecLabel(shape),
+          unitsPerCase: sku.units_per_case,
+          mlPerContainer: sku.ml_per_container,
+          warehouseContainers: containersBySku.get(sku.id) ?? 0,
+          containerUnitSingular: unitWord(sku.container_type, false),
+          containerUnitPlural: unitWord(sku.container_type),
+        }
+      })
+      if (products.length === 0) throw new Error('No active SKU is configured for this venue')
+
+      const assignedDestination = assigned && destinations.some((destination) => destination.id === assigned.id)
+        ? assigned.id
+        : destinations[0]?.id
+      const firstStocked = products.find((product) => product.warehouseContainers > 0)
+
+      return {
+        fromLocationId: source.id,
+        fromName: source.name.toUpperCase(),
+        destinations,
+        defaultDestinationId: assignedDestination ?? destinations[0]!.id,
+        products,
+        defaultProductId: firstStocked?.skuId ?? products[0]!.skuId,
+        issuedBy: who(ref, context.userId),
+        issuedAt: clock.time(snap.now.toISOString()),
+      }
     },
 
     async ledger(group: ActivityGroup = 'All'): Promise<LedgerEntry[]> {

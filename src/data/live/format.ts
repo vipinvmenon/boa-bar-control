@@ -159,6 +159,14 @@ export function specLabel(sku: SkuShape): string {
   return `${categoryWord(sku.categoryKey)} · ${measure} ${unitWord(sku.containerType, false).toLowerCase()}`
 }
 
+/** `Beer · 650 ml · 24 per case` — the issue screen's product-card form. */
+export function issueSpecLabel(sku: SkuShape): string {
+  const measure = isKeg(sku)
+    ? `${trimDecimal(sku.mlPerContainer / 1000)} L`
+    : `${thousands(sku.mlPerContainer)} ml`
+  return `${categoryWord(sku.categoryKey)} · ${measure} · ${sku.unitsPerCase} per case`
+}
+
 /**
  * The count screen's partial-capture mode, per specification §6: "count full
  * containers as integers and weigh partials".

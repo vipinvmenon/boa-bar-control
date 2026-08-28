@@ -13,6 +13,7 @@ import {
   actorLabel,
   categoryWord,
   groupKey,
+  issueSpecLabel,
   makeClock,
   partialHintFor,
   partialModeFor,
@@ -82,6 +83,14 @@ describe('specLabel reproduces the design spec lines', () => {
     [coke, 'Mixer · 300 ml bottle'],
   ] as [SkuShape, string][])('%#', (sku, expected) => {
     expect(specLabel(sku)).toBe(expected)
+  })
+})
+
+describe('issueSpecLabel reproduces the issue product card', () => {
+  it('shows the case equivalence without duplicating the container type', () => {
+    expect(issueSpecLabel(kingfisher)).toBe('Beer · 650 ml · 24 per case')
+    expect(issueSpecLabel(oldMonk)).toBe('Spirit · 750 ml · 12 per case')
+    expect(issueSpecLabel(stok)).toBe('Beer · 30 L · 1 per case')
   })
 })
 

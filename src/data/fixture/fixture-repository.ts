@@ -20,6 +20,7 @@ import type {
   CatalogueGroup,
   CountSession,
   Custody,
+  IssueOptions,
   LedgerEntry,
   MovementDetail,
   Repository,
@@ -28,7 +29,7 @@ import type {
   VarianceReport,
   WriteOutcome,
 } from '../repository'
-import { ALERTS, AS_OF, BARS, BAR_DETAIL, CATALOGUE, COUNT_SESSION, CUSTODY, LEDGER, MOVEMENTS, SESSION, STOCK_POSITION, VARIANCE, variant } from './design-data'
+import { ALERTS, AS_OF, BARS, BAR_DETAIL, CATALOGUE, COUNT_SESSION, CUSTODY, ISSUE_OPTIONS, LEDGER, MOVEMENTS, SESSION, STOCK_POSITION, VARIANCE, variant } from './design-data'
 
 export type FixtureVariant = 'a' | 'b'
 
@@ -64,6 +65,10 @@ export function createFixtureRepository(which: FixtureVariant = 'a'): Repository
 
     async catalogue(): Promise<CatalogueGroup[]> {
       return v?.catalogue ?? CATALOGUE
+    },
+
+    async issueOptions(): Promise<IssueOptions> {
+      return v?.issueOptions ?? ISSUE_OPTIONS
     },
 
     async ledger(group: ActivityGroup = 'All'): Promise<LedgerEntry[]> {

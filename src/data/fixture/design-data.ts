@@ -24,6 +24,7 @@ import type {
   LedgerEntry,
   CountSession,
   Custody,
+  IssueOptions,
   MovementDetail,
   StockPosition,
   VarianceReport,
@@ -103,6 +104,54 @@ export const CATALOGUE: CatalogueGroup[] = [
     ],
   },
 ]
+
+const ISSUE_PRODUCT_META: Record<
+  string,
+  { unitsPerCase: number; mlPerContainer: number; warehouseContainers: number; containerUnitSingular: string; reviewName?: string }
+> = {
+  kf:        { unitsPerCase: 24, mlPerContainer: 650,   warehouseContainers: 288, containerUnitSingular: 'BOTTLE', reviewName: 'Kingfisher' },
+  corona:    { unitsPerCase: 24, mlPerContainer: 355,   warehouseContainers: 48,  containerUnitSingular: 'BOTTLE' },
+  bira:      { unitsPerCase: 24, mlPerContainer: 330,   warehouseContainers: 36,  containerUnitSingular: 'CAN' },
+  stok:      { unitsPerCase: 1,  mlPerContainer: 30000, warehouseContainers: 8,   containerUnitSingular: 'KEG' },
+  monk:      { unitsPerCase: 12, mlPerContainer: 750,   warehouseContainers: 62,  containerUnitSingular: 'BOTTLE' },
+  signature: { unitsPerCase: 12, mlPerContainer: 750,   warehouseContainers: 48,  containerUnitSingular: 'BOTTLE' },
+  smirnoff:  { unitsPerCase: 12, mlPerContainer: 750,   warehouseContainers: 32,  containerUnitSingular: 'BOTTLE' },
+  coke:      { unitsPerCase: 24, mlPerContainer: 300,   warehouseContainers: 96,  containerUnitSingular: 'BOTTLE' },
+  tonic:     { unitsPerCase: 24, mlPerContainer: 200,   warehouseContainers: 12,  containerUnitSingular: 'BOTTLE' },
+  soda:      { unitsPerCase: 24, mlPerContainer: 300,   warehouseContainers: 8,   containerUnitSingular: 'BOTTLE' },
+}
+
+/** design-script.jsx:216-241 — the state that exists before a docket is created. */
+export const ISSUE_OPTIONS: IssueOptions = {
+  fromLocationId: 'warehouse',
+  fromName: 'WAREHOUSE',
+  destinations: [
+    ...BARS.map((bar) => ({ id: bar.id, name: bar.name })),
+    { id: 'hospitality', name: 'HOSPITALITY' },
+  ],
+  defaultDestinationId: 'bar-3',
+  products: CATALOGUE.flatMap((group) =>
+    group.items.map((item) => {
+      const meta = ISSUE_PRODUCT_META[item.skuId]
+      if (!meta) throw new Error(`Missing issue metadata for ${item.skuId}`)
+      const measure = item.spec.replace(/\s+(bottle|can|keg)$/i, '')
+      return {
+        skuId: item.skuId,
+        name: item.name,
+        reviewName: meta.reviewName ?? item.name,
+        issueSpec: `${measure} · ${meta.unitsPerCase} per case`,
+        unitsPerCase: meta.unitsPerCase,
+        mlPerContainer: meta.mlPerContainer,
+        warehouseContainers: meta.warehouseContainers,
+        containerUnitSingular: meta.containerUnitSingular,
+        containerUnitPlural: `${meta.containerUnitSingular}S`,
+      }
+    }),
+  ),
+  defaultProductId: 'kf',
+  issuedBy: 'CHANDAN',
+  issuedAt: '19:31',
+}
 
 // design-script.jsx:157-163 — allLedger. Note the design's five groups.
 export const LEDGER: LedgerEntry[] = [
@@ -241,16 +290,23 @@ export const VARIANCE: VarianceReport = {
  * renders differently. A screen that renders identically is not reading its data.
  */
 export function variant() {
+  const bars = BARS.map((b, i) => ({
+    ...b,
+    name: `BAR ${i + 5}`,
+    containers: b.containers + 11 * (i + 1),
+    lead: ['Priya', 'Imran', 'Nikhil', 'Sana'][i] ?? b.lead,
+    countedAt: `18:${String(10 + i * 5).padStart(2, '0')}`,
+    flag: i === 0 ? 'COUNT DUE SOON' : b.flag,
+  }))
+  const catalogue = CATALOGUE.map((g) => ({
+    ...g,
+    totalLabel: g.totalLabel.replace(/^\d+/, (n) => String(Number(n) + 40)),
+    items: g.items.map((it) => ({ ...it, name: `${it.name} (v2)` })),
+  }))
+
   return {
     asOf: { label: '21:07', at: '2026-10-10T21:07:00+05:30' },
-    bars: BARS.map((b, i) => ({
-      ...b,
-      name: `BAR ${i + 5}`,
-      containers: b.containers + 11 * (i + 1),
-      lead: ['Priya', 'Imran', 'Nikhil', 'Sana'][i] ?? b.lead,
-      countedAt: `18:${String(10 + i * 5).padStart(2, '0')}`,
-      flag: i === 0 ? 'COUNT DUE SOON' : b.flag,
-    })),
+    bars,
     stockPosition: {
       ...STOCK_POSITION,
       totalContainers: 1502,
@@ -293,10 +349,22 @@ export function variant() {
       toName: 'BAR 1',
       toLocationId: 'bar-1',
     },
-    catalogue: CATALOGUE.map((g) => ({
-      ...g,
-      totalLabel: g.totalLabel.replace(/^\d+/, (n) => String(Number(n) + 40)),
-      items: g.items.map((it) => ({ ...it, name: `${it.name} (v2)` })),
-    })),
+    catalogue,
+    issueOptions: {
+      ...ISSUE_OPTIONS,
+      destinations: [
+        ...bars.map((bar) => ({ id: bar.id, name: bar.name })),
+        { id: 'hospitality-v2', name: 'HOSPITALITY 2' },
+      ],
+      defaultDestinationId: bars[0]?.id ?? ISSUE_OPTIONS.defaultDestinationId,
+      products: ISSUE_OPTIONS.products.map((product, index) => ({
+        ...product,
+        name: `${product.name} (v2)`,
+        warehouseContainers: product.warehouseContainers + 5 * (index + 1),
+      })),
+      defaultProductId: 'corona',
+      issuedBy: 'PRIYA',
+      issuedAt: '20:14',
+    },
   }
 }

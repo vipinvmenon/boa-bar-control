@@ -153,6 +153,44 @@ export type CatalogueGroup = {
 }
 
 // ---------------------------------------------------------------------------
+// issue
+// ---------------------------------------------------------------------------
+
+export type IssueDestination = {
+  id: string
+  /** Display name in the design's data vocabulary, e.g. `BAR 3`. */
+  name: string
+}
+
+export type IssueProduct = {
+  skuId: string
+  name: string
+  /** Compact identity used by the review hero; the detail row keeps `name`. */
+  reviewName: string
+  /** Design form: `Beer · 650 ml · 24 per case`. */
+  issueSpec: string
+  unitsPerCase: number
+  mlPerContainer: number
+  /** The source location's current ledger-derived position. */
+  warehouseContainers: number
+  /** Display vocabulary from the SKU's container type. */
+  containerUnitSingular: string
+  containerUnitPlural: string
+}
+
+/** Everything needed to build an issue draft before a docket exists. */
+export type IssueOptions = {
+  fromLocationId: string
+  fromName: string
+  destinations: IssueDestination[]
+  defaultDestinationId: string
+  products: IssueProduct[]
+  defaultProductId: string
+  issuedBy: string
+  issuedAt: string
+}
+
+// ---------------------------------------------------------------------------
 // custody chain: review -> docket -> accept -> diff -> received
 // ---------------------------------------------------------------------------
 
@@ -365,6 +403,9 @@ export interface Repository {
   barDetail(barId: string): Promise<BarDetail | null>
 
   catalogue(): Promise<CatalogueGroup[]>
+
+  /** Source, destinations and SKU positions for the issue-stock draft screen. */
+  issueOptions(): Promise<IssueOptions>
 
   ledger(group?: ActivityGroup): Promise<LedgerEntry[]>
   movementDetail(id: string): Promise<MovementDetail | null>
