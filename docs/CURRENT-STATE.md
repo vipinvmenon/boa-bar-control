@@ -223,12 +223,12 @@ States are defined once in the **Status key** above.
 | BAR-041 | Toast system | `[~]` | `demo-store.tsx:309` expires at **2400 ms**; the design and the acceptance criterion are 2600 ms |
 | BAR-042 | Repository interface | `[~]` | Interface, fixture and live implementations all exist (`b49768c`, `743a4d4`). **The live implementation has never executed a query** — the database holds nothing to read |
 | BAR-043 | Fixture repository from the design's data | `[x]` | `design-data.ts` with line references; the gate reports 0 hardcoded screens |
-| BAR-044 | Application service layer | `[ ]` | **There is no `src/services/` directory.** Screens call the repository directly, and no service composes a write |
+| BAR-044 | Application service layer | `[~]` | `src/services/` exists with `issue.ts` and `accept.ts` — Zod validation, the custody domain rules, then the repository. Commands are on the `Repository` interface, so no screen imports Supabase or Dexie and no service calls an RPC. 13 service tests. **The accept screen is wired and verified in a browser; the issue screen is not** — see BAR-051 |
 | BAR-045 | Remove fixture data from screen files | `[~]` | 13 screens read the repository, the gate reports 0 hardcoded, and BAR-154's lint rule now enforces it mechanically for screens and components. `src/features/screens.tsx` still holds literals — it is not under the rule's file scope because it is being deleted, not fixed (BAR-164) |
-| BAR-046 | Wire the domain layer | `[~]` | `varianceBand`, `toleranceFor` and `buildQueuedMovement` have callers. Still zero outside tests: `derivePositions`, `applyIdempotently`, `reverseMovement`, `theoreticalClosing`, `weightedAverageCost`, **`mlFromGrossWeight`** — the tare conversion BAR-081 should use |
+| BAR-046 | Wire the domain layer | `[~]` | Callers now exist for `varianceBand`, `toleranceFor`, `buildQueuedMovement`, and the whole of the new `domain/custody.ts` and `domain/outbox-policy.ts`. Still zero callers outside tests: `derivePositions`, `applyIdempotently`, `reverseMovement`, `theoreticalClosing`, `weightedAverageCost`, **`mlFromGrossWeight`** |
 | BAR-164 | Delete the legacy parallel live path | `[ ]` | `src/lib/live-repository.ts` and `demo-store`'s snapshot loader are still present and still hardcode `bar_3` |
 | BAR-047 | Error boundary and not-found route | `[x]` | Added 28 Aug. Router-level `defaultErrorComponent` and `defaultNotFoundComponent` so a new route cannot arrive without a boundary, plus `AppErrorBoundary` outside the router for throws in the providers. **Verified in a browser**: a planted throw in a repository read rendered the failure card in-shell with the nav intact, and cleared when the read succeeded. Also `throwOnError: true` on `useRepositoryQuery` — screens render `data?.field ?? '—'`, so a failed live read previously produced a screen of em-dashes and zeroes, visually identical to a venue with no stock |
-| BAR-048 | Zod at every boundary | `[~]` | Zod is used only in `domain/inventory.ts`. RPC responses, QR payloads, POS rows and local-store reads are all unvalidated; `rows.ts` casts by hand |
+| BAR-048 | Zod at every boundary | `[~]` | Zod now validates both write use cases at the service boundary — the first real use outside `domain/inventory.ts`. RPC **responses**, QR payloads, POS rows and local-store reads are still unvalidated; `rows.ts` casts by hand |
 | BAR-129 | Bounded quantity inputs | `[~]` | Verified in the custody chain: plus disabled at the issued quantity. The legacy issue screen is still unbounded |
 | BAR-130 | Full SKU catalogue on every screen | `[~]` | The live count session lists the full active catalogue. The legacy issue screen shows `store.stock.slice(0, 5)` |
 | BAR-131 | Remove the fake OS status bar | `[!]` | `AppShell.tsx:59` still renders `status-line` with a hardcoded `19:44` and a fake 4G indicator |
@@ -240,9 +240,9 @@ States are defined once in the **Status key** above.
 | --- | --- | --- | --- |
 | BAR-049 | `warehouse` from the data layer | `[x]` | `c4728ad` — category groups, totals and rows all derived; gate passes both fixture states |
 | BAR-050 | `sku` screen — SKU ledger | `[ ]` | Screen missing. Warehouse rows have nowhere to navigate |
-| BAR-051 | `issue` with case/bottle unit switch | `[R]` | Still served from `src/features/screens.tsx:24`. No unit switch; presets wrong |
+| BAR-051 | `issue` with case/bottle unit switch | `[R]` | Still `src/features/screens.tsx:24`, and now also the blocker for the issue half of the write path: it picks an SKU from `demo-store` and passes only `qty` in the URL, so no draft reaches `ReviewScreen`. Rebuilding it is what lets `issueStock` be wired |
 | BAR-052 | `review` screen | `[x]` | `c987c24` — derives cases, litres and warehouse-after from the repository |
-| BAR-053 | Docket persistence | `[~]` | `e087d10` — the RPC mints docket numbers server-side under an advisory lock. **Nothing calls it, so dockets still exist only in browser memory** |
+| BAR-053 | Docket persistence | `[~]` | The RPC exists and `acceptDocket` now calls it through the outbox, so an acceptance is recorded. **Docket creation is still not wired**: `ReviewScreen` reads `custody()`, an existing docket, so calling `createDocket` there would create a duplicate. Needs a draft from the issue screen (BAR-051) |
 | BAR-054 | `docket` screen with QR | `[x]` | `c987c24` |
 | BAR-055 | `accept` screen | `[x]` | `c987c24` — verified by driving the browser: CTA disabled without a reason |
 | BAR-056 | `diff` screen | `[x]` | `c987c24` — correctly the accept screen's difference panel, not a route (BAR-007 finding) |
@@ -264,19 +264,19 @@ States are defined once in the **Status key** above.
 | BAR-066 | Reference cache | `[!]` | `referenceCache` is declared in `offline-db.ts:23` and **written to by nothing** (grep: zero writes) |
 | BAR-067 | Offline reads from cache | `[~]` | The dangerous half is fixed: `RepositoryProvider` cannot fall back to fixtures, and as of BAR-047 a failed read now *surfaces* instead of rendering as empty data. The useful half still does not exist — there is no cache to read, so a failed read shows an error rather than the last known position |
 | BAR-068 | Cold-start offline | `[!]` | Membership load needs the network; an offline cold start locks every staff member out |
-| BAR-069 | Stable idempotency keys | `[~]` | The queue dedupes on `idempotencyKey` (`offline-db.ts:37`), but `lib/live-repository.ts:83` mints a fresh key on every invocation, so a double tap still produces two rows |
-| BAR-070 | Ordered outbox replay | `[~]` | `offline-db.ts:68` replays in `createdAt` order, so within one device an acceptance cannot overtake its issue. Nothing enforces causal order across devices |
+| BAR-069 | Stable idempotency keys | `[~]` | The idempotency key now identifies the user **action** — created once when the screen mounts, reused for every attempt — and the outbox dedupes on it, so a double tap posts once. It does **not** survive a reload (BAR-072), so a reload before the drain relies on the database refusing the second acceptance (BAR-134 asserts it does) |
+| BAR-070 | Ordered outbox replay | `[x]` | `selectDrainBatch` replays in causal order and **stops at the first blocked entry**. The previous drain skipped an entry in backoff and posted the ones behind it, so an issue that failed once could be overtaken by its own acceptance. Asserted in `outbox-policy.test.ts`, including the case that used to break |
 | BAR-071 | No silent write loss | `[!]` | `demo-store.tsx:353` — `void queueLiveMovement(…)`. An unawaited promise whose rejection is discarded while the UI toasts success |
 | BAR-072 | Persist mutable state | `[!]` | Dockets, counts and optimistic deltas live in React memory only; lost on reload |
 | BAR-073 | Real connectivity detection | `[R]` | Still a hand-operated toggle in the shell |
-| BAR-074 | Retry, backoff and auth stop | `[~]` | Exponential backoff capped at 60 s, `failed` at 8 attempts (`offline-db.ts:76-80`). No auth-error stop — a 401 retries eight times |
+| BAR-074 | Retry, backoff and auth stop | `[~]` | Backoff capped at 60 s with jitter; an auth failure now stops the drain **without consuming an attempt** (it previously burned all eight in two minutes and marked a shift's work failed); a rule violation dead-letters immediately instead of retrying. Not done: nothing prompts re-authentication when the drain stops |
 | BAR-075 | Real "as of" stamps | `[~]` | The live repository derives every stamp from the server's clock in the venue's timezone. `AppShell.tsx:59` still prints a hardcoded `19:44` |
 | BAR-076 | Service worker for a festival network | `[R]` | `06968a4` made an update applicable. No API caching strategy, and still excluded from typecheck and lint |
 | BAR-077 | Remove demo switches from the UI | `[!]` | `AppShell.tsx:85` — the sync line is still a button that toggles offline mode |
 | BAR-078 | Tap targets and focus | `[ ]` | Not measured since the rebuild. Needs a pass |
 | BAR-133 | Waste and accept post to the right location | `[~]` | The three screen literals are fixed (28 Aug): `BarsScreen` opens any bar, and `CountSession.locationId` / `Custody.toLocationId` carry the id the two flow CTAs need, populated by both repositories and shifted in the gate's second fixture variant. **The task is not done: `demo-store.tsx:353` still posts every waste to `bar_3` regardless of which bar recorded it.** That is the legacy path and goes with BAR-164 |
 | BAR-134 | Idempotent acceptance | `[x]` | The accept RPC rejects a second acceptance and replays idempotently on the client key |
-| BAR-135 | Dead-letter for invalid outbox entries | `[~]` | A `failed` status exists after 8 attempts. Nothing surfaces it, so a dead letter is invisible |
+| BAR-135 | Dead-letter for invalid outbox entries | `[~]` | A permanent failure is now classified as such and marked terminal on the first attempt rather than after eight, with `permanent: true`. Nothing surfaces it yet — the dead-letter view is still missing |
 | BAR-136 | QR scanner | `[ ]` | No `BarcodeDetector`, `getUserMedia` or QR library anywhere. `vercel.json` grants camera permission for a capability that does not exist |
 | BAR-137 | Session longevity for shared devices | `[ ]` | Magic-link only, and no device registry — which is why the live `deviceLabel` falls back to the membership's location code |
 | BAR-138 | Security headers and build identity | `[x]` | `06968a4` — a waiting service worker can now actually be activated; previously it could never be replaced |
@@ -363,11 +363,11 @@ Computed from the rows above, not asserted.
 
 | | Count |
 | --- | --- |
-| `[x]` done | 40 |
+| `[x]` done | 41 |
 | `[~]` partial | 37 |
 | `[R]` rewrite | 7 |
 | `[!]` defect actively present | 15 |
-| `[ ]` not started | 63 |
+| `[ ]` not started | 62 |
 | `[?]` unverifiable today | 2 |
 | **Total** | **164** |
 
@@ -559,6 +559,83 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 28 August 2026 (sixth) · Claude
+
+**BAR-047 and BAR-044 — the app can now record something.**
+
+**BAR-047 — error boundary.** Router-level `defaultErrorComponent` and
+`defaultNotFoundComponent`, so a new route cannot arrive without a boundary, plus
+`AppErrorBoundary` outside the router for throws in the providers. The larger fix
+was one line: `throwOnError` on `useRepositoryQuery`. Every screen renders
+`data?.field ?? '—'`, so a failed live read produced a screen of em-dashes and
+zeroes — **visually identical to a venue holding no stock**. A warehouse reading 0
+because the network dropped and a warehouse reading 0 because it is empty must not
+look the same.
+
+**BAR-044 — the service layer.** `src/services/` did not exist, and nothing called
+the docket RPCs. Screens now call services; services take the repository as an
+argument and are testable without React; the repository appends to the outbox; the
+outbox dispatches to the RPCs. No screen imports Supabase or Dexie, and no service
+calls an RPC.
+
+**Three defects in the outbox, found while generalising it to typed commands:**
+
+1. **Ordering.** The drain selected every entry whose backoff had elapsed and
+   posted those — so an entry in backoff was *skipped* while the entries behind it
+   went ahead. An issue that failed once could be overtaken by its own acceptance,
+   producing an acceptance of a docket the ledger did not contain. `OFFLINE-SYNC.md`
+   rule 2 exists for exactly this and was not implemented. Now `selectDrainBatch`,
+   which stops at the first blocked entry, with the failing case asserted.
+2. **Auth.** An auth failure incremented `attempts` before breaking out, so eight
+   queued entries and an expired JWT marked a shift's work `failed` inside two
+   minutes — losing it as surely as deleting it. It now stops the drain without
+   consuming an attempt.
+3. **Classification.** A duplicate idempotency key is *success* — the server has
+   the write, and a reply lost on the way back is common on a festival network.
+   A rule violation is permanent and dead-letters at once instead of retrying
+   eight times.
+
+**A correction caught by my own tests.** The failure classifier's first version was
+written from guesses about PostgreSQL wording and matched neither
+`not authorised for venue` nor `docket % is already %` — two strings the RPCs
+actually raise. The test that caught it was itself wrong in the same way: it
+asserted against `'docket D-0184 has already been accepted'`, which no RPC raises.
+Both were rewritten from the `raise exception` strings in the migrations. Guessing
+at an interface I had written myself was avoidable.
+
+**Verified in a browser, on the fixture path:** the difference panel opens with the
+design's four reasons; the CTA is **disabled** at `Accept 47 · report short 1`
+until a reason is chosen; choosing one runs the service and lands on
+`RECEIVED SHORT` with the difference attributed to a named person. Zero console
+errors on a fresh load.
+
+**Deliberately not done.** The **issue** side is not wired. `ReviewScreen` sources
+its data from `custody()` — an *existing* docket — so calling `createDocket` there
+would create a second docket duplicating the one on screen. It needs a real draft
+from the issue screen, which is BAR-051, and building on a shape I know is wrong is
+how this project acquired its original problems.
+
+**Still not verified against the database.** Everything above ran against fixtures.
+The live command path is typechecked and unit-tested but has never posted, because
+`auth.users` is still empty.
+
+**Files changed:** `src/app/ErrorScreen.tsx`, `src/app/router.tsx`, `src/main.tsx`,
+`src/domain/{outbox-policy,custody}.ts` and their tests, `src/lib/offline-db.ts`,
+`src/lib/supabase.ts`, `src/services/{issue,accept,services.test}.ts`,
+`src/data/{repository.ts,RepositoryProvider.tsx}`,
+`src/data/fixture/{fixture-repository,design-data}.ts`,
+`src/data/live/live-repository.ts`, `src/screens/custody/AcceptScreen.tsx`,
+`src/styles.css`, `docs/CURRENT-STATE.md`
+
+**Architecture changes:** none. The command methods on `Repository` and the typed
+outbox implement `ARCHITECTURE.md` and `OFFLINE-SYNC.md` as written; no ADR is
+affected.
+
+**Recommended next:** **BAR-051** — rebuild the issue screen with a real draft and
+the case/bottle unit switch. It is the last thing standing between the custody
+chain and a complete write path, and it also removes the largest remaining block of
+fixture literals (`src/features/screens.tsx`).
 
 ### Session — 28 August 2026 (fifth) · Claude
 
