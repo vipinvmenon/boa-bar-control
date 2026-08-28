@@ -21,7 +21,6 @@
  */
 import { useNavigate } from '@tanstack/react-router'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
-import { useDemoStore } from '../../lib/demo-store'
 import type { BarSummary, Tone } from '../../data/repository'
 
 function toneClass(tone: Tone): string {
@@ -52,20 +51,22 @@ function BarCard({ bar, onOpen }: { bar: BarSummary; onOpen: (bar: BarSummary) =
 }
 
 export function BarsScreen() {
-  const store = useDemoStore()
   const navigate = useNavigate()
   const bars = useRepositoryQuery(['bars'], (r) => r.listBars())
   const asOf = useRepositoryQuery(['asOf'], (r) => r.asOf())
 
-  // The design opens the bar workspace from any card. Bar 3 is the only bar its
-  // own fixture set details, so the others acknowledge the tap rather than
-  // navigating into an empty screen — matching design-script.jsx's openBar().
+  /**
+   * BAR-133. The design opens the bar workspace from any card, and so does this.
+   *
+   * It previously gated on `bar.id === 'bar-3'` — the one bar the design's own
+   * fixture set details — and flashed a toast for the rest. That is a fixture id
+   * baked into a screen file: under live data every id is a UUID, so no card
+   * opened at all and the bars list became a dead end. `BarScreen` already renders
+   * an explicit empty state when `barDetail` returns null, which is the right
+   * place for "this bar has no detail yet" to be handled.
+   */
   const open = (bar: BarSummary) => {
-    if (bar.id === 'bar-3') {
-      void navigate({ to: '/bars/$barId', params: { barId: bar.id } })
-      return
-    }
-    store.flash(`${bar.name} · DETAIL AVAILABLE FOR BAR 3`)
+    void navigate({ to: '/bars/$barId', params: { barId: bar.id } })
   }
 
   return (

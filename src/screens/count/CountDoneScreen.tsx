@@ -80,7 +80,7 @@ export function CountDoneScreen() {
         </button>
         <button
           className="flow-cta-ghost"
-          onClick={() => void navigate({ to: '/bars/$barId', params: { barId: 'bar-3' } })}
+          onClick={() => void navigate({ to: '/bars/$barId', params: { barId: s.locationId } })}
         >
           Back to {s.locationName}
         </button>

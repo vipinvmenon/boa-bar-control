@@ -172,6 +172,7 @@ export const BAR_DETAIL: Record<string, BarDetail> = {
  */
 export const CUSTODY: Custody = {
   docketNo: 'D-0184',
+  toLocationId: 'bar-3',
   statusLabel: 'AWAITING ACCEPTANCE',
   fromName: 'WAREHOUSE',
   toName: 'BAR 3',
@@ -198,6 +199,7 @@ export const CUSTODY: Custody = {
  * nowhere to go.
  */
 export const COUNT_SESSION: CountSession = {
+  locationId: 'bar-3',
   locationName: 'BAR 3',
   kindLabel: 'MID-EVENT COUNT',
   scopeLabel: 'BAR 3 · BLIND',
@@ -254,6 +256,7 @@ export function variant() {
     ledger: LEDGER.map((e, i) => ({ ...e, title: `${e.title} (v2)`, at: `18:${String(5 + i * 4).padStart(2, '0')}` })),
     countSession: {
       ...COUNT_SESSION,
+      locationId: 'bar-1',
       locationName: 'BAR 1',
       scopeLabel: 'BAR 1 · BLIND',
       totalLines: 11,
@@ -283,6 +286,7 @@ export function variant() {
       acceptedBy: 'IMRAN',
       acceptedAt: '20:22',
       toName: 'BAR 1',
+      toLocationId: 'bar-1',
     },
     catalogue: CATALOGUE.map((g) => ({
       ...g,

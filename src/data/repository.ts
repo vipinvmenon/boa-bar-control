@@ -170,6 +170,13 @@ export type DetailRow = { label: string; value: string; tone?: Tone }
  */
 export type Custody = {
   docketNo: string
+  /**
+   * BAR-133. The receiving location's id, so the received screen's CTA can
+   * navigate to the bar it just delivered to. Previously the screen carried the
+   * literal `'bar-3'`, which is a fixture id: under live data every id is a UUID
+   * and the button went nowhere.
+   */
+  toLocationId: string
   /** Design: 'AWAITING ACCEPTANCE'. */
   statusLabel: string
   fromName: string
@@ -219,6 +226,8 @@ export type CountLine = {
 }
 
 export type CountSession = {
+  /** BAR-133. The counted location's id, for the same reason as `Custody.toLocationId`. */
+  locationId: string
   locationName: string
   /** 'MID-EVENT COUNT' */
   kindLabel: string

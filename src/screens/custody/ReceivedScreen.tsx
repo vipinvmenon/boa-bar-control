@@ -74,7 +74,7 @@ export function ReceivedScreen() {
       </div>
 
       <FlowFooter>
-        <button className="flow-cta" onClick={() => void navigate({ to: '/bars/$barId', params: { barId: 'bar-3' } })}>
+        <button className="flow-cta" onClick={() => void navigate({ to: '/bars/$barId', params: { barId: d.toLocationId } })}>
           Back to {d.toName}
         </button>
       </FlowFooter>

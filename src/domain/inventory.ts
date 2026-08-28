@@ -200,13 +200,37 @@ export function toleranceFor(category: string): [number, number] {
   return tolerance[category] ?? [2, 5]
 }
 
+/**
+ * BAR-087 — the band for a signed variance percentage.
+ *
+ * The magnitude is judged against the category's tolerance (spec section 8), but
+ * the SIGN is not symmetric and must not be treated as such.
+ *
+ * A negative variance is expected: stock shrinks through spillage, overpour, line
+ * purge and foam, and the tolerance table exists to say how much of that is
+ * normal for each category. A POSITIVE variance is different in kind. Stock does
+ * not appear. More was counted than the ledger can account for, which means a
+ * receipt was never recorded, a sale was rung against the wrong SKU, or the count
+ * itself is wrong — and the first two are the shapes a concealed loss takes.
+ * Grading that green tells a manager the one line they should look at is fine.
+ *
+ * So a positive variance is floored at amber. It can still be red on magnitude;
+ * it can never be green. This is why the function takes a signed percentage
+ * rather than an absolute one, and why the previous version — which called
+ * `Math.abs` and then banded — graded `+0.5%` on bottled beer, `+1.2%` on spirits
+ * and `+4%` on draught as within tolerance.
+ */
 export function varianceBand(category: string, percentage: number | null): VarianceBand {
+  // No throughput in the window means no percentage, and an unknown position is
+  // not a clean one.
   if (percentage === null) return 'amber'
+
   const [greenMax, amberMax] = toleranceFor(category)
   const absolute = Math.abs(percentage)
-  if (absolute <= greenMax) return 'green'
-  if (absolute <= amberMax) return 'amber'
-  return 'red'
+  const onMagnitude: VarianceBand = absolute <= greenMax ? 'green' : absolute <= amberMax ? 'amber' : 'red'
+
+  if (percentage > 0 && onMagnitude === 'green') return 'amber'
+  return onMagnitude
 }
 
 export function mlFromGrossWeight(grossWeightG: number, tareWeightG: number): number {

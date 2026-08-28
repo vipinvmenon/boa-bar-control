@@ -947,6 +947,7 @@ export function createLiveRepository(context: LiveContext): Repository {
 
       return {
         docketNo: docket.docket_no,
+        toLocationId: docket.to_location_id,
         statusLabel,
         fromName: locationName(ref, docket.from_location_id).toUpperCase(),
         toName: locationName(ref, docket.to_location_id).toUpperCase(),
@@ -1012,6 +1013,7 @@ export function createLiveRepository(context: LiveContext): Repository {
         // Honest empty state. Not an error the screen cannot render, and not a
         // fabricated session that would accept counts nothing will store.
         return {
+          locationId: target ?? '',
           locationName: locationLabel,
           kindLabel: 'NO COUNT SESSION OPEN',
           scopeLabel: `${locationLabel} · BLIND`,
@@ -1025,6 +1027,7 @@ export function createLiveRepository(context: LiveContext): Repository {
       }
 
       return {
+        locationId: session.location_id,
         locationName: locationName(ref, session.location_id).toUpperCase(),
         kindLabel: countKindLabel(session.count_kind).toUpperCase(),
         scopeLabel: `${locationName(ref, session.location_id).toUpperCase()} · BLIND`,

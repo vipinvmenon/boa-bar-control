@@ -112,6 +112,38 @@ describe('audit calculations', () => {
     expect(varianceBand('bottled_beer', -4)).toBe('red')
   })
 
+  // BAR-087. Spec section 8: stock does not appear. A positive variance means a
+  // missed receipt, a wrong-SKU ring-up, or a bad count — the first two being the
+  // shapes a concealed loss takes — so it is never within tolerance.
+  it('never grades a positive variance green, at any magnitude', () => {
+    expect(varianceBand('bottled_beer', 0.5)).toBe('amber')
+    expect(varianceBand('spirits', 1.2)).toBe('amber')
+    expect(varianceBand('draught_beer', 4)).toBe('amber')
+    expect(varianceBand('mixers', 0.9)).toBe('amber')
+  })
+
+  it('still grades the mirror-image negative variance green', () => {
+    // The asymmetry is the point: the same magnitude is normal shrinkage one way
+    // and unexplained appearance the other.
+    expect(varianceBand('bottled_beer', -0.5)).toBe('green')
+    expect(varianceBand('spirits', -1.2)).toBe('green')
+    expect(varianceBand('draught_beer', -4)).toBe('green')
+  })
+
+  it('still grades a positive variance red on magnitude', () => {
+    // Flooring at amber must not cap it there.
+    expect(varianceBand('bottled_beer', 5)).toBe('red')
+    expect(varianceBand('draught_beer', 20)).toBe('red')
+  })
+
+  it('treats an exact zero as green, not as a positive', () => {
+    expect(varianceBand('bottled_beer', 0)).toBe('green')
+  })
+
+  it('bands an uncomputable percentage amber, never green', () => {
+    expect(varianceBand('bottled_beer', null)).toBe('amber')
+  })
+
   it('converts gross minus tare to ml and never produces negative stock', () => {
     expect(mlFromGrossWeight(1_030, 480)).toBe(550)
     expect(mlFromGrossWeight(300, 480)).toBe(0)

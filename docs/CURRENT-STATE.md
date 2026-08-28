@@ -166,7 +166,7 @@ States are defined once in the **Status key** above.
 | BAR-007 | Reference captures | `[x]` | `f4cbae8` — 22 screens at 390×844@2x, each verified against the design's own stage caption |
 | BAR-008 | Two-fixture-state harness | `[x]` | `41c5b2e` — `pnpm test:visual`. Currently reports 16 routes, 15 reading the data layer, **0 hardcoded** |
 | BAR-153 | `CHECKSUMS.txt` over the design source | `[ ]` | No `CHECKSUMS.txt` anywhere in the tree. The UI contract can be edited without trace |
-| BAR-154 | Lint rule banning literals in screen files | `[ ]` | `eslint.config.js` has no `no-restricted-syntax` rule. **This is why the four hardcoded `bar-3` literals under BAR-133 went undetected** |
+| BAR-154 | Lint rule banning literals in screen files | `[x]` | Added 28 Aug. `no-restricted-syntax` over `src/screens/**` and `src/components/**` bans location ids and names, docket numbers and catalogue SKU names. **Verified by probe**: all six planted literals errored and two legitimate strings passed. Deliberately narrow — a general literal ban gets disabled, and a disabled rule catches nothing |
 | BAR-009 | `sw.ts` in typecheck and lint | `[ ]` | Still excluded: `eslint.config.js:8` ignores it, `tsconfig.app.json:23` excludes it |
 | BAR-010 | Formatter, pre-commit, CODEOWNERS, PR template | `[ ]` | None of the four exist |
 
@@ -219,13 +219,13 @@ States are defined once in the **Status key** above.
 | BAR-037 | Glass and ambient field | `[x]` | `bfdc1f4` + `a72c48d` — three gradient layers; `backdrop-filter` removed from `.metric` where the design has none |
 | BAR-038 | Component primitives | `[R]` | `src/components/ui.tsx` is still 60 lines for the whole system |
 | BAR-039 | Shell | `[~]` | `798feb2` — bottom nav corrected to colour-only active state with the design's own SVG paths. Header composition still diverges |
-| BAR-040 | Navigation state machine | `[~]` | The hardcoded `<Link to="/">` backs are gone (0 hits). There is still no stack: every back is a fixed destination, and three of them go to a hardcoded bar id — see BAR-133 |
+| BAR-040 | Navigation state machine | `[~]` | The hardcoded `<Link to="/">` backs are gone, and the three hardcoded bar-id destinations were fixed under BAR-133. There is still no stack: every back is a fixed destination rather than a pop |
 | BAR-041 | Toast system | `[~]` | `demo-store.tsx:309` expires at **2400 ms**; the design and the acceptance criterion are 2600 ms |
 | BAR-042 | Repository interface | `[~]` | Interface, fixture and live implementations all exist (`b49768c`, `743a4d4`). **The live implementation has never executed a query** — the database holds nothing to read |
 | BAR-043 | Fixture repository from the design's data | `[x]` | `design-data.ts` with line references; the gate reports 0 hardcoded screens |
 | BAR-044 | Application service layer | `[ ]` | **There is no `src/services/` directory.** Screens call the repository directly, and no service composes a write |
-| BAR-045 | Remove fixture data from screen files | `[~]` | 13 screens read the repository and the gate reports 0 hardcoded. But `src/features/screens.tsx` still holds literals, and three rebuilt screens hold a literal bar id — see BAR-133 |
-| BAR-046 | Wire the domain layer | `[~]` | `varianceBand`, `toleranceFor` and `buildQueuedMovement` now have callers. Still zero callers outside tests: `derivePositions`, `applyIdempotently`, `reverseMovement`, `theoreticalClosing`, `weightedAverageCost`, **`mlFromGrossWeight`** — the last of which is the tare conversion BAR-081 is supposed to use |
+| BAR-045 | Remove fixture data from screen files | `[~]` | 13 screens read the repository, the gate reports 0 hardcoded, and BAR-154's lint rule now enforces it mechanically for screens and components. `src/features/screens.tsx` still holds literals — it is not under the rule's file scope because it is being deleted, not fixed (BAR-164) |
+| BAR-046 | Wire the domain layer | `[~]` | `varianceBand`, `toleranceFor` and `buildQueuedMovement` have callers. Still zero outside tests: `derivePositions`, `applyIdempotently`, `reverseMovement`, `theoreticalClosing`, `weightedAverageCost`, **`mlFromGrossWeight`** — the tare conversion BAR-081 should use |
 | BAR-164 | Delete the legacy parallel live path | `[ ]` | `src/lib/live-repository.ts` and `demo-store`'s snapshot loader are still present and still hardcode `bar_3` |
 | BAR-047 | Error boundary and not-found route | `[ ]` | Neither exists. An uncaught render error blanks the app — and the live repository throws by design on a failed read |
 | BAR-048 | Zod at every boundary | `[~]` | Zod is used only in `domain/inventory.ts`. RPC responses, QR payloads, POS rows and local-store reads are all unvalidated; `rows.ts` casts by hand |
@@ -257,7 +257,7 @@ States are defined once in the **Status key** above.
 | Task | Title | State | Evidence |
 | --- | --- | --- | --- |
 | BAR-061 | `bar` screen — the bar workspace | `[x]` | `10185b5` |
-| BAR-062 | Bar list navigates to bar detail | `[!]` | `b49768c` wired it, but `BarsScreen.tsx:64` gates navigation on `bar.id === 'bar-3'`. Under live data every id is a UUID, so **the bars list becomes a dead end in live mode** — see BAR-133 |
+| BAR-062 | Bar list navigates to bar detail | `[x]` | Fixed 28 Aug — the `bar.id === 'bar-3'` gate is gone, so every card opens its bar under both fixture and live data |
 | BAR-063 | `waste` screen, three taps | `[R]` | Still `src/features/screens.tsx:87`. Reason vocabulary diverges; line loss missing |
 | BAR-064 | Request top-up | `[ ]` | — |
 | BAR-065 | Bar-to-bar transfer | `[ ]` | — |
@@ -274,7 +274,7 @@ States are defined once in the **Status key** above.
 | BAR-076 | Service worker for a festival network | `[R]` | `06968a4` made an update applicable. No API caching strategy, and still excluded from typecheck and lint |
 | BAR-077 | Remove demo switches from the UI | `[!]` | `AppShell.tsx:85` — the sync line is still a button that toggles offline mode |
 | BAR-078 | Tap targets and focus | `[ ]` | Not measured since the rebuild. Needs a pass |
-| BAR-133 | Waste and accept post to the right location | `[!]` | Four hardcoded bar identities: `demo-store.tsx:353` (`bar_3` for every waste), `BarsScreen.tsx:64`, `CountDoneScreen.tsx:83`, `ReceivedScreen.tsx:77`. The last three are in screens rebuilt this week — a fixture id baked into a screen file, which is what BAR-154's lint rule exists to catch |
+| BAR-133 | Waste and accept post to the right location | `[~]` | The three screen literals are fixed (28 Aug): `BarsScreen` opens any bar, and `CountSession.locationId` / `Custody.toLocationId` carry the id the two flow CTAs need, populated by both repositories and shifted in the gate's second fixture variant. **The task is not done: `demo-store.tsx:353` still posts every waste to `bar_3` regardless of which bar recorded it.** That is the legacy path and goes with BAR-164 |
 | BAR-134 | Idempotent acceptance | `[x]` | The accept RPC rejects a second acceptance and replays idempotently on the client key |
 | BAR-135 | Dead-letter for invalid outbox entries | `[~]` | A `failed` status exists after 8 attempts. Nothing surfaces it, so a dead letter is invisible |
 | BAR-136 | QR scanner | `[ ]` | No `BarcodeDetector`, `getUserMedia` or QR library anywhere. `vercel.json` grants camera permission for a capability that does not exist |
@@ -297,7 +297,7 @@ States are defined once in the **Status key** above.
 | BAR-084 | Seal the theoretical position at submit | `[ ]` | Nothing is sealed. The live variance report recomputes the expected position from the ledger at read time, which is correct but not a seal |
 | BAR-085 | `countDone` screen | `[x]` | `36ffc4f` |
 | BAR-086 | `variance` screen | `[x]` | `36ffc4f` — renders from the repository, signed deltas, banding, notes |
-| BAR-087 | Signed variance banding | `[!]` | **Named in `36ffc4f` but never done.** `domain/inventory.ts:207` still does `Math.abs(percentage)`, so `+2.4%` on bottled beer (band 1–3%) grades **green**. The design shows exactly that row as gold. The fixture hardcodes the gold tone, so the screen looks correct — **only the live repository, which calls `varianceBand`, exposes it.** Violates spec §8 |
+| BAR-087 | Signed variance banding | `[x]` | Fixed 28 Aug. `varianceBand` bands on magnitude then floors a positive variance at amber — it can still be red, never green. Six new assertions in `inventory.test.ts` cover the sign asymmetry, the red ceiling, exact zero and the null case |
 | BAR-088 | Throughput ranking | `[ ]` | — |
 | BAR-089 | `activity`, five filters | `[x]` | `10185b5` — all five groups; counts unioned from `count_session`, not derived from movements |
 | BAR-090 | `mv` screen — movement detail | `[ ]` | Screen missing. The live repository's `movementDetail()` is implemented and has no consumer |
@@ -363,16 +363,16 @@ Computed from the rows above, not asserted.
 
 | | Count |
 | --- | --- |
-| `[x]` done | 36 |
-| `[~]` partial | 31 |
+| `[x]` done | 39 |
+| `[~]` partial | 32 |
 | `[R]` rewrite | 8 |
-| `[!]` defect actively present | 20 |
-| `[ ]` not started | 67 |
+| `[!]` defect actively present | 17 |
+| `[ ]` not started | 66 |
 | `[?]` unverifiable today | 2 |
 | **Total** | **164** |
 
-Read the middle three rows as the real position: **59 tasks are neither done nor
-untouched**, and 20 of them are defects sitting in the code right now.
+Read the middle three rows as the real position: **57 tasks are neither done nor
+untouched**, and 17 of them are defects sitting in the code right now.
 
 ## Would stop the event dead
 
@@ -399,8 +399,8 @@ original audit.
 | 15 | **There is no QR scanner anywhere in the app** — so the acceptance side of two-party custody has no input device, while `vercel.json` already grants camera permission for the capability that was never built | BAR-136 |
 | 16 | **No alert reaches anyone.** Every alert is passive, existing only while someone holds the phone on the home screen. The warehouse never learns Bar 3 is 26 minutes from dry, and the bar has no way to ask | BAR-149 |
 | 17 | **Blind counting is not enforced by the database.** `boa_bar_inventory_snapshot` cross-joins every location against every SKU and authorises on "holds any role at this venue", so a bar lead's own device can fetch the expected position for the bar it is about to count — one REST call, no UI involved. Non-negotiable 3 requires the database to enforce this, and the UI's careful omission of expected figures is worth nothing while the API hands them over. Found 28 August while building the live read path | BAR-161 |
-| 18 | **Positive variance grades green.** `domain/inventory.ts:207` bands on `Math.abs(percentage)`, so `+2.4%` on bottled beer (tolerance 1–3%) reads as within tolerance. A positive variance means a missed receipt or a wrong-SKU ring-up — the two things most likely to be concealing a loss — and the report calls them fine. The fixture data hardcodes the design's gold tone, so the screen *looks* right; only the live repository, which calls the function, exposes it. Named in commit `36ffc4f` and never actually done. Found 28 August by reconciling the milestone table | BAR-087 |
-| 19 | **The bars list dead-ends under live data.** `BarsScreen.tsx:64` gates navigation on `bar.id === 'bar-3'`. Live ids are UUIDs, so no card opens — and `CountDoneScreen.tsx:83` and `ReceivedScreen.tsx:77` navigate to the same literal. Three fixture-shaped literals in screens rebuilt this week, which is precisely what BAR-154's lint rule exists to catch and why that rule should stop being deferred | BAR-133 |
+| 18 | ~~**Positive variance grades green.**~~ **Fixed 28 Aug**, `bd0f1a2`-series. `varianceBand` now floors a positive variance at amber and can still reach red on magnitude. **Correction to the first version of this row:** it claimed `+2.4%` on bottled beer graded green. That was wrong — bottled beer's green edge is 1%, not 3%, so `+2.4%` already banded amber and reproduced the design. The real defect was smaller positives: `+0.5%` bottled beer, `+1.2%` spirits and `+4%` draught all graded green, and spec §8 requires positive variance never to be green | BAR-087 |
+| 19 | ~~**The bars list dead-ends under live data.**~~ **Fixed 28 Aug.** `BarsScreen` opens any bar; `CountSession.locationId` and `Custody.toLocationId` now carry the id the two flow CTAs need. BAR-154's lint rule was added at the same time and **was verified to catch all three literals** before they were removed | BAR-133 |
 
 ## Resolved — BAR-011 vs BAR-155
 
@@ -488,38 +488,32 @@ schema. Confirm or correct them rather than assuming they are still open.
 
 ## Recommended next actions
 
-Rewritten 28 August after the milestone reconciliation. Items 1–3 of the previous
-list (BAR-139, BAR-151, BAR-152) are done; BAR-001 and BAR-031 are done.
+Rewritten 28 August. The three cheap fixes (BAR-087, BAR-133's screen literals,
+BAR-154) are done, so the list now starts at what was item 4.
 
-**Fix first — three defects that are cheap and currently wrong:**
-
-1. **BAR-087** — `varianceBand` bands on the absolute value, so positive variance
-   grades green. One line in `domain/inventory.ts`, and it restores spec §8. The
-   fixture hides it; live does not.
-2. **BAR-133** — three literal `'bar-3'` ids in rebuilt screens make the bars
-   list a dead end under live data. Three one-line fixes.
-3. **BAR-154** — the lint rule banning literals in screen files. It would have
-   caught item 2 the day it was written, and it is the only thing standing between
-   this project and a repeat of its original failure.
-
-**Then, in order:**
-
-4. **BAR-156** — seed a venue, its locations, SKUs, memberships and people, and
-   apply `202608280001_person_names.sql`. Nothing built in the last two sessions
-   has executed a single query against real data. This gates all verification.
-5. **BAR-044 + the write path** — there is no `src/services/` directory, and
+1. **BAR-156** — seed a venue, its locations, SKUs, memberships and people, and
+   apply `202608280001_person_names.sql`. **Nothing built in the last two sessions
+   has executed a single query against real data.** This gates all verification,
+   and it is the only item here whose absence makes every other item unprovable.
+2. **BAR-044 + the write path** — there is no `src/services/` directory, and
    nothing calls `boa_bar_create_docket` or `boa_bar_accept_docket`. The custody
    chain is five working screens that record nothing.
-6. **BAR-082** — a count-submit RPC. The counting chain has no destination, so a
+3. **BAR-082** — a count-submit RPC. The counting chain has no destination, so a
    submitted count is discarded.
-7. **BAR-161** — location-scope the snapshot RPC. Blind counting is the product's
-   core integrity control and it is currently a UI convention.
-8. **BAR-047** — an error boundary. The live repository throws by design on a
-   failed read, and an uncaught throw currently blanks the app.
-9. **BAR-140** — opening stock, without which the event cannot start.
+4. **BAR-161** — location-scope the snapshot RPC. Blind counting is the product's
+   core integrity control and it is currently a UI convention, not a control.
+5. **BAR-047** — an error boundary. The live repository throws by design on a
+   failed read, and an uncaught throw currently blanks the app. This becomes
+   urgent the moment item 1 lands.
+6. **BAR-164** — delete the legacy path. It is the remaining half of BAR-133
+   (every waste still posts to `bar_3`), of BAR-071 (a write inside an unawaited
+   `void`) and of BAR-157.
+7. **BAR-140** — opening stock, without which the event cannot start.
+8. **BAR-081** — apply `mlFromGrossWeight`. The count screen shows the tare weight
+   and never uses it, so a weighed partial is entered as a raw gross reading.
 
 Do **not** start the five missing screens (`sku`, `mv`, `control`, `cowork`,
-`rep`) before items 4–6. They add surface, not capability, and every one of them
+`rep`) before items 1–3. They add surface, not capability, and every one of them
 would be built against a data layer that has never run.
 
 ---
@@ -537,6 +531,64 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 28 August 2026 (third) · Claude
+
+**Completed: the three fixes from the reconciliation.**
+
+- **BAR-087 — signed variance banding.** `varianceBand` now bands on magnitude and
+  then floors a positive variance at amber; it can still reach red. The reasoning
+  is in the function's comment: a negative variance is expected shrinkage and the
+  tolerance table exists to size it, while a positive variance means a missed
+  receipt, a wrong-SKU ring-up or a bad count — the first two being the shapes a
+  concealed loss takes. Six new assertions cover the sign asymmetry, the red
+  ceiling, exact zero and the null case.
+
+  **Correction to what the previous session's entry and event-stopper 18 claimed.**
+  They said `+2.4%` on bottled beer graded green. That was wrong: bottled beer's
+  green edge is 1%, not 3%, so `+2.4%` already banded amber and did reproduce the
+  design. The defect was real but smaller — `+0.5%` bottled beer, `+1.2%` spirits
+  and `+4%` draught all graded green. Row 18 now states this correctly.
+
+- **BAR-133 — the three screen literals.** `BarsScreen` opens any bar; the
+  `bar.id === 'bar-3'` gate is gone, and `BarScreen` already renders an empty state
+  for an unknown id, which is the right place for that case. `CountSession` gained
+  `locationId` and `Custody` gained `toLocationId`, populated by both repositories
+  and **shifted in the gate's second fixture variant** so a screen ignoring them is
+  still detectable. Removing the toast also left `BarsScreen` with no use for
+  `demo-store`, so that import is gone — one screen fewer on the legacy path.
+
+  **BAR-133 is not closed.** `demo-store.tsx:353` still posts every waste to
+  `bar_3`. It is marked `[~]` and goes with BAR-164.
+
+- **BAR-154 — the literal-ban lint rule.** `no-restricted-syntax` over
+  `src/screens/**` and `src/components/**`, banning location ids and names, docket
+  numbers and catalogue SKU names. Deliberately narrow rather than a general ban on
+  literals: an unusable rule gets disabled, and a disabled rule catches nothing.
+
+  **Verified by planting a probe file** with six violations and two legitimate
+  strings: all six errored, both legitimate strings passed, probe removed. A rule
+  nobody has watched fire is not a gate — which is the same objection this file
+  records against BAR-006.
+
+**Verified:** `typecheck`, `lint`, `test` (55 tests, 5 new), `build` all pass.
+`test:visual` unchanged — 16 routes, 15 reading the data layer, **0 hardcoded,
+0 errored**.
+
+**Not verified:** still nothing against a real database. The banding fix and the
+location-id plumbing are exercised by tests and by the fixture gate only.
+
+**Files changed:** `src/domain/inventory.ts`, `src/domain/inventory.test.ts`,
+`src/data/repository.ts`, `src/data/fixture/design-data.ts`,
+`src/data/live/live-repository.ts`, `src/screens/bars/BarsScreen.tsx`,
+`src/screens/count/CountDoneScreen.tsx`,
+`src/screens/custody/ReceivedScreen.tsx`, `eslint.config.js`,
+`docs/CURRENT-STATE.md`
+
+**Architecture changes:** none. Two read-model fields added, no ADR affected.
+
+**Recommended next:** BAR-156 — seed the database. Everything else is unprovable
+until it exists.
 
 ### Session — 28 August 2026 (later) · Claude
 
