@@ -464,8 +464,12 @@ none exist" and the real work moves to BAR-155.
    ```
    node_modules/.bin/supabase db push
    read -s "SUPABASE_DB_PASSWORD?Database password: " && export SUPABASE_DB_PASSWORD
-   pnpm bootstrap
+   node scripts/bootstrap.mjs
    ```
+
+   `pnpm` is **not** on the PATH on this machine — `corepack enable` needs sudo, so
+   scripts run as `corepack pnpm <script>`. The bootstrap is plain Node, so calling
+   it directly sidesteps that.
 
    `db push` applies `202608280001_person_names.sql` and
    `202608280002_bootstrap.sql`. `pnpm bootstrap` needs at least one sign-in to

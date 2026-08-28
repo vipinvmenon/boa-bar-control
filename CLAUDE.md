@@ -96,10 +96,18 @@ a screenshot comparison is to hardcode the screenshot's values. Two screens
 
 ## Quality gates
 
+**`pnpm` is not on the PATH on this machine.** `corepack enable` needs sudo, so
+every script is invoked as `corepack pnpm <script>`. Bare `pnpm` fails with
+`command not found` — do not hand the user a command that starts with `pnpm`.
+Node scripts can also be run directly (`node scripts/bootstrap.mjs`), which
+avoids the question entirely.
+
 ```bash
-pnpm typecheck && pnpm lint && pnpm test && pnpm build
-pnpm test:db        # database tasks — against a real PostgreSQL
-pnpm test:visual    # UI tasks — against references/ui/
+corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build
+corepack pnpm check:sql     # migrations — static arity check, no database needed
+corepack pnpm test:db       # database tasks — against a real PostgreSQL
+corepack pnpm test:visual   # UI tasks — against references/ui/
+corepack pnpm bootstrap     # BAR-156 — claim the venue and post opening stock
 ```
 
 A task is not done until these pass. "It should work" is not a gate.
