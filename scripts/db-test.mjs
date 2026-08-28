@@ -126,10 +126,20 @@ async function main() {
     process.exitCode = 1
   }
 
+  // Kept accurate per file rather than as one blanket disclaimer. The original
+  // said every assertion was existence-only, which stopped being true once
+  // business_date.test.sql landed — and a stale caveat is the same defect as a
+  // stale claim of coverage, just pointing the other way.
   console.log(
-    '\nNote: these assertions check only that objects EXIST. None attempts an\n' +
-      'UPDATE to prove the immutability trigger fires, and none connects as a role\n' +
-      'to prove a policy works. Replacing them with behavioural tests is BAR-030.\n',
+    '\nWhat these assertions do and do not prove:\n' +
+      '  business_date  BEHAVIOURAL. Calls the function with real instants and\n' +
+      '                 asserts the date, including the 01:30 event-night case.\n' +
+      '  privileges     REAL privilege checks per role, on every table and every\n' +
+      '                 function. These caught two live EXECUTE holes.\n' +
+      '  ledger         EXISTENCE ONLY. Asserts objects are present, nothing more.\n' +
+      '\nStill uncovered (BAR-030): nothing attempts an UPDATE to prove the\n' +
+      'immutability trigger fires, and nothing connects AS a role to prove an RLS\n' +
+      'policy returns the right rows. Both need a fixture harness with a real JWT.\n',
   )
 }
 
