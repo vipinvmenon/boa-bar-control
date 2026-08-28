@@ -175,11 +175,11 @@ States are defined once in the **Status key** above.
 | Task | Title | State | Evidence |
 | --- | --- | --- | --- |
 | BAR-155 | Command RPCs as the only write path | `[~]` | `e087d10` — `boa_bar_create_docket` and `boa_bar_accept_docket` exist and enforce their rules. **No application code calls either.** The count-submit and POS-post RPCs do not exist |
-| BAR-156 | Interim opening-stock bootstrap | `[~]` | Written 28 Aug: `202608280002_bootstrap.sql` adds `boa_bar_claim_venue` (single-use, advisory-locked), `boa_bar_open_stock` (a receipt movement with a derived idempotency key, so a second run replays rather than doubling the warehouse) and the reference data. `pnpm bootstrap` drives it and reconciles the projection against a ledger sum. **Not applied and never executed** — no Docker and no psql on this machine, so `db push` will be the first thing to parse it |
-| BAR-011 | Verify no table-level write grants | `[x]` | `supabase/tests/privileges.test.sql` asserts SELECT-only on all 13 tables and fails on a future INSERT grant |
+| BAR-156 | Interim opening-stock bootstrap | `[~]` | `202608280002` applied 28 Aug; `boa_bar_claim_venue` and `boa_bar_open_stock` exist. **Opening stock has not been posted** — `pnpm bootstrap` correctly refuses while `auth.users` is empty and changes nothing. Verified by running it |
+| BAR-011 | Verify no table-level write grants | `[x]` | **Verified against the live database 28 Aug**, not asserted: `privileges.test.sql` 52/52, plus `ledger.test.sql` 11/11 — 63 assertions, 0 failed. It failed the first time it was ever actually run, which is how the two EXECUTE holes were found. It now enumerates every function for both roles |
 | BAR-161 | Location-scope the snapshot RPC | `[ ]` | Raised 28 Aug. `boa_bar_inventory_snapshot` still cross-joins every location and authorises on any role at the venue |
 | BAR-163 | Count witness column | `[ ]` | `boa_bar_count_session` has `assigned_to` and `reviewed_by`; no witness column |
-| BAR-012 | `GRANT USAGE ON SCHEMA private` | `[x]` | `3c6acd9` — USAGE plus EXECUTE on the helper only; `private.boa_bar_balance` stays unreachable |
+| BAR-012 | `GRANT USAGE ON SCHEMA private` | `[x]` | `3c6acd9`, verified 28 Aug — `authenticated` has USAGE on `private`, `anon` has none, and `private.boa_bar_balance` is unreachable |
 | BAR-013 | Harden ledger immutability | `[~]` | Row triggers on `movement`, `movement_line` and now `person_name_history`; `alter default privileges … revoke truncate` present. Still no `ENABLE ALWAYS` and no `FORCE ROW LEVEL SECURITY`, so a table owner bypasses both |
 | BAR-014 | `v_position` sums the ledger | `[ ]` | **No view of any kind exists in any migration** (grep `create .*view` → 0 hits). `boa_bar_inventory_snapshot` reads the projection exclusively |
 | BAR-015 | Reconciliation view and test | `[ ]` | Same. Nothing compares the projection against a ledger sum |
@@ -197,9 +197,9 @@ States are defined once in the **Status key** above.
 | BAR-027 | Missing spec §13 columns | `[~]` | BAR-124 added display names. `abv`, `supplier_vendor_id`, `is_licenced`, `is_blind`, `witnessed_by`, `counted_at`, empties and delivery-note remain absent |
 | BAR-028 | Non-negative position guard | `[ ]` | Nothing prevents issuing more than is held. The per-column `>= 0` checks are on docket and count lines, not on the position |
 | BAR-029 | Index `movement_line.movement_id` | `[ ]` | The two indexes are `(venue_id, business_date, occurred_at)` and `(location_id, sku_id)`. `movement_id` is still an unindexed FK, evaluated per row by the read policy — and the live repository queries it by `movement_id` on every ledger read |
-| BAR-030 | Behavioural pgTAP suite | `[R]` | 11 assertions, all existence-only. Nothing attempts an UPDATE and nothing connects as a role |
-| BAR-031 | Execute migrations | `[x]` | `897cdc0` — applied to PostgreSQL 17.6, ap-southeast-1. **Migration `202608280001_person_names.sql` is NOT applied** |
-| BAR-032 | Deterministic seed that renders the design | `[~]` | Reference data moved out of `supabase/seed.sql`, which `db push` never applies, into the bootstrap migration — that is why the hosted project has had no venue, location or SKU since 27 Aug. 1 venue, 9 locations, 11 SKUs; three seeded values corrected (`container_type` conflated the size, Kingfisher `units_per_case` was 12 not 24, five design SKUs missing). Still no serve mappings (blocked on BAR-159) and no tolerance bands in the database (BAR-025) |
+| BAR-030 | Behavioural pgTAP suite | `[R]` | `ledger.test.sql`'s 11 assertions are still existence-only. `privileges.test.sql`'s 52 are real privilege checks and earned their keep — they caught two live EXECUTE holes. Still uncovered: nothing attempts an UPDATE to prove the immutability trigger fires, and nothing connects **as** a role to prove an RLS policy returns the right rows |
+| BAR-031 | Execute migrations | `[x]` | **All seven migrations applied and confirmed by object existence, 28 Aug.** PostgreSQL 17.6. `pnpm db:state` reports the history and checks that each migration's objects actually exist, rather than trusting the history table |
+| BAR-032 | Deterministic seed that renders the design | `[~]` | **Reference data verified present in the hosted project 28 Aug: 1 venue, 9 locations, 11 SKUs.** Opening ledger not yet posted — blocked on the first `auth.users` row. Still no serve mappings (BAR-159) and no tolerance bands in the database (BAR-025) |
 | BAR-033 | Generate database types | `[ ]` | The client is untyped. `src/data/live/rows.ts` hand-writes every row shape precisely because generated types do not exist — 156 lines that a generator would own |
 | BAR-122 | Revoke `TRUNCATE` everywhere | `[x]` | `3c6acd9` — verified empirically over REST: `anon` receives `HTTP 401 permission denied` |
 | BAR-123 | Business date spans the festival night | `[!]` | Still the IST calendar date, so the night splits at midnight and a close-out count at 01:30 belongs to the wrong day |
@@ -401,6 +401,7 @@ original audit.
 | 17 | **Blind counting is not enforced by the database.** `boa_bar_inventory_snapshot` cross-joins every location against every SKU and authorises on "holds any role at this venue", so a bar lead's own device can fetch the expected position for the bar it is about to count — one REST call, no UI involved. Non-negotiable 3 requires the database to enforce this, and the UI's careful omission of expected figures is worth nothing while the API hands them over. Found 28 August while building the live read path | BAR-161 |
 | 18 | ~~**Positive variance grades green.**~~ **Fixed 28 Aug**, `bd0f1a2`-series. `varianceBand` now floors a positive variance at amber and can still reach red on magnitude. **Correction to the first version of this row:** it claimed `+2.4%` on bottled beer graded green. That was wrong — bottled beer's green edge is 1%, not 3%, so `+2.4%` already banded amber and reproduced the design. The real defect was smaller positives: `+0.5%` bottled beer, `+1.2%` spirits and `+4%` draught all graded green, and spec §8 requires positive variance never to be green | BAR-087 |
 | 19 | ~~**The bars list dead-ends under live data.**~~ **Fixed 28 Aug.** `BarsScreen` opens any bar; `CountSession.locationId` and `Custody.toLocationId` now carry the id the two flow CTAs need. BAR-154's lint rule was added at the same time and **was verified to catch all three literals** before they were removed | BAR-133 |
+| 20 | ~~**Any signed-in user could forge a movement.**~~ **Found and fixed 28 Aug**, `202608280003`, verified shut. `private.boa_bar_post_movement` was extracted that morning so the bootstrap could supply an actor explicitly — and it therefore takes the actor as a parameter. `create function` grants EXECUTE to PUBLIC by default, and `authenticated` already had USAGE on schema `private` (needed since BAR-012 so RLS policies can resolve `boa_bar_has_role`). So for several hours any crew member could post any movement, to any location, attributed to anyone, bypassing both the role gate and the two-party docket rules. **It was live, not theoretical** — I initially recorded it as unexploitable on the grounds that the migration was unapplied, and it had in fact been applied | BAR-011 |
 
 ## Resolved — BAR-011 vs BAR-155
 
@@ -457,9 +458,18 @@ none exist" and the real work moves to BAR-155.
    project linked; both migrations applied; pgTAP runs Docker-free.
 3. **Rotate the database password.** It was exposed in a shared terminal
    screenshot on 27 August. Settings → Database → Reset database password.
-4. **Apply the two new migrations and run the bootstrap.** This is the one thing
-   blocking all verification, and it needs the database password, which I do not
-   have:
+4. ~~**Apply the migrations**~~ **done 28 Aug — all seven applied, 63/63 pgTAP
+   assertions green, all EXECUTE holes shut.** What remains is one step:
+   **create the first `auth.users` row.** `pnpm bootstrap` cannot make anybody
+   admin until one exists, and it refuses rather than guessing. The quickest route
+   involves no email at all: Supabase dashboard -> Authentication -> Users ->
+   Add user, with Auto Confirm ticked. Then:
+
+   ```
+   node scripts/bootstrap.mjs
+   ```
+
+   For reference, the commands that got the schema there:
 
    ```
    node_modules/.bin/supabase db push
@@ -549,6 +559,80 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 28 August 2026 (fifth) · Claude
+
+**The first verified behaviour in this project's history.** Everything before this
+was typechecked, linted and tested against fixtures; nothing had been proven
+against the database.
+
+**Verified against the live database (PostgreSQL 17.6):**
+
+- All **seven** migrations applied, confirmed by object existence rather than by
+  trusting `supabase_migrations.schema_migrations`.
+- pgTAP **63 assertions, 0 failed** (`ledger` 11, `privileges` 52).
+- Reference data present: **1 venue, 9 locations, 11 SKUs**.
+- All three EXECUTE holes **shut**.
+
+**Two EXECUTE holes, found because the privilege suite was run for the first
+time.** It had been written on 27 August and recorded as passing without ever
+being executed.
+
+1. `public.boa_bar_submit_movement` — `anon` held EXECUTE since 27 August. Not
+   exploitable, because the function's own `auth.uid() is null` guard rejects an
+   anonymous caller. One accidental line from being the only defence.
+2. `private.boa_bar_post_movement` — extracted that same morning so the bootstrap
+   could supply an actor explicitly, which is exactly why it takes the actor as a
+   **parameter**. `create function` grants EXECUTE to PUBLIC by default, and
+   `authenticated` has held USAGE on schema `private` since BAR-012 so RLS
+   policies can resolve `boa_bar_has_role`. So for several hours **any signed-in
+   user could post any movement, to any location, attributed to anyone**,
+   bypassing both the role gate and the two-party docket rules.
+
+**A correction that matters more than the holes.** I recorded hole 2 as not
+exploitable "because 202608280002 has not been applied". It **had** been applied.
+I asserted the deployment state instead of checking it — on this project, of all
+projects — and the assertion was wrong in the direction that made a live hole look
+harmless. `pnpm db:state` now exists precisely so that deployment state is read
+rather than assumed, and it probes both holes directly instead of inferring them
+from the migration text.
+
+**The lesson, as a rule already in CLAUDE.md and broken anyway:** never write that
+a verification was performed when it was not, and never reason about a live system
+from the contents of the repository. The repository says what *should* be true.
+
+**Also fixed:** the omission was mechanical — a missing revoke — so
+`privileges.test.sql` now enumerates every function for both roles, and
+`alter default privileges` revokes EXECUTE from `public` for functions created from
+here on. A future function that forgets its revoke fails the suite.
+
+**Two of my own operational errors this session:** I handed over a bare `pnpm`
+command on a machine where `pnpm` is not on the PATH — a fact recorded once, in a
+27 August session entry, and nowhere near the quality-gates block anyone reads. It
+is now in CLAUDE.md with an explicit instruction. And `scripts/bootstrap.mjs`
+reimplemented `db-test.mjs`'s connection logic and got it wrong, which would have
+connected with no password; both now share `scripts/lib/db-url.mjs`. Duplication
+produced a defect twice in one day.
+
+**What is still blocked:** `auth.users` is empty, so `pnpm bootstrap` has nobody to
+make admin. It refuses and changes nothing — verified by running it. Creating the
+first user needs no email: Supabase dashboard -> Authentication -> Users ->
+Add user, Auto Confirm ticked.
+
+**Not yet verified:** no movement has ever been posted, so the ledger, the balance
+projection, `boa_bar_open_stock` and every live repository read remain unexercised.
+The privilege posture is proven; the behaviour is not.
+
+**Files changed:** `supabase/migrations/202608280003_revoke_function_execute.sql`,
+`supabase/tests/privileges.test.sql`, `scripts/db-state.mjs`, `package.json`,
+`CLAUDE.md`, `docs/CURRENT-STATE.md`
+
+**Architecture changes:** none.
+
+**Recommended next:** create the first auth user, run `node scripts/bootstrap.mjs`,
+and confirm the warehouse reads 638 containers across 10 SKUs with the ledger and
+the projection in agreement. That single run exercises the ledger, the projection
+and the derived-idempotency-key path for the first time.
 
 ### Session — 28 August 2026 (fourth) · Claude
 
