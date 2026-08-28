@@ -177,7 +177,7 @@ States are defined once in the **Status key** above.
 | BAR-155 | Command RPCs as the only write path | `[~]` | `e087d10` — `boa_bar_create_docket` and `boa_bar_accept_docket` exist and enforce their rules. **No application code calls either.** The count-submit and POS-post RPCs do not exist |
 | BAR-156 | Interim opening-stock bootstrap | `[~]` | `202608280002` applied 28 Aug; `boa_bar_claim_venue` and `boa_bar_open_stock` exist. **Opening stock has not been posted** — `pnpm bootstrap` correctly refuses while `auth.users` is empty and changes nothing. Verified by running it |
 | BAR-011 | Verify no table-level write grants | `[x]` | **Verified against the live database 28 Aug**, not asserted: `privileges.test.sql` 52/52, plus `ledger.test.sql` 11/11 — 63 assertions, 0 failed. It failed the first time it was ever actually run, which is how the two EXECUTE holes were found. It now enumerates every function for both roles |
-| BAR-161 | Location-scope the snapshot RPC | `[ ]` | Raised 28 Aug. `boa_bar_inventory_snapshot` still cross-joins every location and authorises on any role at the venue |
+| BAR-161 | Location-scope the snapshot RPC | `[~]` | Same migration as BAR-083 — they were always one piece of work. The location under an open count is **omitted** from the snapshot rather than returned as zero: a zero row is itself a claim about the position, and a counter shown zeroes would reasonably enter zeroes |
 | BAR-163 | Count witness column | `[ ]` | `boa_bar_count_session` has `assigned_to` and `reviewed_by`; no witness column |
 | BAR-012 | `GRANT USAGE ON SCHEMA private` | `[x]` | `3c6acd9`, verified 28 Aug — `authenticated` has USAGE on `private`, `anon` has none, and `private.boa_bar_balance` is unreachable |
 | BAR-013 | Harden ledger immutability | `[~]` | Row triggers on `movement`, `movement_line` and now `person_name_history`; `alter default privileges … revoke truncate` present. Still no `ENABLE ALWAYS` and no `FORCE ROW LEVEL SECURITY`, so a table owner bypasses both |
@@ -293,7 +293,7 @@ States are defined once in the **Status key** above.
 | BAR-080 | Partial-container capture | `[x]` | `36ffc4f` — all three modes (`none` / `ml` / `litres`) verified in the browser |
 | BAR-081 | Tare weighing | `[~]` | `partialMlFromWeight` in `services/count.ts` wraps the domain function, and `partialToMl` converts a keg reading from litres. The count screen still asks for millilitres directly rather than taking a gross weight and a tare — the conversion exists but the input does not use it |
 | BAR-082 | Count persistence | `[x]` | `202608280005` — `boa_bar_submit_count`, a service, and `CountScreen` accumulating its lines and submitting through the outbox. The screen previously reset each line and navigated away, discarding every count. A partial count is refused: 12 of 18 lines reports six SKUs as zero. **Unapplied** |
-| BAR-083 | Blind enforcement in the database | `[!]` | The word "blind" appears nowhere in the SQL, and the snapshot RPC serves the expected position to any role — see BAR-161 |
+| BAR-083 | Blind enforcement in the database | `[~]` | `202608280007` — `private.boa_bar_is_blinded` is the single definition, and it gates BOTH `boa_bar_inventory_snapshot` and the `boa_bar_movement_line` read policy, so the position cannot be re-summed from the raw ledger either. Count-scoped, per docs/SECURITY.md, not role-scoped. **Written, unapplied, and the pgTAP test has never executed** |
 | BAR-084 | Seal the theoretical position at submit | `[x]` | `private.boa_bar_count_seal`, summed from the ledger at the instant counted, not from the balance projection which only holds "now". No grant to anybody — it IS the expected figure a counter must never see. Append-only. **Unapplied** |
 | BAR-085 | `countDone` screen | `[x]` | `36ffc4f` |
 | BAR-086 | `variance` screen | `[x]` | `36ffc4f` — renders from the repository, signed deltas, banding, notes |
@@ -364,15 +364,15 @@ Computed from the rows above, not asserted.
 | | Count |
 | --- | --- |
 | `[x]` done | 49 |
-| `[~]` partial | 37 |
+| `[~]` partial | 39 |
 | `[R]` rewrite | 4 |
-| `[!]` defect actively present | 12 |
-| `[ ]` not started | 60 |
+| `[!]` defect actively present | 11 |
+| `[ ]` not started | 59 |
 | `[?]` unverifiable today | 2 |
 | **Total** | **164** |
 
-Read the middle three rows as the real position: **53 tasks are neither done nor
-untouched**, and 12 of them are defects sitting in the code right now.
+Read the middle three rows as the real position: **54 tasks are neither done nor
+untouched**, and 11 of them are defects sitting in the code right now.
 
 ## Would stop the event dead
 
@@ -681,6 +681,59 @@ affected.
 the case/bottle unit switch. It is the last thing standing between the custody
 chain and a complete write path, and it also removes the largest remaining block of
 fixture literals (`src/features/screens.tsx`).
+
+### Session — 28 August 2026 (ninth) · Claude — RELEASE-1 item 5
+
+**BAR-161 / BAR-083 — blind counting enforced by the database.** These were always
+one piece of work under two ids.
+
+**A correction to this morning's own work, and the reason this took a design
+change rather than a `where` clause.** BAR-082 gave `boa_bar_submit_count` the job
+of creating the count session at submit time. That was simpler and worked offline —
+but the security model keys the blind on an **open (`draft`) session**, so removing
+the draft removed the only hook the enforcement has. Opening a count is therefore
+an explicit act again: `boa_bar_open_count` creates the draft, creating the draft
+is what blinds you, and submitting closes it.
+
+**What now enforces it.** `private.boa_bar_is_blinded(venue, location)` is the
+single definition — true while the CALLER holds an open draft session for that
+location. It gates two things, because gating one would be theatre:
+
+1. `boa_bar_inventory_snapshot` **omits** the location entirely. Not zeroed: a
+   zero row is itself a claim about the position, and a counter shown zeroes would
+   reasonably enter zeroes.
+2. The `boa_bar_movement_line` read policy excludes that location's lines, so the
+   same figure cannot be re-summed from the raw ledger. This is
+   docs/SECURITY.md requirement 2, and without it the snapshot change would have
+   been decorative.
+
+**A trade recorded rather than hidden.** `openCount` is called directly, not
+queued through the outbox: a blind that takes effect three seconds late is not a
+blind. The consequence is that a count cannot be STARTED offline, though it can
+still be recorded and submitted offline. If load-in testing shows the bars have no
+signal, this needs revisiting — a locally-held blind would be the alternative, and
+it is weaker.
+
+**`blind_count.test.sql` is the first test here that simulates a signed-in user**,
+by setting `request.jwt.claims` inside the transaction so `auth.uid()`, the
+security-definer functions and the RLS policies all behave as they would for a real
+caller. 6 assertions, including the one this task exists for: before opening a
+count the bar lead can read their bar, and after opening it the snapshot returns
+nothing for it. That is also the first RLS policy in this project proved
+behaviourally (BAR-030).
+
+**Verified:** typecheck, lint, 124 tests, build, `check:sql`, fidelity gate
+unchanged at 0 hardcoded / 0 errored.
+
+**NOT verified, and stated plainly:** `202608280007` is unapplied and
+`blind_count.test.sql` has never executed. The machine this was written on has no
+PostgreSQL. The likely failure point is the `auth.users` insert needing more
+columns on this Supabase version — a one-line fix, and the test says so in its own
+header.
+
+**Recommended next:** apply it (`db push`), run `node scripts/db-test.mjs`, and
+expect **78 assertions** across four files. Then RELEASE-1 item 6 (BAR-145, the
+in-event correction path).
 
 ### Session — 28 August 2026 (eighth) · Claude — RELEASE-1 items 1 to 4
 

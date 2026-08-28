@@ -132,6 +132,15 @@ export function createFixtureRepository(which: FixtureVariant = 'a'): Repository
     },
 
     /**
+     * No blind to enforce here: the fixture repository has no position to
+     * withhold, and the shell announces DEMO DATA throughout. Returns the
+     * design's own count id so the walkthrough reads consistently.
+     */
+    async openCount(): Promise<{ countSessionId: string }> {
+      return { countSessionId: 'CT-0041' }
+    },
+
+    /**
      * Records nothing, like the other fixture commands, and reports the design's
      * own line count so the confirmation screen has something true to show about
      * the walkthrough. The shell says DEMO DATA · NOTHING IS RECORDED throughout.

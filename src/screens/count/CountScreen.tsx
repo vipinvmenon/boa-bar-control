@@ -24,10 +24,10 @@
  * Every input starts at zero and is reset per line. Nothing on this screen reads
  * or displays an expected quantity.
  */
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { ChevronLeft, EyeOff, Minus, Plus } from 'lucide-react'
-import { useRepositoryMutation, useRepositoryQuery } from '../../data/RepositoryProvider'
+import { useRepository, useRepositoryMutation, useRepositoryQuery } from '../../data/RepositoryProvider'
 import { submitCount } from '../../services/count'
 import type { CountLineCommand } from '../../data/repository'
 import { partialToMl } from '../../domain/units'
@@ -57,6 +57,34 @@ export function CountScreen() {
    * BAR-072 — but the RPC's unique idempotency key refuses the duplicate.
    */
   const [actionId] = useState(() => crypto.randomUUID())
+
+  /**
+   * BAR-161. Open the count as soon as the sheet is shown.
+   *
+   * Opening a count is what BLINDS this device to the location's position — the
+   * database withholds that location from the snapshot and from the raw ledger
+   * while a draft session is open. So it has to happen before the counter looks
+   * at the sheet, not at submit time: a blind that starts after the first line is
+   * entered protects nothing.
+   *
+   * Failure here is surfaced rather than swallowed, because a sheet that opened
+   * without the blind taking effect is a sheet the counter should not be using.
+   */
+  const repository = useRepository()
+  const opened = useRef(false)
+  const [openError, setOpenError] = useState<string | null>(null)
+  const locationId = session.data?.locationId
+  const countKind = session.data?.countKind
+
+  useEffect(() => {
+    if (opened.current || !locationId || !countKind) return
+    opened.current = true
+    repository
+      .openCount(locationId, countKind)
+      .catch((error: unknown) =>
+        setOpenError(error instanceof Error ? error.message : 'The count could not be opened'),
+      )
+  }, [repository, locationId, countKind])
 
   const submit = useRepositoryMutation((repository, input: { lines: CountLineCommand[]; locationId: string; countKind: Parameters<typeof submitCount>[0]['countKind']; expectedLineCount: number }) =>
     submitCount({ repository, actionId, ...input }),
@@ -198,6 +226,11 @@ export function CountScreen() {
       </div>
 
       <footer className="flow-foot">
+        {openError && (
+          <p className="flow-error" role="alert">
+            COUNT NOT OPENED · {openError} · Do not count from this sheet
+          </p>
+        )}
         {submit.isError && (
           <p className="flow-error" role="alert">NOT SUBMITTED · {submit.error.message}</p>
         )}

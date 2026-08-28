@@ -20,7 +20,7 @@
  *   2. Time is the server's, in the venue's timezone. A crew phone with a wrong
  *      clock must not be able to age a docket or stamp a count.
  */
-import { supabase } from '../../lib/supabase'
+import { openCountRpc, supabase } from '../../lib/supabase'
 import { enqueueCommand, OutboxPendingError, waitForCommand } from '../../lib/offline-db'
 import { toleranceFor, varianceBand } from '../../domain/inventory'
 import { mlForContainers } from '../../domain/custody'
@@ -1383,6 +1383,21 @@ export function createLiveRepository(context: LiveContext): Repository {
         if (error instanceof OutboxPendingError) return { status: 'queued', outboxId }
         throw error
       }
+    },
+
+    /**
+     * BAR-161. Opening a count blinds this device to the location's position.
+     * Direct, not queued — see `openCountRpc`.
+     */
+    async openCount(locationId: string, countKind: CountKind): Promise<{ countSessionId: string }> {
+      if (!locationId) throw new Error('A count needs a location')
+      const result = (await openCountRpc({
+        venue_id: venueId,
+        location_id: locationId,
+        count_kind: countKind,
+      })) as { count_session_id?: string } | null
+      if (!result?.count_session_id) throw new Error('The count could not be opened')
+      return { countSessionId: result.count_session_id }
     },
 
     /**

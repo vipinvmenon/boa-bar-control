@@ -541,7 +541,17 @@ export interface Repository {
   acceptDocket(command: AcceptDocketCommand): Promise<WriteOutcome>
 
   /**
-   * Record a blind count. Creates the session, writes the observed lines and
+   * BAR-161. Open a count on a location. Creating the draft session is what
+   * blinds this device to that location's position, so it must happen before the
+   * counter is shown the sheet.
+   *
+   * Returns the session id. Not queued through the outbox: a blind that takes
+   * effect three seconds late is not a blind.
+   */
+  openCount(locationId: string, countKind: CountKind): Promise<{ countSessionId: string }>
+
+  /**
+   * Record a blind count. Writes the observed lines, closes the open session and
    * seals the ledger-derived expected position server-side (BAR-082/BAR-084).
    */
   submitCount(command: SubmitCountCommand): Promise<CountWriteOutcome>

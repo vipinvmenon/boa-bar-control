@@ -62,13 +62,16 @@ Not verified, and this is the single largest unknown in the repository:
 
 ## 4. The blocking list, in order
 
-> **Items 1–4 were completed on 28 August**, in the order 2 → 1 → 4 → 3, because
+> **Items 1–5 were completed on 28 August**, in the order 2 → 1 → 4 → 3, because
 > BAR-123 changes how every movement stamps its date and writing the count and
-> waste RPCs first would have meant rework. All four are written, gated and
-> browser-verified against fixtures. **None has executed against the database** —
-> three new migrations are unapplied and `auth.users` is still empty. Item 0 is
-> therefore now the only thing standing between this work and evidence that it
-> works. Start there.
+> waste RPCs first would have meant rework. Items 1–3's migrations are
+> **applied and verified** — `db push` succeeded and `pnpm test:db` reports 72
+> assertions, 0 failed, including all 9 behavioural business-date assertions. Item
+> 5's migration (`202608280007`) is **written and unapplied**.
+>
+> What is still unproven is everything that needs a signed-in user: no count, no
+> waste entry and no docket has executed, because `auth.users` is empty. Item 0 is
+> a minute of dashboard work and unblocks all of it. Start there.
 
 
 Ordering is my judgement, not the specification's. The reasoning is given so it

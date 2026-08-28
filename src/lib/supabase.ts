@@ -62,6 +62,23 @@ export async function recordWasteRpc(payload: unknown) {
   return data
 }
 
+/**
+ * BAR-161. Opening a count blinds the caller to that location's position, so this
+ * is called directly rather than queued: the blind must take effect before the
+ * counter sees the sheet, and an outbox entry that drains in three seconds would
+ * leave a window in which the expected position was still readable.
+ *
+ * The consequence is that a count cannot be STARTED offline. Recording and
+ * submitting one still can. That trade is deliberate and recorded in
+ * docs/CURRENT-STATE.md.
+ */
+export async function openCountRpc(payload: unknown) {
+  if (!supabase) throw new Error('Supabase is not configured')
+  const { data, error } = await supabase.rpc('boa_bar_open_count', { p_payload: payload })
+  if (error) throw error
+  return data
+}
+
 export async function submitCountRpc(payload: unknown) {
   if (!supabase) throw new Error('Supabase is not configured')
   const { data, error } = await supabase.rpc('boa_bar_submit_count', { p_payload: payload })
