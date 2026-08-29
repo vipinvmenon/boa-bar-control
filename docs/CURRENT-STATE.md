@@ -222,7 +222,7 @@ States are defined once in the **Status key** above.
 | BAR-040 | Navigation state machine | `[~]` | The hardcoded `<Link to="/">` backs are gone, and the three hardcoded bar-id destinations were fixed under BAR-133. There is still no stack: every back is a fixed destination rather than a pop |
 | BAR-041 | Toast system | `[x]` | `app-store.flash` expires every toast at 2600 ms, the design's duration, including one raised while another is showing |
 | BAR-042 | Repository interface | `[~]` | Interface, fixture and live implementations all exist (`b49768c`, `743a4d4`). **The live implementation has never executed a query** — the database holds nothing to read |
-| BAR-043 | Fixture repository from the design's data | `[!]` | **The fidelity gate now reports `bar` as hardcoded, and it is right.** `fixture-repository.barDetail()` has no `v?.` branch, so it returns the same object under both fixture sets and the bar workspace cannot be proved to read its data. The screen itself does read the repository — but by the gate's own rule that is unproven. Hidden until now because the gate was flaky on this exact screen. **The gate exits non-zero until a `barDetail` variant is added** |
+| BAR-043 | Fixture repository from the design's data | `[x]` | `design-data.ts` with line references, and **every read model now has a second fixture state**. `barDetail` was the one that did not, so the bar workspace rendered identically under both sets and could not be proved to read its data — invisible until BAR-008's flakiness was fixed. Gate: 15 reading, **0 hardcoded, 0 errored, identical across three consecutive runs** |
 | BAR-044 | Application service layer | `[~]` | `src/services/` exists with `issue.ts` and `accept.ts` — Zod validation, the custody domain rules, then the repository. Both custody writes are now wired and verified in a browser. Commands are on the `Repository` interface, so no screen imports Supabase or Dexie and no service calls an RPC. 13 service tests. Count, waste and the remaining write use cases still have no service-backed screen path |
 | BAR-045 | Remove fixture data from screen files | `[~]` | `src/features/screens.tsx` is down from 302 lines to 67 and holds **no** SKU data — only the `reports` honest empty state. All 16 routes read the repository; the gate reports 0 hardcoded and BAR-154's lint rule enforces it |
 | BAR-046 | Wire the domain layer | `[~]` | `mlFromGrossWeight` now has a caller (`services/count.ts`), as do `varianceBand`, `toleranceFor`, the whole of `domain/custody.ts`, `domain/outbox-policy.ts` and `domain/units.ts`. Still zero callers outside tests: `derivePositions`, `applyIdempotently`, `reverseMovement`, `theoreticalClosing`, `weightedAverageCost` |
@@ -363,16 +363,16 @@ Computed from the rows above, not asserted.
 
 | | Count |
 | --- | --- |
-| `[x]` done | 58 |
+| `[x]` done | 59 |
 | `[~]` partial | 40 |
 | `[R]` rewrite | 3 |
-| `[!]` defect actively present | 10 |
+| `[!]` defect actively present | 9 |
 | `[ ]` not started | 51 |
 | `[?]` unverifiable today | 2 |
 | **Total** | **164** |
 
-Read the middle three rows as the real position: **53 tasks are neither done nor
-untouched**, and 10 of them are defects sitting in the code right now.
+Read the middle three rows as the real position: **52 tasks are neither done nor
+untouched**, and 9 of them are defects sitting in the code right now.
 
 ## Would stop the event dead
 

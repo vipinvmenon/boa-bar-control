@@ -452,8 +452,45 @@ export function variant() {
     items: g.items.map((it) => ({ ...it, name: `${it.name} (v2)` })),
   }))
 
+  /**
+   * BAR-043. The bar workspace was the one read model with no second fixture
+   * state, so `barDetail` returned the same object under both sets and the screen
+   * rendered identically — which the fidelity gate correctly calls "not reading
+   * the data layer".
+   *
+   * It went unseen because the gate was flaky on this exact screen: `bar` renders
+   * the pulsing live dot, so its capture never settled and the verdict was
+   * effectively random. Fixing the gate (BAR-008) surfaced it on the first
+   * deterministic run.
+   *
+   * Every displayed field is shifted, not just the name: a variant that changed
+   * only one string would prove the screen reads that string and nothing else.
+   */
+  const barDetail: Record<string, BarDetail> = {}
+  const baseBar = BAR_DETAIL['bar-3']
+  if (baseBar) {
+    barDetail['bar-3'] = {
+      ...baseBar,
+      name: 'BAR 1',
+      managerName: 'Priya',
+      categoryTotals: baseBar.categoryTotals.map((c) => ({ ...c, containers: c.containers + 13 })),
+      inventory: baseBar.inventory.map((line) => ({
+        ...line,
+        name: `${line.name} (v2)`,
+        quantity: String(Number(line.quantity) + 7),
+      })),
+      incoming: baseBar.incoming.slice(0, 1).map((d) => ({
+        ...d,
+        docketNo: 'D-0231',
+        summary: '72 × Corona Extra',
+        ageLabel: '9 MIN',
+      })),
+    }
+  }
+
   return {
     asOf: { label: '21:07', at: '2026-10-10T21:07:00+05:30' },
+    barDetail,
     bars,
     stockPosition: {
       ...STOCK_POSITION,

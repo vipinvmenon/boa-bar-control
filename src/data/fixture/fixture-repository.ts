@@ -71,7 +71,10 @@ export function createFixtureRepository(which: FixtureVariant = 'a'): Repository
     },
 
     async barDetail(barId: string): Promise<BarDetail | null> {
-      return BAR_DETAIL[barId] ?? null
+      // BAR-043. The variant branch was missing, so this returned the same object
+      // under both fixture sets and the bar workspace could never be proved to
+      // read its data.
+      return v?.barDetail[barId] ?? BAR_DETAIL[barId] ?? null
     },
 
     async catalogue(): Promise<CatalogueGroup[]> {
