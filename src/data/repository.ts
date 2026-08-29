@@ -410,6 +410,30 @@ export type WasteOptions = {
 }
 
 // ---------------------------------------------------------------------------
+// receipt
+// ---------------------------------------------------------------------------
+
+/** What the receipt screen needs. Carries no position: a delivery adds stock,
+ * and what was already there does not change what arrived. */
+export type ReceiptOptions = {
+  locationId: string
+  locationName: string
+  products: WasteProduct[]
+  defaultProductId: string
+}
+
+export type ReceiptLineCommand = { skuId: string; containers: number }
+
+export type RecordReceiptCommand = {
+  idempotencyKey: string
+  locationId: string
+  /** Required by spec §4 — a receipt is posted against a delivery note. */
+  supplier: string
+  deliveryNote: string
+  lines: ReceiptLineCommand[]
+}
+
+// ---------------------------------------------------------------------------
 // commands — the write side
 // ---------------------------------------------------------------------------
 
@@ -527,6 +551,9 @@ export interface Repository {
   /** Products and reasons for the waste screen. Carries no position figure. */
   wasteOptions(locationId?: string): Promise<WasteOptions>
 
+  /** Source location and products for the delivery screen (BAR-060). */
+  receiptOptions(): Promise<ReceiptOptions>
+
   /** Source, destinations and SKU positions for the issue-stock draft screen. */
   issueOptions(): Promise<IssueOptions>
 
@@ -570,4 +597,7 @@ export interface Repository {
 
   /** Record waste against the recording location (BAR-063/BAR-133). */
   recordWaste(command: RecordWasteCommand): Promise<CountWriteOutcome>
+
+  /** Record a delivery against its delivery note (BAR-060). */
+  recordReceipt(command: RecordReceiptCommand): Promise<CountWriteOutcome>
 }

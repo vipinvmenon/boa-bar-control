@@ -13,6 +13,7 @@ import { AcceptScreen } from '../screens/custody/AcceptScreen'
 import { ReceivedScreen } from '../screens/custody/ReceivedScreen'
 import { DocketsScreen } from '../screens/custody/DocketsScreen'
 import { WasteScreen } from '../screens/waste/WasteScreen'
+import { ReceiptScreen } from '../screens/receipt/ReceiptScreen'
 import { CountScreen } from '../screens/count/CountScreen'
 import { CountDoneScreen } from '../screens/count/CountDoneScreen'
 import { VarianceScreen } from '../screens/count/VarianceScreen'
@@ -40,6 +41,8 @@ const issueRoute = createRoute({
   validateSearch: parseIssueDraftSearch,
 })
 const wasteRoute = createRoute({ getParentRoute: () => rootRoute, path: '/waste', component: WasteScreen })
+// BAR-060. Not a design screen — see ReceiptScreen's header.
+const receiptRoute = createRoute({ getParentRoute: () => rootRoute, path: '/receipt', component: ReceiptScreen })
 const countRoute = createRoute({ getParentRoute: () => rootRoute, path: '/count', component: CountScreen })
 const reportsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/reports', component: ReportsScreen })
 const countDoneRoute = createRoute({ getParentRoute: () => rootRoute, path: '/count/submitted', component: CountDoneScreen })
@@ -88,6 +91,7 @@ const routeTree = rootRoute.addChildren([
   moreRoute,
   issueRoute,
   wasteRoute,
+  receiptRoute,
   countRoute,
   reportsRoute,
   docketsRoute,

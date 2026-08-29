@@ -601,3 +601,13 @@ h1 { font: 400 31px/1 'Anton', sans-serif; letter-spacing: .035em; text-transfor
 .waste-reasons button { min-height: 44px; padding: 0 14px; border: 1px solid rgba(166,201,180,.22); border-radius: 999px; background: transparent; color: rgba(166,201,180,.85); font: 500 12px/1 'Oswald', sans-serif; letter-spacing: .08em; }
 .waste-reasons button.active { border-color: var(--red); background: var(--red); color: #0D0D12; }
 .waste-note { margin-top: 2px; color: rgba(242,239,226,.74); font: 400 11px/1.5 'Archivo', sans-serif; }
+
+/* BAR-060 — delivery capture. Not a design screen; built from existing tokens. */
+.field { display: grid; gap: 6px; }
+.field input { min-height: 44px; padding: 0 13px; border: 1px solid rgba(166,201,180,.22); border-radius: 12px; background: rgba(13,13,18,.55); color: var(--bone); font: 400 14px/1 'Archivo', sans-serif; }
+.field input::placeholder { color: rgba(166,201,180,.4); }
+.field input:focus { outline: none; border-color: rgba(166,201,180,.5); }
+.receipt-line { margin-bottom: 7px; padding: 11px 13px; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(166,201,180,.2); border-radius: 14px; background: rgba(27,27,36,.82); }
+.receipt-line strong { display: block; color: var(--bone); font: 500 13px/1.2 'Oswald', sans-serif; letter-spacing: .06em; }
+.receipt-line small { color: rgba(166,201,180,.7); font: 400 11px/1.4 'Archivo', sans-serif; }
+.receipt-line button { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid rgba(255,74,61,.3); border-radius: 999px; background: transparent; color: var(--red); }

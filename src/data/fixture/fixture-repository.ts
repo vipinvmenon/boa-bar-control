@@ -28,13 +28,15 @@ import type {
   Repository,
   SessionInfo,
   StockPosition,
+  ReceiptOptions,
+  RecordReceiptCommand,
   RecordWasteCommand,
   SubmitCountCommand,
   VarianceReport,
   WasteOptions,
   WriteOutcome,
 } from '../repository'
-import { ALERTS, AS_OF, BARS, BAR_DETAIL, CATALOGUE, COUNT_SESSION, CUSTODY, CUSTODY_BY_DOCKET, CUSTODY_OVERVIEW, ISSUE_OPTIONS, WASTE_OPTIONS, LEDGER, MOVEMENTS, SESSION, STOCK_POSITION, VARIANCE, variant } from './design-data'
+import { ALERTS, AS_OF, BARS, BAR_DETAIL, CATALOGUE, COUNT_SESSION, CUSTODY, CUSTODY_BY_DOCKET, CUSTODY_OVERVIEW, ISSUE_OPTIONS, RECEIPT_OPTIONS, WASTE_OPTIONS, LEDGER, MOVEMENTS, SESSION, STOCK_POSITION, VARIANCE, variant } from './design-data'
 
 export type FixtureVariant = 'a' | 'b'
 
@@ -70,6 +72,14 @@ export function createFixtureRepository(which: FixtureVariant = 'a'): Repository
 
     async catalogue(): Promise<CatalogueGroup[]> {
       return v?.catalogue ?? CATALOGUE
+    },
+
+    async receiptOptions(): Promise<ReceiptOptions> {
+      return v?.receiptOptions ?? RECEIPT_OPTIONS
+    },
+
+    async recordReceipt(command: RecordReceiptCommand): Promise<CountWriteOutcome> {
+      return { status: 'posted', countSessionId: `MV-${command.deliveryNote}`, lines: command.lines.length }
     },
 
     async wasteOptions(): Promise<WasteOptions> {

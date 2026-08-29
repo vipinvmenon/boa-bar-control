@@ -186,7 +186,7 @@ States are defined once in the **Status key** above.
 | BAR-016 | Protect the balance projection | `[~]` | `private.boa_bar_balance` now has exactly one writer, `private.boa_bar_post_movement`, instead of the insert being duplicated per entry point. Still no trigger and no scheduled reconciliation — `pnpm bootstrap` compares the projection against a ledger sum once, at bootstrap, which is not the same as protecting it |
 | BAR-017 | Fix `comp` to a two-leg move | `[!]` | `202608220001:256` still forces `comp` to net negative, so hospitality separation is unrecordable |
 | BAR-018 | Restrict `sale` to the POS path | `[!]` | `boa_bar_submit_movement` accepts `kind = 'sale'` from `crew`, `warehouse` and `bar_lead`. Violates non-negotiable 8 |
-| BAR-019 | Receipt movement path | `[ ]` | No receipt RPC and no receipt screen |
+| BAR-019 | Receipt movement path | `[x]` | `boa_bar_record_receipt` is the receipt path, with the delivery note the spec requires and a duplicate guard. Previously a toast message |
 | BAR-020 | Return and transfer paths | `[~]` | Transfer legs exist inside the docket RPCs. No standalone return path |
 | BAR-021 | Adjustment path with role and reason | `[ ]` | No adjustment RPC; `reverses_movement_id` is not unique, so one movement can be reversed twice |
 | BAR-022 | Venue-scope every foreign key | `[!]` | `movement_line.sku_id` and `.location_id` are not venue-scoped — a movement can post against another venue's SKUs |
@@ -249,8 +249,8 @@ States are defined once in the **Status key** above.
 | BAR-057 | `received` screen | `[x]` | `c987c24` |
 | BAR-058 | Short-acceptance ownership | `[~]` | The accept RPC rejects an unexplained shortfall. It does not assign the shortfall an owner or post a compensating adjustment |
 | BAR-059 | Docket SLA alert | `[~]` | Derived in the live repository's `alerts()` from the oldest awaiting docket against a 30-minute SLA. The legacy home path is still static |
-| BAR-060 | `receipt` screen | `[ ]` | — |
-| BAR-140 | Opening stock entry | `[~]` | `boa_bar_open_stock` is the write path and `pnpm bootstrap` is an operator route to it. **There is still no screen** — a warehouse operator cannot enter opening stock from the app, only an operator with the database password can |
+| BAR-060 | `receipt` screen | `[x]` | `202608280010` plus `/receipt`. Multi-line delivery capture against a supplier and delivery note, both **required** — spec §4 posts a receipt against that document, and it is what the excise return and the STOK settlement reconcile to. Refuses a repeat of the same note from the same supplier, which no idempotency key can catch. **Not a design screen**: the design has no receipt (`received` is docket acceptance). Verified in a browser: adding the same product twice merges to one line of 48 rather than duplicating. **Migration unapplied** |
+| BAR-140 | Opening stock entry | `[x]` | Closed by BAR-060. `boa_bar_open_stock` still loads the warehouse at bootstrap, and `/receipt` now covers a delivery arriving during the event — which was the half that needed the database password |
 
 ### M4 — Bar operations and offline
 
@@ -363,15 +363,15 @@ Computed from the rows above, not asserted.
 
 | | Count |
 | --- | --- |
-| `[x]` done | 51 |
-| `[~]` partial | 38 |
+| `[x]` done | 54 |
+| `[~]` partial | 37 |
 | `[R]` rewrite | 4 |
 | `[!]` defect actively present | 11 |
-| `[ ]` not started | 58 |
+| `[ ]` not started | 56 |
 | `[?]` unverifiable today | 2 |
 | **Total** | **164** |
 
-Read the middle three rows as the real position: **53 tasks are neither done nor
+Read the middle three rows as the real position: **52 tasks are neither done nor
 untouched**, and 11 of them are defects sitting in the code right now.
 
 ## Would stop the event dead
@@ -382,7 +382,7 @@ original audit.
 
 | # | Problem | Task |
 | --- | --- | --- |
-| 1 | ~~**There is no way to enter opening stock.**~~ **Half addressed 28 Aug.** `boa_bar_open_stock` posts opening stock as a receipt through the ledger, and `pnpm bootstrap` drives it. Still an operator-only path needing the database password: **there is no screen**, so a warehouse lead cannot do it from the app, and the migration has not been applied | BAR-156 / BAR-140 |
+| 1 | ~~**There is no way to enter opening stock.**~~ **Closed 28 Aug.** `boa_bar_open_stock` loads the warehouse at bootstrap and `/receipt` (BAR-060) records a delivery arriving during the event, against the delivery note spec §4 requires. Neither needs a database password | BAR-156 / BAR-060 |
 | 2 | **Every bar-side write is hardcoded to Bar 3.** Waste and counts from Bars 1, 2 and 4 post against Bar 3's ledger. Bar 1's variance is understated by exactly what Bar 3's is overstated — both indefensible | BAR-133 |
 | 3 | **Demo mode announces itself as live.** `src/app/AppShell.tsx:45` renders `SYNCED` when `backendMode === 'live'` and `LIVE · 19:44 IST` when it is not — exactly backwards. One missing environment variable gives twenty staff a twelve-hour shift against hardcoded fixtures under a label that says live, with total unrecoverable loss discovered on 11 October. **The most dangerous single line in the codebase** | BAR-139 |
 | 4 | **Queued movements are attributed to whoever is signed in when the queue flushes**, not who created them. A shift handover on a shared phone re-attributes the outgoing crew member's work. The ledger's "named person" — the entire value of §4 and §5 — becomes wrong | BAR-141 |

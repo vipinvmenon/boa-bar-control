@@ -92,6 +92,8 @@ import type {
   SessionInfo,
   StockPosition,
   SubmitCountCommand,
+  ReceiptOptions,
+  RecordReceiptCommand,
   RecordWasteCommand,
   Tone,
   VarianceReport,
@@ -736,6 +738,27 @@ export function createLiveRepository(context: LiveContext): Repository {
       }
     },
 
+    /** BAR-060. The warehouse and its catalogue; a delivery adds to it. */
+    async receiptOptions(): Promise<ReceiptOptions> {
+      const ref = await reference()
+      const warehouse = ref.locations.find((l) => l.kind === 'warehouse')
+      if (!warehouse) throw new Error('No active warehouse is configured for this venue')
+      return {
+        locationId: warehouse.id,
+        locationName: warehouse.name.toUpperCase(),
+        products: ref.skus.map((sku) => {
+          const shape = toSkuShape(sku)
+          return {
+            skuId: sku.id,
+            name: sku.name,
+            spec: specLabel(shape),
+            containerUnitPlural: unitWord(sku.container_type),
+          }
+        }),
+        defaultProductId: ref.skus[0]?.id ?? '',
+      }
+    },
+
     /** design-script.jsx:308. Also enforced by boa_bar_record_waste. */
     async wasteOptions(locationId?: string): Promise<WasteOptions> {
       const ref = await reference()
@@ -1375,6 +1398,33 @@ export function createLiveRepository(context: LiveContext): Repository {
         },
       })
       return settle(outboxId)
+    },
+
+    /** BAR-060. A delivery, against its delivery note. */
+    async recordReceipt(command: RecordReceiptCommand): Promise<CountWriteOutcome> {
+      const outboxId = await enqueueCommand({
+        kind: 'record_receipt',
+        idempotencyKey: command.idempotencyKey,
+        payload: {
+          venue_id: venueId,
+          location_id: command.locationId,
+          supplier: command.supplier,
+          delivery_note: command.deliveryNote,
+          idempotency_key: command.idempotencyKey,
+          source: 'pwa',
+          lines: command.lines.map((line) => ({ sku_id: line.skuId, containers: line.containers })),
+        },
+      })
+      try {
+        const result = (await waitForCommand(outboxId)) as { movement_id?: string; lines?: number } | null
+        if (result?.movement_id) {
+          return { status: 'posted', countSessionId: result.movement_id, lines: Number(result.lines ?? command.lines.length) }
+        }
+        return { status: 'queued', outboxId }
+      } catch (error) {
+        if (error instanceof OutboxPendingError) return { status: 'queued', outboxId }
+        throw error
+      }
     },
 
     /**

@@ -55,6 +55,13 @@ export async function acceptDocketRpc(payload: unknown) {
   return data
 }
 
+export async function recordReceiptRpc(payload: unknown) {
+  if (!supabase) throw new Error('Supabase is not configured')
+  const { data, error } = await supabase.rpc('boa_bar_record_receipt', { p_payload: payload })
+  if (error) throw error
+  return data
+}
+
 export async function recordWasteRpc(payload: unknown) {
   if (!supabase) throw new Error('Supabase is not configured')
   const { data, error } = await supabase.rpc('boa_bar_record_waste', { p_payload: payload })

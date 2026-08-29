@@ -26,6 +26,7 @@ import type {
   Custody,
   CustodyOverview,
   IssueOptions,
+  ReceiptOptions,
   WasteOptions,
   MovementDetail,
   StockPosition,
@@ -279,6 +280,21 @@ export const CUSTODY: Custody = {
   acceptedAt: '19:38',
 }
 
+/** BAR-060. The warehouse and its catalogue for the delivery screen. */
+export const RECEIPT_OPTIONS: ReceiptOptions = {
+  locationId: 'warehouse',
+  locationName: 'WAREHOUSE',
+  products: CATALOGUE.flatMap((group) =>
+    group.items.map((item) => ({
+      skuId: item.skuId,
+      name: item.name,
+      spec: item.spec,
+      containerUnitPlural: /can$/i.test(item.spec) ? 'CANS' : /keg$/i.test(item.spec) ? 'KEGS' : 'BOTTLES',
+    })),
+  ),
+  defaultProductId: 'kf',
+}
+
 /** design-script.jsx:308 — the waste screen's five reasons, and the bar's SKUs. */
 export const WASTE_OPTIONS: WasteOptions = {
   locationId: 'bar-3',
@@ -430,6 +446,11 @@ export function variant() {
       toLocationId: 'bar-1',
     },
     catalogue,
+    receiptOptions: {
+      ...RECEIPT_OPTIONS,
+      products: RECEIPT_OPTIONS.products.map((p) => ({ ...p, name: `${p.name} (v2)` })),
+      defaultProductId: 'corona',
+    },
     wasteOptions: {
       ...WASTE_OPTIONS,
       locationId: 'bar-1',
