@@ -164,7 +164,7 @@ States are defined once in the **Status key** above.
 | BAR-005 | Archive contradicted documents | `[x]` | `docs/archive/` holds five superseded documents; `artifact-reconciliation.md` moved in |
 | BAR-006 | CI pipeline | `[?]` | `.github/workflows/ci.yml` exists with the database job advisory (`344c72d`). **No CI run has ever been observed.** A pipeline nobody has watched pass is not a gate |
 | BAR-007 | Reference captures | `[x]` | `f4cbae8` — 22 screens at 390×844@2x, each verified against the design's own stage caption |
-| BAR-008 | Two-fixture-state harness | `[x]` | `41c5b2e` — `pnpm test:visual`. Currently reports 16 routes, 15 reading the data layer, **0 hardcoded** |
+| BAR-008 | Two-fixture-state harness | `[~]` | The gate works and is the reason `home` and `warehouse` were caught. **It also produces an intermittent false positive**: on 28 August one run in four reported `1 hardcoded` and `14 reading` while listing every screen as `ok` — the summary contradicting its own per-screen output. Three consecutive re-runs were clean. Most likely the first run after a `build`, when Vite re-optimises dependencies and a frame is captured mid-compile. A gate that is wrong one run in four teaches people to re-run until it passes, which is the opposite of what it is for |
 | BAR-153 | `CHECKSUMS.txt` over the design source | `[ ]` | No `CHECKSUMS.txt` anywhere in the tree. The UI contract can be edited without trace |
 | BAR-154 | Lint rule banning literals in screen files | `[x]` | Added 28 Aug. `no-restricted-syntax` over `src/screens/**` and `src/components/**` bans location ids and names, docket numbers and catalogue SKU names. **Verified by probe**: all six planted literals errored and two legitimate strings passed. Deliberately narrow — a general literal ban gets disabled, and a disabled rule catches nothing |
 | BAR-009 | `sw.ts` in typecheck and lint | `[ ]` | Still excluded: `eslint.config.js:8` ignores it, `tsconfig.app.json:23` excludes it |
@@ -197,7 +197,7 @@ States are defined once in the **Status key** above.
 | BAR-027 | Missing spec §13 columns | `[~]` | BAR-124 added display names. `abv`, `supplier_vendor_id`, `is_licenced`, `is_blind`, `witnessed_by`, `counted_at`, empties and delivery-note remain absent |
 | BAR-028 | Non-negative position guard | `[ ]` | Nothing prevents issuing more than is held. The per-column `>= 0` checks are on docket and count lines, not on the position |
 | BAR-029 | Index `movement_line.movement_id` | `[ ]` | The two indexes are `(venue_id, business_date, occurred_at)` and `(location_id, sku_id)`. `movement_id` is still an unindexed FK, evaluated per row by the read policy — and the live repository queries it by `movement_id` on every ledger read |
-| BAR-030 | Behavioural pgTAP suite | `[~]` | **80 assertions pass against the live database.** `blind_count.test.sql` (6) is the first to CONNECT AS A ROLE and the first to prove an RLS policy behaviourally. `business_date` (9) is behavioural. `privileges` (54) checks real privileges and has now caught **two** live EXECUTE holes, one of which broke every ledger read in production. `ledger.test.sql` (11) is still existence-only, and nothing yet attempts an UPDATE to prove the immutability triggers fire — that is the remaining work |
+| BAR-030 | Behavioural pgTAP suite | `[~]` | **80 assertions pass against the live database**, and `recount.test.sql` (9, unapplied) finally **attempts an UPDATE and a DELETE and asserts the triggers fire** — the gap this row has reported since it was written. `blind_count` (6) connects as a role and proves an RLS policy. `business_date` (9) is behavioural. `privileges` (54) has caught two live EXECUTE holes. `ledger.test.sql` (11) remains existence-only and is the last file to replace |
 | BAR-031 | Execute migrations | `[x]` | **All seven migrations applied and confirmed by object existence, 28 Aug.** PostgreSQL 17.6. `pnpm db:state` reports the history and checks that each migration's objects actually exist, rather than trusting the history table |
 | BAR-032 | Deterministic seed that renders the design | `[~]` | **Reference data verified present in the hosted project 28 Aug: 1 venue, 9 locations, 11 SKUs.** Opening ledger not yet posted — blocked on the first `auth.users` row. Still no serve mappings (BAR-159) and no tolerance bands in the database (BAR-025) |
 | BAR-033 | Generate database types | `[ ]` | The client is untyped. `src/data/live/rows.ts` hand-writes every row shape precisely because generated types do not exist — 156 lines that a generator would own |
@@ -303,7 +303,7 @@ States are defined once in the **Status key** above.
 | BAR-090 | `mv` screen — movement detail | `[ ]` | Screen missing. The live repository's `movementDetail()` is implemented and has no consumer |
 | BAR-091 | Adjustment log view | `[ ]` | — |
 | BAR-092 | Paper fallback print views | `[ ]` | No `@media print` and no `window.print` anywhere. **The specification's fallback when the network fails does not exist** |
-| BAR-145 | In-event correction path | `[ ]` | A mistyped count cannot be fixed |
+| BAR-145 | In-event correction path | `[x]` | `202608280009` — a bad count is **superseded, never edited**. `boa_bar_count_line` gets an immutability trigger with its own message (the remedy is a recount, not an adjustment), the session row is guarded against being moved to another location or re-stamped, and a supersede requires a stated reason. The original stays exactly as submitted, with the name of whoever entered it. `variance()` reads the **live** count, not merely the latest. **Written, unapplied** |
 | BAR-148 | Empties capture | `[ ]` | Blocked on BAR-160 |
 | BAR-150 | Mid-event count scheduling | `[ ]` | `COUNT_DUE_AFTER_MINUTES = 120` in the live repository is an assumption standing in for this |
 
@@ -364,14 +364,14 @@ Computed from the rows above, not asserted.
 | | Count |
 | --- | --- |
 | `[x]` done | 51 |
-| `[~]` partial | 37 |
+| `[~]` partial | 38 |
 | `[R]` rewrite | 4 |
 | `[!]` defect actively present | 11 |
-| `[ ]` not started | 59 |
+| `[ ]` not started | 58 |
 | `[?]` unverifiable today | 2 |
 | **Total** | **164** |
 
-Read the middle three rows as the real position: **52 tasks are neither done nor
+Read the middle three rows as the real position: **53 tasks are neither done nor
 untouched**, and 11 of them are defects sitting in the code right now.
 
 ## Would stop the event dead

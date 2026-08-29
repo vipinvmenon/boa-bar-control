@@ -36,6 +36,9 @@ const countSchema = z.object({
   lines: z.array(lineSchema).min(1, 'a count needs at least one line'),
   /** Total lines on the sheet, so a partial count can be refused. */
   expectedLineCount: z.number().int().positive(),
+  /** BAR-145. The count this replaces, if this is a correction. */
+  supersedesSessionId: z.string().min(1).optional(),
+  supersedeReason: z.string().trim().optional(),
 })
 
 export type SubmitCountInput = z.infer<typeof countSchema> & { repository: Repository }
@@ -64,11 +67,24 @@ export async function submitCount({ repository, ...input }: SubmitCountInput): P
     )
   }
 
+  /**
+   * BAR-145. A recount says an earlier observation was wrong, and the reason is
+   * the whole value of the record to the next morning's review — "typed 110
+   * instead of 11" is a typo, "the keg was already tapped" is a process problem.
+   * The database refuses a reasonless supersede; this refuses it earlier, with a
+   * sentence somebody can act on.
+   */
+  if (parsed.supersedesSessionId && !parsed.supersedeReason) {
+    throw new Error('Say why the earlier count was wrong before replacing it')
+  }
+
   return repository.submitCount({
     idempotencyKey: parsed.actionId,
     locationId: parsed.locationId,
     countKind: parsed.countKind,
     lines: parsed.lines,
+    supersedesSessionId: parsed.supersedesSessionId,
+    supersedeReason: parsed.supersedeReason || undefined,
   } satisfies SubmitCountCommand)
 }
 

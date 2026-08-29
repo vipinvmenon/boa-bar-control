@@ -331,6 +331,7 @@ export const CUSTODY_BY_DOCKET: Record<string, Custody> = {
 export const COUNT_SESSION: CountSession = {
   locationId: 'bar-3',
   countKind: 'mid_event',
+  supersedesSessionId: null,
   locationName: 'BAR 3',
   kindLabel: 'MID-EVENT COUNT',
   scopeLabel: 'BAR 3 · BLIND',

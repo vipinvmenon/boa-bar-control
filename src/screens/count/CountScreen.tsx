@@ -86,9 +86,14 @@ export function CountScreen() {
       )
   }, [repository, locationId, countKind])
 
-  const submit = useRepositoryMutation((repository, input: { lines: CountLineCommand[]; locationId: string; countKind: Parameters<typeof submitCount>[0]['countKind']; expectedLineCount: number }) =>
-    submitCount({ repository, actionId, ...input }),
-  )
+  const submit = useRepositoryMutation((repository, input: {
+    lines: CountLineCommand[]
+    locationId: string
+    countKind: Parameters<typeof submitCount>[0]['countKind']
+    expectedLineCount: number
+    supersedesSessionId?: string
+    supersedeReason?: string
+  }) => submitCount({ repository, actionId, ...input }))
 
   const s = session.data
   if (!s) {
@@ -141,6 +146,19 @@ export function CountScreen() {
         locationId: s.locationId,
         countKind: s.countKind,
         expectedLineCount: s.lines.length,
+        /**
+         * BAR-145. If this location already has a live count, this one replaces
+         * it. The reason is fixed here rather than asked for, because the design
+         * has no field for it and inventing a modal mid-count is worse than a
+         * truthful default; a manager-facing recount form with a real reason is
+         * the follow-up.
+         */
+        ...(s.supersedesSessionId
+          ? {
+              supersedesSessionId: s.supersedesSessionId,
+              supersedeReason: 'Recount from the bar app',
+            }
+          : {}),
       },
       { onSuccess: () => void navigate({ to: '/count/submitted' }) },
     )

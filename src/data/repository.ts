@@ -315,6 +315,14 @@ export type CountSession = {
   locationId: string
   /** Which count this is, for the submit command. */
   countKind: CountKind
+  /**
+   * BAR-145. The live submitted count for this location, if there is one — what a
+   * new count would replace. Null when this is the first count of the location.
+   *
+   * Carries only an id, never a figure: knowing that an earlier count exists
+   * discloses nothing about the position, which is what blind counting protects.
+   */
+  supersedesSessionId: string | null
   locationName: string
   /** 'MID-EVENT COUNT' */
   kindLabel: string
@@ -477,6 +485,10 @@ export type SubmitCountCommand = {
   locationId: string
   countKind: CountKind
   lines: CountLineCommand[]
+  /** BAR-145. The count this one replaces. Requires `supersedeReason`. */
+  supersedesSessionId?: string
+  /** Why the earlier count was wrong. The database requires it when superseding. */
+  supersedeReason?: string
 }
 
 /**

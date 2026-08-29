@@ -1138,6 +1138,23 @@ export function createLiveRepository(context: LiveContext): Repository {
       const target = locationId ?? context.locationId
       const locationLabel = (target ? locationName(ref, target) : 'NO LOCATION').toUpperCase()
 
+      // BAR-145. The live submitted count for this location, if any — what a new
+      // count would replace. Only the id is read; no figure crosses this boundary.
+      let supersedesSessionId: string | null = null
+      if (target) {
+        const live = await db
+          .from('boa_bar_count_session')
+          .select('id')
+          .eq('venue_id', venueId)
+          .eq('location_id', target)
+          .not('submitted_at', 'is', null)
+          .is('superseded_by_session_id', null)
+          .order('submitted_at', { ascending: false })
+          .limit(1)
+          .then((r) => unwrap<{ id: string }[]>('live count session', r))
+        supersedesSessionId = live[0]?.id ?? null
+      }
+
       const lines = ref.skus.map((sku) => {
         const shape = toSkuShape(sku)
         const mode = partialModeFor(shape)
@@ -1162,6 +1179,7 @@ export function createLiveRepository(context: LiveContext): Repository {
       return {
         locationId: target ?? '',
         countKind,
+        supersedesSessionId,
         locationName: locationLabel,
         kindLabel: countKindLabel(countKind).toUpperCase(),
         scopeLabel: `${locationLabel} · BLIND`,
@@ -1186,12 +1204,16 @@ export function createLiveRepository(context: LiveContext): Repository {
       const target = locationId ?? context.locationId
       if (!target) throw new Error('Variance needs a location')
 
+      // BAR-145. The LIVE count, not merely the latest: a superseded count is
+      // still submitted and still has a seal, and reporting variance against a
+      // count somebody has already corrected is worse than reporting none.
       const sessions = await db
         .from('boa_bar_count_session')
         .select(COUNT_SESSION_COLUMNS)
         .eq('venue_id', venueId)
         .eq('location_id', target)
         .not('submitted_at', 'is', null)
+        .is('superseded_by_session_id', null)
         .order('submitted_at', { ascending: false })
         .limit(1)
         .then((r) => unwrap<CountSessionRow[]>('variance session', r))
@@ -1418,6 +1440,8 @@ export function createLiveRepository(context: LiveContext): Repository {
           location_id: command.locationId,
           count_kind: command.countKind,
           idempotency_key: command.idempotencyKey,
+          supersedes_session_id: command.supersedesSessionId ?? null,
+          supersede_reason: command.supersedeReason ?? null,
           lines: command.lines.map((line) => ({
             sku_id: line.skuId,
             full_containers: line.fullContainers,

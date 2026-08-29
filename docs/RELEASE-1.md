@@ -62,7 +62,7 @@ Not verified, and this is the single largest unknown in the repository:
 
 ## 4. The blocking list, in order
 
-> **Items 1–5 were completed on 28 August**, in the order 2 → 1 → 4 → 3, because
+> **Items 1–6 were completed on 28 August**, in the order 2 → 1 → 4 → 3, because
 > BAR-123 changes how every movement stamps its date and writing the count and
 > waste RPCs first would have meant rework. Items 1–3's migrations are
 > **applied and verified** — `db push` succeeded and `pnpm test:db` reports 72

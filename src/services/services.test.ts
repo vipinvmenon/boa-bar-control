@@ -280,3 +280,58 @@ describe('submitCount', () => {
     expect(repository.submitCount).toHaveBeenCalled()
   })
 })
+
+describe('submitCount — corrections (BAR-145)', () => {
+  const stub = () => {
+    const fn = vi.fn(async () => ({ status: 'posted' as const, countSessionId: 'cs-2', lines: 1 }))
+    return { submitCount: fn } as unknown as Repository & { submitCount: typeof fn }
+  }
+  const base = {
+    actionId: ACTION,
+    locationId: 'bar-3',
+    countKind: 'mid_event' as const,
+    lines: [{ skuId: 'kf', fullContainers: 11, partialMl: 0 }],
+    expectedLineCount: 1,
+  }
+
+  it('passes the superseded session and reason through', async () => {
+    const repository = stub()
+    await submitCount({
+      repository,
+      ...base,
+      supersedesSessionId: 'cs-1',
+      supersedeReason: 'Typed 110 instead of 11',
+    })
+    expect(repository.submitCount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        supersedesSessionId: 'cs-1',
+        supersedeReason: 'Typed 110 instead of 11',
+      }),
+    )
+  })
+
+  it('refuses to replace a count without saying why', async () => {
+    // A recount asserts an earlier observation was wrong. Without a reason the
+    // next morning's review sees two contradictory counts and no way to choose.
+    const repository = stub()
+    await expect(
+      submitCount({ repository, ...base, supersedesSessionId: 'cs-1' }),
+    ).rejects.toThrow(/why the earlier count was wrong/)
+    expect(repository.submitCount).not.toHaveBeenCalled()
+  })
+
+  it('treats a whitespace-only reason as no reason', async () => {
+    const repository = stub()
+    await expect(
+      submitCount({ repository, ...base, supersedesSessionId: 'cs-1', supersedeReason: '  ' }),
+    ).rejects.toThrow(/why the earlier count was wrong/)
+  })
+
+  it('needs no reason for a first count of a location', async () => {
+    const repository = stub()
+    await submitCount({ repository, ...base })
+    expect(repository.submitCount).toHaveBeenCalledWith(
+      expect.objectContaining({ supersedesSessionId: undefined }),
+    )
+  })
+})
