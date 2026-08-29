@@ -1,4 +1,4 @@
-import { useState, type PropsWithChildren } from 'react'
+import { useState, type FormEvent, type PropsWithChildren } from 'react'
 import { KeyRound, LoaderCircle, Mail, ShieldAlert } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { Panel, RitualButton } from '../components/ui'
@@ -21,8 +21,48 @@ export function AuthGate({ children }: PropsWithChildren) {
       }}><label htmlFor="staff-email">Staff email</label><input id="staff-email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@bangaloreopenair.com" />{message && <small className="auth-error">{message}</small>}<RitualButton wide type="submit">Email secure link</RitualButton></form>}
     </AuthFrame>
   )
-  if (!auth.activeMembership) return <AuthFrame><ShieldAlert /><h1>No venue access</h1><p>{auth.error ?? 'Your account is valid but has not been assigned to BOA 2026 Bar Control.'}</p><RitualButton tone="ghost" onClick={() => void auth.signOut()}>Sign out</RitualButton></AuthFrame>
+  if (!auth.activeMembership) {
+    // BAR-143. A new starter has no membership until they redeem the manager's
+    // invite. Do not render the app (which would fall back to fixtures without a
+    // venue), but allow this one live RPC on its dedicated onboarding route.
+    if (window.location.pathname === '/team') return <JoinWithCode />
+    return <AuthFrame><ShieldAlert /><h1>No venue access</h1><p>{auth.error ?? 'Your account is valid but has not been assigned to BOA 2026 Bar Control.'}</p><RitualButton tone="ghost" onClick={() => void auth.signOut()}>Sign out</RitualButton></AuthFrame>
+  }
   return children
+}
+
+function JoinWithCode() {
+  const auth = useAuth()
+  const [code, setCode] = useState('')
+  const [message, setMessage] = useState<string>()
+  const [joined, setJoined] = useState<string>()
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setMessage(undefined)
+    void auth.claimInvite(code.trim().toUpperCase())
+      .then((result) => {
+        setJoined(result.name)
+        setCode('')
+        // Membership is loaded once after sign-in. Reload only after the server
+        // has durably claimed the one-time code, so an invite can never look
+        // accepted before it is.
+        window.setTimeout(() => window.location.reload(), 800)
+      })
+      .catch((error) => setMessage(error instanceof Error ? error.message : 'Could not join BOA Bar Control'))
+  }
+
+  return <AuthFrame>
+    <KeyRound /><h1>Join BOA Bar Control</h1>
+    <p>Enter the six-character code supplied by your manager.</p>
+    {joined ? <Panel className="auth-notice"><Mail /><div><strong>Joined as {joined}</strong><span>Loading your venue access.</span></div></Panel> : <form onSubmit={submit}>
+      <label htmlFor="invite-code">Invite code</label>
+      <input id="invite-code" autoComplete="one-time-code" required value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="K7F2QX" maxLength={6} />
+      {message && <small className="auth-error">{message}</small>}
+      <RitualButton wide type="submit" disabled={code.trim().length < 6}>Join team</RitualButton>
+    </form>}
+    <RitualButton tone="ghost" onClick={() => void auth.signOut()}>Sign out</RitualButton>
+  </AuthFrame>
 }
 
 function AuthFrame({ children }: PropsWithChildren) {

@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
-import { isSupabaseConfigured, supabase } from './supabase'
+import { isSupabaseConfigured, rpc, supabase } from './supabase'
 
 export type VenueMembership = {
   venueId: string
@@ -28,6 +28,8 @@ type AuthState = {
   error?: string
   signInWithEmail: (email: string) => Promise<void>
   signOut: () => Promise<void>
+  /** Redeem a membership invite before any venue membership exists (BAR-143). */
+  claimInvite: (code: string) => Promise<{ name: string; role: VenueMembership['role'] }>
   setActiveVenue: (venueId: string) => void
 }
 
@@ -130,6 +132,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (!supabase) return
       const { error: signOutError } = await supabase.auth.signOut()
       if (signOutError) throw signOutError
+    },
+    claimInvite: async (code) => {
+      const result = (await rpc('boa_bar_claim_invite', { p_code: code })) as
+        | { display_name?: string; role?: VenueMembership['role'] }
+        | null
+      if (!result?.role) throw new Error('That code is not valid')
+      return { name: result.display_name ?? '', role: result.role }
     },
     setActiveVenue: setActiveVenueId,
   }), [activeVenueId, error, loading, memberships, session])
