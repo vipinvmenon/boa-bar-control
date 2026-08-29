@@ -21,7 +21,7 @@ restate the architecture — `/docs` is canonical. Read in this order:
 | --- | --- |
 | Tasks | **61 done · 40 partial · 7 defects · 51 not started** (164 total) |
 | Unit tests | 136 passing |
-| Database | All local migrations through `202608290001` applied · **113 pgTAP assertions, 0 failed** |
+| Database | All local migrations through `202608290002` applied · **128 pgTAP assertions, 0 failed** |
 | Gates | typecheck, lint, test, build, `check:sql` all green |
 | Fidelity gate | 15 screens reading the data layer · **0 hardcoded · 0 errored** |
 | Screens | 16 of 22 built |
@@ -32,11 +32,13 @@ bootstrap confirms the ledger sum and the projection agree on every line, and th
 app signed in against the hosted database renders **638 containers with the bars
 at zero**.
 
-**The first live write is now proven:** on 29 August an authenticated Safari
+**Two live writes are now proven:** on 29 August an authenticated Safari
 session recorded 1 can of Bira 91 White as Warehouse waste. The app returned
 Home at 0 pending with total stock 638 → 637, and `db-state.mjs` reported the
-movement count increased from 2 to 3. Count, receipt and the two-person custody
-cycle remain unproven from screens.
+movement count increased from 2 to 3. A separate Bar 2 blind mid-event count
+was submitted with 11 lines; `db-state.mjs` reported its submitted session and
+all 11 lines, then the location-scoped variance screen loaded. Receipt and the
+two-person custody cycle remain unproven from screens.
 
 That is the same shape as the gap just closed — a whole layer that looks right
 and has never run. **Close it first.**
@@ -51,7 +53,7 @@ Post one of each from the app against the live database, then confirm with
 `node scripts/db-state.mjs`:
 
 - [x] a **waste** entry — live 29 Aug: Warehouse, Bira 91 White, 1 can, Breakage; Home 0 pending and 638 → 637; database movement count 2 → 3
-- [ ] a **count** — the blind path, and the one the audit depends on
+- [x] a **count** — live 29 Aug: Bar 2, blind mid-event, 11 submitted lines; the count screen showed no expected position and post-submit variance loaded
 - [ ] an **issue → docket → accept** cycle, using two different accounts
 - [ ] a **receipt** against a delivery note
 

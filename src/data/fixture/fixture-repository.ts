@@ -154,8 +154,18 @@ export function createFixtureRepository(which: FixtureVariant = 'a'): Repository
       return CUSTODY
     },
 
-    async countSession(): Promise<CountSession> {
-      return v?.countSession ?? COUNT_SESSION
+    async countSession(locationId?: string): Promise<CountSession> {
+      const base = v?.countSession ?? COUNT_SESSION
+      if (!locationId) return base
+      const bar = (v?.bars ?? BARS).find((item) => item.id === locationId)
+      if (!bar) throw new Error('Unknown location')
+      const locationName = bar.name.toUpperCase()
+      return {
+        ...base,
+        locationId: bar.id,
+        locationName,
+        scopeLabel: `${locationName} · BLIND`,
+      }
     },
 
     async variance(): Promise<VarianceReport> {

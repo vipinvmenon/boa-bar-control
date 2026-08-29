@@ -61,7 +61,24 @@ const receiptRoute = createRoute({ getParentRoute: () => rootRoute, path: '/rece
 const countRoute = createRoute({ getParentRoute: () => rootRoute, path: '/count', component: CountScreen })
 const reportsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/reports', component: ReportsScreen })
 const countDoneRoute = createRoute({ getParentRoute: () => rootRoute, path: '/count/submitted', component: CountDoneScreen })
+// BAR-024. Global roles need the selected workspace in the route; scoped staff
+// retain `/count`, where their membership supplies the location.
+const barCountRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/bars/$barId/count',
+  component: CountScreen,
+})
+const barCountDoneRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/bars/$barId/count/submitted',
+  component: CountDoneScreen,
+})
 const varianceRoute = createRoute({ getParentRoute: () => rootRoute, path: '/variance', component: VarianceScreen })
+const barVarianceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/bars/$barId/variance',
+  component: VarianceScreen,
+})
 // The custody chain, as five design screens rather than one collapsed page.
 // `diff` is deliberately absent: it is the accept screen with its difference
 // panel open, not a route (design-script.jsx `toggleDiff`).
@@ -111,6 +128,7 @@ const routeTree = rootRoute.addChildren([
   printRoute,
   teamRoute,
   countRoute,
+  barCountRoute,
   reportsRoute,
   docketsRoute,
   docketRoute,
@@ -118,7 +136,9 @@ const routeTree = rootRoute.addChildren([
   acceptRoute,
   receivedRoute,
   countDoneRoute,
+  barCountDoneRoute,
   varianceRoute,
+  barVarianceRoute,
   barRoute,
 ])
 

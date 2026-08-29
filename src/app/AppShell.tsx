@@ -12,6 +12,7 @@ export function AppShell() {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const fullFlow = ['/issue', '/waste', '/count'].some((path) => pathname.startsWith(path))
     || /^\/bars\/[^/]+\/waste$/.test(pathname)
+    || /^\/bars\/[^/]+\/count(?:\/submitted)?$/.test(pathname)
     || pathname.startsWith('/dockets/')
   const isHome = pathname === '/'
   const caption = pathname === '/' ? 'LIVE HOME' : pathname.replace(/^\//, '').replaceAll('-', ' ').toUpperCase()

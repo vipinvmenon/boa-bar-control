@@ -12,7 +12,7 @@
  * The variance CTA is manager-gated. The gate here is a usability affordance;
  * the real enforcement is count-scoped in the database (ADR-005).
  */
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useParams } from '@tanstack/react-router'
 import { Check, Lock } from 'lucide-react'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
 import { useAppStore } from '../../lib/app-store'
@@ -20,8 +20,9 @@ import { DetailList, FlowFooter } from '../custody/parts'
 
 export function CountDoneScreen() {
   const navigate = useNavigate()
+  const { barId } = useParams({ strict: false }) as { barId?: string }
   const store = useAppStore()
-  const session = useRepositoryQuery(['countSession'], (r) => r.countSession())
+  const session = useRepositoryQuery(['countSession', barId ?? 'membership'], (r) => r.countSession(barId))
   const s = session.data
 
   if (!s) {
@@ -73,7 +74,9 @@ export function CountDoneScreen() {
               store.flash('MANAGER ACCESS REQUIRED')
               return
             }
-            void navigate({ to: '/variance' })
+            void (barId
+              ? navigate({ to: '/bars/$barId/variance', params: { barId } })
+              : navigate({ to: '/variance' }))
           }}
         >
           {isManager ? 'Open variance' : 'Variance · manager only'}

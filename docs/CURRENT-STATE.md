@@ -191,20 +191,20 @@ States are defined once in the **Status key** above.
 | BAR-021 | Adjustment path with role and reason | `[ ]` | No adjustment RPC; `reverses_movement_id` is not unique, so one movement can be reversed twice |
 | BAR-022 | Venue-scope every foreign key | `[!]` | `movement_line.sku_id` and `.location_id` are not venue-scoped — a movement can post against another venue's SKUs |
 | BAR-023 | Server-validate the timestamps | `[~]` | `business_date` is now derived server-side and a timestamp more than an hour in the future is refused. Still unvalidated: nothing checks `occurred_at` against the venue event window, and POS timestamps are unvalidated because POS is cut |
-| BAR-024 | Location-scoped authorisation | `[~]` | The waste RPC now enforces the boundary: scoped roles may write only their membership location; manager/admin may explicitly select a venue location. Proven by 4 live pgTAP behaviours. Read policies and the other command RPCs remain open |
+| BAR-024 | Location-scoped authorisation | `[~]` | Waste and count command RPCs now enforce the boundary: scoped roles may write only their membership location; manager/admin may explicitly select a venue location. Proven by 11 live pgTAP behaviours. Read policies and the remaining command RPCs remain open |
 | BAR-025 | Tolerance bands in the database | `[ ]` | They exist only in TypeScript (`domain/inventory.ts` `toleranceFor`) |
 | BAR-026 | `excise_category` NOT NULL | `[~]` | Still nullable free text, so the constraint half of the task is undone. But it is no longer NULL for every SKU: the bootstrap populates a **provisional** vocabulary (`beer`, `spirit`, NULL for mixers) so the excise view has a shape to be built against. The vocabulary will change once BAR-158 lands |
 | BAR-027 | Missing spec §13 columns | `[~]` | BAR-124 added display names. `abv`, `supplier_vendor_id`, `is_licenced`, `is_blind`, `witnessed_by`, `counted_at`, empties and delivery-note remain absent |
 | BAR-028 | Non-negative position guard | `[ ]` | Nothing prevents issuing more than is held. The per-column `>= 0` checks are on docket and count lines, not on the position |
 | BAR-029 | Index `movement_line.movement_id` | `[ ]` | The two indexes are `(venue_id, business_date, occurred_at)` and `(location_id, sku_id)`. `movement_id` is still an unindexed FK, evaluated per row by the read policy — and the live repository queries it by `movement_id` on every ledger read |
-| BAR-030 | Behavioural pgTAP suite | `[~]` | **113 assertions pass against the live database, 0 failed** (29 Aug). `location_scope` adds 4 behavioural checks for own-location, cross-location refusal/no-write, and global-role selection; `privileges` now has 56 checks. `recount.test.sql` (9) attempts an UPDATE and a DELETE and asserts the triggers fire. `ledger.test.sql` (11) remains existence-only and is the last file to replace |
-| BAR-031 | Execute migrations | `[x]` | **All seven migrations applied and confirmed by object existence, 28 Aug.** PostgreSQL 17.6. `pnpm db:state` reports the history and checks that each migration's objects actually exist, rather than trusting the history table |
+| BAR-030 | Behavioural pgTAP suite | `[~]` | **128 assertions pass against the live database, 0 failed** (29 Aug). `location_scope` has 11 behavioural checks for waste/count own-location, cross-location refusal/no-write, and global-role selection; `privileges` has 64 checks. `recount.test.sql` (9) attempts an UPDATE and a DELETE and asserts the triggers fire. `ledger.test.sql` (11) remains existence-only and is the last file to replace |
+| BAR-031 | Execute migrations | `[x]` | **All migrations through `202608290002_count_location_scope` applied and confirmed by object existence, 29 Aug.** PostgreSQL 17.6. `db-state.mjs` reports the history and checks that migration objects actually exist, rather than trusting the history table |
 | BAR-032 | Deterministic seed that renders the design | `[~]` | **Reference data verified present in the hosted project 28 Aug: 1 venue, 9 locations, 11 SKUs.** Opening ledger not yet posted — blocked on the first `auth.users` row. Still no serve mappings (BAR-159) and no tolerance bands in the database (BAR-025) |
 | BAR-033 | Generate database types | `[ ]` | The client is untyped. `src/data/live/rows.ts` hand-writes every row shape precisely because generated types do not exist — 156 lines that a generator would own |
 | BAR-122 | Revoke `TRUNCATE` everywhere | `[x]` | `3c6acd9` — verified empirically over REST: `anon` receives `HTTP 401 permission denied` |
 | BAR-123 | Business date spans the festival night | `[x]` | **Applied and verified against PostgreSQL 17.6 on 28 August: 9/9 behavioural assertions pass**, including that 01:30 on 11 October carries `business_date = 2026-10-10`. `business_day_start_hour` on the venue (06:00 default); `private.boa_bar_business_date` is the only place the rule lives; the client value is ignored |
 | BAR-124 | Person-name resolution | `[~]` | `202608280001_person_names.sql` written — table, generated first name, append-only history, `boa_bar_set_person_name`. **Unapplied, and `boa_bar_person` is empty, so every live name would render `UNNAMED`** |
-| BAR-125 | Seal submitted counts | `[ ]` | Nothing sets `submitted_at` or freezes a count; there is no count write path at all |
+| BAR-125 | Seal submitted counts | `[x]` | `boa_bar_submit_count` sets `submitted_at` and writes the append-only private count seal. The live Bar 2 submission created one submitted session with 11 lines; the raw sealed rows were not directly inspected |
 | BAR-126 | Storage bucket for POS files | `[ ]` | — |
 | BAR-127 | Read `venue.timezone` and `event_date` | `[~]` | `timezone` is now read (`auth.tsx:81`) and threaded into the live repository's clock, so no stamp uses the device timezone. `event_date` is still never read |
 | BAR-128 | Deterministic membership selection | `[~]` | `auth.tsx` takes `memberships[0]` with no explicit ordering, so a person holding two roles gets whichever the query returns first |
@@ -292,9 +292,9 @@ States are defined once in the **Status key** above.
 | BAR-079 | `count` sequential and blind | `[x]` | `36ffc4f` — inputs start at zero, stepper resets per line, no expected figure in the read model. Verified by driving the browser |
 | BAR-080 | Partial-container capture | `[x]` | `36ffc4f` — all three modes (`none` / `ml` / `litres`) verified in the browser |
 | BAR-081 | Tare weighing | `[~]` | `partialMlFromWeight` in `services/count.ts` wraps the domain function, and `partialToMl` converts a keg reading from litres. The count screen still asks for millilitres directly rather than taking a gross weight and a tare — the conversion exists but the input does not use it |
-| BAR-082 | Count persistence | `[x]` | `202608280005` — `boa_bar_submit_count`, a service, and `CountScreen` accumulating its lines and submitting through the outbox. The screen previously reset each line and navigated away, discarding every count. A partial count is refused: 12 of 18 lines reports six SKUs as zero. **Unapplied** |
+| BAR-082 | Count persistence | `[x]` | `202608280005` plus `202608290002` — `boa_bar_submit_count`, a service, and `CountScreen` accumulate blind lines and submit through the outbox. Live 29 Aug: Bar 2 submitted a mid-event count with 11 lines; the subsequent location-scoped variance route loaded. pgTAP: 128 assertions, 0 failed |
 | BAR-083 | Blind enforcement in the database | `[x]` | Same work as BAR-161, proven the same way. `private.boa_bar_is_blinded` is the single definition and gates both the snapshot and the `movement_line` read policy, so the position cannot be re-summed from the ledger |
-| BAR-084 | Seal the theoretical position at submit | `[x]` | `private.boa_bar_count_seal`, summed from the ledger at the instant counted, not from the balance projection which only holds "now". No grant to anybody — it IS the expected figure a counter must never see. Append-only. **Unapplied** |
+| BAR-084 | Seal the theoretical position at submit | `[x]` | `private.boa_bar_count_seal`, summed from the ledger at the instant counted, not from the balance projection which only holds "now". No grant to anybody — it IS the expected figure a counter must never see. Append-only. Live post-submission variance showed expected/count values only after the blind count submitted; raw seal rows were not directly inspected |
 | BAR-085 | `countDone` screen | `[x]` | `36ffc4f` |
 | BAR-086 | `variance` screen | `[x]` | `36ffc4f` — renders from the repository, signed deltas, banding, notes |
 | BAR-087 | Signed variance banding | `[x]` | Fixed 28 Aug. `varianceBand` bands on magnitude then floors a positive variance at amber — it can still be red, never green. Six new assertions in `inventory.test.ts` cover the sign asymmetry, the red ceiling, exact zero and the null case |
@@ -561,6 +561,51 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 29 August 2026 · codex
+
+**Completed: BAR-082 — proved the live blind-count submission, with the BAR-024 count-command location boundary.**
+
+The first live count walkthrough exposed a routing gap: a global admin has no
+fixed membership location, so opening `/count` could not select a bar. The bar
+workspace now supplies its selected location to count and variance routes; the
+count screen remains blind. Migration `202608290002_count_location_scope.sql`
+wraps the public open/submit count RPCs with the same location-access helper as
+waste, while leaving the implementation private. Scoped bar leads are refused
+for another bar; manager/admin may explicitly select a venue location.
+
+The user applied that migration and ran the live database suite: **128 pgTAP
+assertions passed, 0 failed** (`location_scope` 11, `privileges` 64). Local
+static/gate evidence: `check:sql`, typecheck, lint, unit tests (136), build and
+the fixture visual gate all passed (15 reading the data layer, 0 hardcoded,
+0 errored).
+
+In user-driven Safari, Bar 2 opened a **MID-EVENT COUNT · BLIND** session. The
+first input showed `0`, not an expected figure; all 11 SKUs were entered as
+zero and submitted. `node scripts/db-state.mjs` then reported one count session,
+11 count lines, and `Bar 2 · mid_event · submitted · 11 lines ·
+2026-08-29T15:26:36.255Z` (session
+`ba685241-0ff4-4fc0-927d-1c889e97038`). The Bar 2 variance screen subsequently
+loaded and showed expected/count values only after submission.
+
+**Files changed:** `src/app/AppShell.tsx`, `src/app/router.tsx`,
+`src/screens/bar/BarScreen.tsx`, `src/screens/count/CountScreen.tsx`,
+`src/screens/count/CountDoneScreen.tsx`, `src/screens/count/VarianceScreen.tsx`,
+`src/data/fixture/fixture-repository.ts`,
+`supabase/migrations/202608290002_count_location_scope.sql`,
+`supabase/tests/location_scope.test.sql`, `supabase/tests/privileges.test.sql`,
+`scripts/db-state.mjs`, `docs/CURRENT-STATE.md`, `docs/HANDOVER.md`.
+
+**Architecture changes:** none.
+
+**Known issues / not verified:** Safari was user-driven, not agent-controlled.
+`db-state.mjs` confirmed the session status and line count, not each raw
+count-line quantity or the private sealed values. Direct global `/count` and
+`/variance` routes still lack a selected location; the Bar 2 workspace route is
+the proven path. Receipt and issue → docket → accept remain unproven. BAR-024
+read policies and the non-waste/non-count commands remain unscoped.
+
+**Recommended next:** prove the live issue → docket → accept custody cycle.
 
 ### Session — 29 August 2026 · codex
 

@@ -5,7 +5,7 @@
 begin;
 create extension if not exists pgtap;
 
-select plan(4);
+select plan(11);
 
 insert into auth.users (id, aud, role, email, created_at, updated_at)
 values
@@ -116,6 +116,59 @@ select is(
   'the rejected cross-bar command wrote no ledger row'
 );
 
+select lives_ok(
+  $$ select public.boa_bar_open_count(jsonb_build_object(
+       'venue_id', '00000000-0000-4000-8000-000000000001',
+       'location_id', '00000000-0000-4000-8000-000000000104',
+       'count_kind', 'mid_event')) $$,
+  'a bar lead can open a count at their assigned bar'
+);
+
+select throws_ok(
+  $$ select public.boa_bar_open_count(jsonb_build_object(
+       'venue_id', '00000000-0000-4000-8000-000000000001',
+       'location_id', '00000000-0000-4000-8000-000000000105',
+       'count_kind', 'mid_event')) $$,
+  '42501',
+  'not authorised to count at this location',
+  'a bar lead cannot open a count at another bar'
+);
+
+select lives_ok(
+  $$ select public.boa_bar_submit_count(jsonb_build_object(
+       'venue_id', '00000000-0000-4000-8000-000000000001',
+       'location_id', '00000000-0000-4000-8000-000000000104',
+       'count_kind', 'mid_event',
+       'idempotency_key', '24000000-0000-4000-8000-000000000006',
+       'lines', jsonb_build_array(jsonb_build_object(
+         'sku_id', '00000000-0000-4000-8000-000000000201',
+         'full_containers', 0,
+         'partial_ml', 0)))) $$,
+  'a bar lead can submit a count at their assigned bar'
+);
+
+select throws_ok(
+  $$ select public.boa_bar_submit_count(jsonb_build_object(
+       'venue_id', '00000000-0000-4000-8000-000000000001',
+       'location_id', '00000000-0000-4000-8000-000000000105',
+       'count_kind', 'mid_event',
+       'idempotency_key', '24000000-0000-4000-8000-000000000007',
+       'lines', jsonb_build_array(jsonb_build_object(
+         'sku_id', '00000000-0000-4000-8000-000000000201',
+         'full_containers', 0,
+         'partial_ml', 0)))) $$,
+  '42501',
+  'not authorised to count at this location',
+  'a bar lead cannot submit a count at another bar'
+);
+
+select is(
+  (select count(*)::integer from public.boa_bar_count_session
+   where idempotency_key = '24000000-0000-4000-8000-000000000007'),
+  0,
+  'the rejected cross-bar count wrote no session'
+);
+
 -- ---------------------------------------------------------------------------
 -- Global manager: no fixed location, but may explicitly operate either bar.
 -- ---------------------------------------------------------------------------
@@ -133,6 +186,27 @@ select lives_ok(
        'reason', 'Spillage',
        'idempotency_key', '24000000-0000-4000-8000-000000000005')) $$,
   'a manager can record waste at an explicitly selected bar'
+);
+
+select lives_ok(
+  $$ select public.boa_bar_open_count(jsonb_build_object(
+       'venue_id', '00000000-0000-4000-8000-000000000001',
+       'location_id', '00000000-0000-4000-8000-000000000105',
+       'count_kind', 'mid_event')) $$,
+  'a manager can open a count at an explicitly selected bar'
+);
+
+select lives_ok(
+  $$ select public.boa_bar_submit_count(jsonb_build_object(
+       'venue_id', '00000000-0000-4000-8000-000000000001',
+       'location_id', '00000000-0000-4000-8000-000000000105',
+       'count_kind', 'mid_event',
+       'idempotency_key', '24000000-0000-4000-8000-000000000008',
+       'lines', jsonb_build_array(jsonb_build_object(
+         'sku_id', '00000000-0000-4000-8000-000000000201',
+         'full_containers', 0,
+         'partial_ml', 0)))) $$,
+  'a manager can submit a count at an explicitly selected bar'
 );
 
 select * from finish();

@@ -14,7 +14,7 @@
 begin;
 create extension if not exists pgtap;
 
-select plan(56);
+select plan(64);
 
 -- ---------------------------------------------------------------------------
 -- BAR-122 — anon holds nothing at all on any bar table.
@@ -147,6 +147,15 @@ select function_privs_are('private', 'boa_bar_is_blinded', array['uuid','uuid'],
 
 select function_privs_are('private', 'boa_bar_can_access_location', array['uuid','uuid'], 'authenticated', '{}'::text[], 'location access remains internal to command RPCs');
 select function_privs_are('private', 'boa_bar_can_access_location', array['uuid','uuid'], 'anon', '{}'::text[], 'anon cannot probe location access');
+
+select function_privs_are('public', 'boa_bar_open_count', array['jsonb'], 'authenticated', '{EXECUTE}'::text[], 'staff may open an authorised count');
+select function_privs_are('public', 'boa_bar_open_count', array['jsonb'], 'anon', '{}'::text[], 'anon cannot open a count');
+select function_privs_are('public', 'boa_bar_submit_count', array['jsonb'], 'authenticated', '{EXECUTE}'::text[], 'staff may submit an authorised count');
+select function_privs_are('public', 'boa_bar_submit_count', array['jsonb'], 'anon', '{}'::text[], 'anon cannot submit a count');
+select function_privs_are('private', 'boa_bar_open_count_unscoped', array['jsonb'], 'authenticated', '{}'::text[], 'staff cannot bypass open-count location scope');
+select function_privs_are('private', 'boa_bar_open_count_unscoped', array['jsonb'], 'anon', '{}'::text[], 'anon cannot reach the count implementation');
+select function_privs_are('private', 'boa_bar_submit_count_unscoped', array['jsonb'], 'authenticated', '{}'::text[], 'staff cannot bypass submit-count location scope');
+select function_privs_are('private', 'boa_bar_submit_count_unscoped', array['jsonb'], 'anon', '{}'::text[], 'anon cannot reach the count implementation');
 
 select * from finish();
 rollback;

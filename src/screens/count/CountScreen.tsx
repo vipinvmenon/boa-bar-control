@@ -25,7 +25,7 @@
  * or displays an expected quantity.
  */
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useParams } from '@tanstack/react-router'
 import { ChevronLeft, EyeOff, Minus, Plus } from 'lucide-react'
 import { useRepository, useRepositoryMutation, useRepositoryQuery } from '../../data/RepositoryProvider'
 import { submitCount } from '../../services/count'
@@ -62,7 +62,8 @@ function isCountDraft(raw: unknown): raw is CountDraft {
 
 export function CountScreen() {
   const navigate = useNavigate()
-  const session = useRepositoryQuery(['countSession'], (r) => r.countSession())
+  const { barId } = useParams({ strict: false }) as { barId?: string }
+  const session = useRepositoryQuery(['countSession', barId ?? 'membership'], (r) => r.countSession(barId))
 
   const [full, setFull] = useState(0)
   const [partial, setPartial] = useState(0)
@@ -200,7 +201,9 @@ export function CountScreen() {
         onSuccess: () => {
           // Only after the write is accepted. Clearing on submit would lose the
           // count if the submit then failed.
-          void draft.clear().then(() => navigate({ to: '/count/submitted' }))
+          void draft.clear().then(() => barId
+            ? navigate({ to: '/bars/$barId/count/submitted', params: { barId } })
+            : navigate({ to: '/count/submitted' }))
         },
       },
     )
@@ -211,7 +214,13 @@ export function CountScreen() {
       <header className="count-head">
         <div className="count-head-row">
           <div className="count-head-left">
-            <button className="flow-back" onClick={() => void navigate({ to: '/bars' })} aria-label="Back">
+            <button
+              className="flow-back"
+              onClick={() => void (barId
+                ? navigate({ to: '/bars/$barId', params: { barId } })
+                : navigate({ to: '/bars' }))}
+              aria-label="Back"
+            >
               <ChevronLeft size={18} strokeWidth={2} aria-hidden="true" />
             </button>
             <div>

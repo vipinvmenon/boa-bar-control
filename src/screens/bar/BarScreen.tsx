@@ -127,7 +127,10 @@ export function BarScreen() {
             <Trash2 size={18} strokeWidth={1.8} aria-hidden="true" />
             <span>WASTE</span>
           </button>
-          <button onClick={() => void navigate({ to: '/count' })}>
+          <button onClick={() => void navigate({
+            to: '/bars/$barId/count',
+            params: { barId },
+          })}>
             <ClipboardList size={18} strokeWidth={1.8} aria-hidden="true" />
             <span>COUNT</span>
           </button>

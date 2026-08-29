@@ -20,13 +20,14 @@
  *   wrong-SKU ring-up. The old domain code applied Math.abs() before banding,
  *   which graded surplus green.
  */
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useParams } from '@tanstack/react-router'
 import { ChevronLeft } from 'lucide-react'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
 
 export function VarianceScreen() {
   const navigate = useNavigate()
-  const report = useRepositoryQuery(['variance'], (r) => r.variance())
+  const { barId } = useParams({ strict: false }) as { barId?: string }
+  const report = useRepositoryQuery(['variance', barId ?? 'membership'], (r) => r.variance(barId))
   const v = report.data
 
   if (!v) {
@@ -44,7 +45,13 @@ export function VarianceScreen() {
       <header className="variance-head">
         <div className="variance-head-row">
           <div className="count-head-left">
-            <button className="flow-back" onClick={() => void navigate({ to: '/more' })} aria-label="Back">
+            <button
+              className="flow-back"
+              onClick={() => void (barId
+                ? navigate({ to: '/bars/$barId', params: { barId } })
+                : navigate({ to: '/more' }))}
+              aria-label="Back"
+            >
               <ChevronLeft size={18} strokeWidth={2} aria-hidden="true" />
             </button>
             <span className="variance-title">{v.locationName} · VARIANCE</span>

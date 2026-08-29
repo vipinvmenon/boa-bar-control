@@ -37,6 +37,8 @@ const WITNESS = [
   ['202608280001_person_names', 'table', 'public.boa_bar_person'],
   ['202608280002_bootstrap', 'function', 'public.boa_bar_open_stock'],
   ['202608280003_revoke_function_execute', 'privilege', 'anon-cannot-submit'],
+  ['202608290001_location_scope', 'function', 'private.boa_bar_can_access_location'],
+  ['202608290002_count_location_scope', 'function', 'private.boa_bar_open_count_unscoped'],
 ]
 
 /**
@@ -147,6 +149,8 @@ try {
     ['skus', 'select count(*) from public.boa_bar_sku'],
     ['memberships', 'select count(*) from public.boa_bar_membership'],
     ['movements', 'select count(*) from public.boa_bar_movement'],
+    ['count sessions', 'select count(*) from public.boa_bar_count_session'],
+    ['count lines', 'select count(*) from public.boa_bar_count_line'],
     ['auth users', 'select count(*) from auth.users'],
   ]) {
     try {
@@ -155,6 +159,33 @@ try {
     } catch (e) {
       console.log(`    ${label.padEnd(14)} unreadable: ${e.message}`)
     }
+  }
+
+  // A count has no ledger movement: it is an observation plus a private seal.
+  // Print the latest submitted session without exposing the sealed expected
+  // position, so an operator can confirm a screen submission actually landed.
+  console.log('\n  LATEST SUBMITTED COUNT')
+  try {
+    const latest = await client.query(
+      `select cs.id, l.name as location_name, cs.count_kind, cs.status,
+              cs.submitted_at, count(cl.id)::integer as line_count
+         from public.boa_bar_count_session cs
+         join public.boa_bar_location l on l.id = cs.location_id
+         left join public.boa_bar_count_line cl on cl.count_session_id = cs.id
+        where cs.submitted_at is not null
+        group by cs.id, l.name, cs.count_kind, cs.status, cs.submitted_at
+        order by cs.submitted_at desc
+        limit 1`,
+    )
+    if (latest.rowCount === 0) {
+      console.log('    none')
+    } else {
+      const row = latest.rows[0]
+      console.log(`    ${row.location_name} · ${row.count_kind} · ${row.status} · ${row.line_count} lines · ${row.submitted_at.toISOString()}`)
+      console.log(`    session ${row.id}`)
+    }
+  } catch (e) {
+    console.log(`    unreadable: ${e.message}`)
   }
   console.log('')
 } finally {
