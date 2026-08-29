@@ -261,9 +261,9 @@ States are defined once in the **Status key** above.
 | BAR-063 | `waste` screen, three taps | `[x]` | Rebuilt as `src/screens/waste/WasteScreen.tsx` from design-markup.html:612-651. The design's five reasons including `Foam / line loss`, the full catalogue instead of `slice(0, 5)`, and a real write through `boa_bar_record_waste`. Verified in a browser: composition matches, CTA disabled until a reason is chosen |
 | BAR-064 | Request top-up | `[ ]` | — |
 | BAR-065 | Bar-to-bar transfer | `[ ]` | — |
-| BAR-066 | Reference cache | `[!]` | `referenceCache` is declared in `offline-db.ts:23` and **written to by nothing** (grep: zero writes) |
-| BAR-067 | Offline reads from cache | `[~]` | The dangerous half is fixed: `RepositoryProvider` cannot fall back to fixtures, and as of BAR-047 a failed read now *surfaces* instead of rendering as empty data. The useful half still does not exist — there is no cache to read, so a failed read shows an error rather than the last known position |
-| BAR-068 | Cold-start offline | `[!]` | Membership load needs the network; an offline cold start locks every staff member out |
+| BAR-066 | Reference cache | `[x]` | `src/data/live/cache.ts`. Locations, SKUs, people and memberships are written on every successful reference load, and the position snapshot with the server time it was taken at. The table was declared on day one and never written to |
+| BAR-067 | Offline reads from cache | `[~]` | A failed live load now reads the cache, and an empty cache throws `NoCachedDataError` — an explicit error, **never fixture data**. A cached position is safe to show only because every screen carries the design's AS OF stamp and the cached snapshot carries the instant it was taken, so a stale screen reads "AS OF 19:43" at 21:00. **Cached rows for a location this device is counting are dropped**, so the cache cannot hand back what BAR-161 withheld. 8 tests cover the filtering and payload validation; the Dexie IO itself needs a browser (BAR-114) and is unproven |
+| BAR-068 | Cold-start offline | `[!]` | Untouched. `auth.tsx` still loads memberships over the network on start, so a cold start with no signal locks the staff member out before any of the caching above can help them |
 | BAR-069 | Stable idempotency keys | `[x]` | Keys are minted once per user action and now **survive a reload**: the count draft persists its `actionId`, so a resumed count finishes the same count rather than starting a competing one. The outbox dedupes on the key, and every command RPC replays rather than duplicating |
 | BAR-070 | Ordered outbox replay | `[x]` | `selectDrainBatch` replays in causal order and **stops at the first blocked entry**. The previous drain skipped an entry in backoff and posted the ones behind it, so an issue that failed once could be overtaken by its own acceptance. Asserted in `outbox-policy.test.ts`, including the case that used to break |
 | BAR-071 | No silent write loss | `[x]` | Closed by deleting the code. The three unawaited `void queueLiveMovement(...)` writes lived in `demo-store`'s `issue`, `accept` and `waste` actions — all unreachable by the time they went. Every write now goes through a service to the outbox, which resolves only once Dexie has committed |
@@ -363,16 +363,16 @@ Computed from the rows above, not asserted.
 
 | | Count |
 | --- | --- |
-| `[x]` done | 60 |
+| `[x]` done | 61 |
 | `[~]` partial | 40 |
 | `[R]` rewrite | 3 |
-| `[!]` defect actively present | 8 |
+| `[!]` defect actively present | 7 |
 | `[ ]` not started | 51 |
 | `[?]` unverifiable today | 2 |
 | **Total** | **164** |
 
-Read the middle three rows as the real position: **51 tasks are neither done nor
-untouched**, and 8 of them are defects sitting in the code right now.
+Read the middle three rows as the real position: **50 tasks are neither done nor
+untouched**, and 7 of them are defects sitting in the code right now.
 
 ## Would stop the event dead
 

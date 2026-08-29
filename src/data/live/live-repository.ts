@@ -21,6 +21,13 @@
  *      clock must not be able to age a docket or stamp a count.
  */
 import { openCountRpc, rpc, supabase } from '../../lib/supabase'
+import {
+  cacheReference,
+  cacheSnapshot,
+  NoCachedDataError,
+  readCachedReference,
+  readCachedSnapshot,
+} from './cache'
 import { enqueueCommand, OutboxPendingError, waitForCommand } from '../../lib/offline-db'
 import { toleranceFor, varianceBand } from '../../domain/inventory'
 import { mlForContainers } from '../../domain/custody'
@@ -212,7 +219,45 @@ export function createLiveRepository(context: LiveContext): Repository {
   // Reference data and the position snapshot
   // -------------------------------------------------------------------------
 
+  /**
+   * BAR-066 / BAR-067. Load reference data, cache it, and fall back to that cache
+   * when the network fails.
+   *
+   * Never to fixtures. If the cache is empty this throws, and the screen shows an
+   * error — a venue with no cached SKU list is a device that has never been online,
+   * and inventing a catalogue for it is how the design's sample stock became live
+   * festival inventory.
+   */
   const reference = cached<Reference>(REFERENCE_TTL_MS, async () => {
+    try {
+      return await loadReference()
+    } catch (networkError) {
+      const cachedRef = await readCachedReference(venueId)
+      if (!cachedRef) {
+        console.warn('[boa] reference load failed and no cache exists', networkError)
+        throw new NoCachedDataError('The SKU list and locations')
+      }
+      return shapeReference(cachedRef.locations, cachedRef.skus, cachedRef.people, cachedRef.memberships)
+    }
+  })
+
+  function shapeReference(
+    locations: LocationRow[],
+    skus: SkuRow[],
+    people: PersonRow[],
+    memberships: MembershipRow[],
+  ): Reference {
+    return {
+      locations,
+      locationById: new Map(locations.map((l) => [l.id, l])),
+      skus,
+      skuById: new Map(skus.map((s) => [s.id, s])),
+      people: new Map(people.map((p) => [p.user_id, p])),
+      memberships,
+    }
+  }
+
+  async function loadReference(): Promise<Reference> {
     const [locations, skus, people, memberships] = await Promise.all([
       db
         .from('boa_bar_location')
@@ -241,17 +286,35 @@ export function createLiveRepository(context: LiveContext): Repository {
         .then((r) => unwrap<MembershipRow[]>('memberships', r)),
     ])
 
-    return {
-      locations,
-      locationById: new Map(locations.map((l) => [l.id, l])),
-      skus,
-      skuById: new Map(skus.map((s) => [s.id, s])),
-      people: new Map(people.map((p) => [p.user_id, p])),
-      memberships,
+    // Cached on every successful load, which is what "cached on every sync" means
+    // in practice: the app reloads reference data every five minutes anyway.
+    await cacheReference(venueId, { locations, skus, people, memberships })
+    return shapeReference(locations, skus, people, memberships)
+  }
+
+  /**
+   * The position, with the same fallback.
+   *
+   * A cached position is a STALE position, and it is only safe to show one because
+   * every screen carries the design's `AS OF hh:mm` stamp and this returns the
+   * server time the snapshot was taken at — so a screen served from cache reads
+   * "AS OF 19:43" while the clock says 21:00. If a screen ever drops that stamp,
+   * this stops being safe.
+   */
+  const snapshot = cached<Snapshot>(SNAPSHOT_TTL_MS, async () => {
+    try {
+      return await loadSnapshot()
+    } catch (networkError) {
+      const cachedSnap = await readCachedSnapshot(venueId)
+      if (!cachedSnap) {
+        console.warn('[boa] snapshot load failed and no cache exists', networkError)
+        throw new NoCachedDataError('The stock position')
+      }
+      return cachedSnap
     }
   })
 
-  const snapshot = cached<Snapshot>(SNAPSHOT_TTL_MS, async () => {
+  async function loadSnapshot(): Promise<Snapshot> {
     const [rows, status] = await Promise.all([
       db
         .rpc('boa_bar_inventory_snapshot', { p_venue_id: venueId })
@@ -265,8 +328,9 @@ export function createLiveRepository(context: LiveContext): Repository {
     ])
     const serverTime = status[0]?.server_time
     if (!serverTime) throw new Error('sync status returned no server time')
+    await cacheSnapshot(venueId, rows, serverTime)
     return { rows, now: new Date(serverTime) }
-  })
+  }
 
   /** First name, upper case, for a user id. */
   function who(ref: Reference, userId: string | null | undefined): string {
