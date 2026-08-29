@@ -114,8 +114,12 @@ export function createFixtureRepository(which: FixtureVariant = 'a'): Repository
       return { status: 'posted', countSessionId: `MV-${command.deliveryNote}`, lines: command.lines.length }
     },
 
-    async wasteOptions(): Promise<WasteOptions> {
-      return v?.wasteOptions ?? WASTE_OPTIONS
+    async wasteOptions(locationId?: string): Promise<WasteOptions> {
+      const base = v?.wasteOptions ?? WASTE_OPTIONS
+      if (!locationId) return base
+      const bar = (v?.bars ?? BARS).find((item) => item.id === locationId)
+      if (!bar) throw new Error('Unknown location')
+      return { ...base, locationId: bar.id, locationName: bar.name.toUpperCase() }
     },
 
     async recordWaste(command: RecordWasteCommand): Promise<CountWriteOutcome> {

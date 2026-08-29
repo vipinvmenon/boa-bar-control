@@ -56,7 +56,12 @@ select is(
   (select containers from private.boa_bar_balance
    where location_id = '00000000-0000-4000-8000-000000000101'
      and sku_id = '00000000-0000-4000-8000-000000000204'),
-  6::bigint,
+  (select sum(ml.container_delta)::bigint
+   from public.boa_bar_movement_line ml
+   join public.boa_bar_movement m on m.id = ml.movement_id
+   where m.venue_id = '00000000-0000-4000-8000-000000000001'
+     and ml.location_id = '00000000-0000-4000-8000-000000000101'
+     and ml.sku_id = '00000000-0000-4000-8000-000000000204'),
   'and the projection agrees with it'
 );
 

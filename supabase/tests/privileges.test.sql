@@ -14,7 +14,7 @@
 begin;
 create extension if not exists pgtap;
 
-select plan(54);
+select plan(56);
 
 -- ---------------------------------------------------------------------------
 -- BAR-122 — anon holds nothing at all on any bar table.
@@ -144,6 +144,9 @@ select function_privs_are('private', 'boa_bar_has_role', array['uuid','public.bo
 -- occurrence fails the suite instead of reaching production.
 select function_privs_are('private', 'boa_bar_is_blinded', array['uuid','uuid'], 'authenticated', '{EXECUTE}'::text[], 'the movement_line policy can resolve the blind predicate');
 select function_privs_are('private', 'boa_bar_is_blinded', array['uuid','uuid'], 'anon', '{}'::text[], 'anon cannot probe the blind predicate');
+
+select function_privs_are('private', 'boa_bar_can_access_location', array['uuid','uuid'], 'authenticated', '{}'::text[], 'location access remains internal to command RPCs');
+select function_privs_are('private', 'boa_bar_can_access_location', array['uuid','uuid'], 'anon', '{}'::text[], 'anon cannot probe location access');
 
 select * from finish();
 rollback;

@@ -1,6 +1,6 @@
 # BOA Bar Control — Current State
 
-**Last updated: 28 August 2026 (M0 in progress)** · Event: 10 October 2026 — **43 days out**
+**Last updated: 29 August 2026 (M0 in progress)** · Event: 10 October 2026 — **42 days out**
 
 This is the single handoff record. Read it first, before writing any code.
 
@@ -101,7 +101,7 @@ The design is now recovered to `references/design-source/`. See
 | `accept` | RECEIVE STOCK | `[x]` | built — FROM/TO/ISSUED BY grid, items panel, bounded stepper |
 | `diff` | REPORT DIFFERENCE | `[x]` | built as the accept variant it is (not a route). Reason mandatory, stepper bounded at issued qty; both verified by driving the UI |
 | `received` | RECEIVED | `[x]` | built — the custody document, with both names and both timestamps |
-| `waste` | RECORD WASTE | `[R]` | Wrong reason vocabulary; line loss dropped |
+| `waste` | RECORD WASTE | `[x]` | Rebuilt with the design vocabulary and full catalogue. Live screen → service → outbox → RPC → ledger path proven 29 Aug; see session log |
 | `count` | MID-EVENT COUNT | `[x]` | rebuilt — sequential progress, presets, and all three partial-capture modes (none / ml-by-weight against tare / litres). Inputs start at zero and reset per line; nothing shows an expected figure |
 | `countDone` | COUNT SUBMITTED | `[x]` | built — sealed record with counted-by and witnessed-by, manager-gated variance CTA |
 | `variance` | VARIANCE | `[x]` | built — per-SKU expected vs counted, throughput beside the figure (spec §8), and positive variance graded amber not green |
@@ -191,13 +191,13 @@ States are defined once in the **Status key** above.
 | BAR-021 | Adjustment path with role and reason | `[ ]` | No adjustment RPC; `reverses_movement_id` is not unique, so one movement can be reversed twice |
 | BAR-022 | Venue-scope every foreign key | `[!]` | `movement_line.sku_id` and `.location_id` are not venue-scoped — a movement can post against another venue's SKUs |
 | BAR-023 | Server-validate the timestamps | `[~]` | `business_date` is now derived server-side and a timestamp more than an hour in the future is refused. Still unvalidated: nothing checks `occurred_at` against the venue event window, and POS timestamps are unvalidated because POS is cut |
-| BAR-024 | Location-scoped authorisation | `[~]` | `membership.location_id` is now **read** — the live repository uses it for the caller's default docket and count location — but no policy or RPC enforces it |
+| BAR-024 | Location-scoped authorisation | `[~]` | The waste RPC now enforces the boundary: scoped roles may write only their membership location; manager/admin may explicitly select a venue location. Proven by 4 live pgTAP behaviours. Read policies and the other command RPCs remain open |
 | BAR-025 | Tolerance bands in the database | `[ ]` | They exist only in TypeScript (`domain/inventory.ts` `toleranceFor`) |
 | BAR-026 | `excise_category` NOT NULL | `[~]` | Still nullable free text, so the constraint half of the task is undone. But it is no longer NULL for every SKU: the bootstrap populates a **provisional** vocabulary (`beer`, `spirit`, NULL for mixers) so the excise view has a shape to be built against. The vocabulary will change once BAR-158 lands |
 | BAR-027 | Missing spec §13 columns | `[~]` | BAR-124 added display names. `abv`, `supplier_vendor_id`, `is_licenced`, `is_blind`, `witnessed_by`, `counted_at`, empties and delivery-note remain absent |
 | BAR-028 | Non-negative position guard | `[ ]` | Nothing prevents issuing more than is held. The per-column `>= 0` checks are on docket and count lines, not on the position |
 | BAR-029 | Index `movement_line.movement_id` | `[ ]` | The two indexes are `(venue_id, business_date, occurred_at)` and `(location_id, sku_id)`. `movement_id` is still an unindexed FK, evaluated per row by the read policy — and the live repository queries it by `movement_id` on every ledger read |
-| BAR-030 | Behavioural pgTAP suite | `[~]` | **107 assertions pass against the live database, 0 failed** (29 Aug, all eleven migrations applied), and `recount.test.sql` (9) finally **attempts an UPDATE and a DELETE and asserts the triggers fire** — the gap this row has reported since it was written. `blind_count` (6) connects as a role and proves an RLS policy. `business_date` (9) is behavioural. `privileges` (54) has caught two live EXECUTE holes. `ledger.test.sql` (11) remains existence-only and is the last file to replace |
+| BAR-030 | Behavioural pgTAP suite | `[~]` | **113 assertions pass against the live database, 0 failed** (29 Aug). `location_scope` adds 4 behavioural checks for own-location, cross-location refusal/no-write, and global-role selection; `privileges` now has 56 checks. `recount.test.sql` (9) attempts an UPDATE and a DELETE and asserts the triggers fire. `ledger.test.sql` (11) remains existence-only and is the last file to replace |
 | BAR-031 | Execute migrations | `[x]` | **All seven migrations applied and confirmed by object existence, 28 Aug.** PostgreSQL 17.6. `pnpm db:state` reports the history and checks that each migration's objects actually exist, rather than trusting the history table |
 | BAR-032 | Deterministic seed that renders the design | `[~]` | **Reference data verified present in the hosted project 28 Aug: 1 venue, 9 locations, 11 SKUs.** Opening ledger not yet posted — blocked on the first `auth.users` row. Still no serve mappings (BAR-159) and no tolerance bands in the database (BAR-025) |
 | BAR-033 | Generate database types | `[ ]` | The client is untyped. `src/data/live/rows.ts` hand-writes every row shape precisely because generated types do not exist — 156 lines that a generator would own |
@@ -258,7 +258,7 @@ States are defined once in the **Status key** above.
 | --- | --- | --- | --- |
 | BAR-061 | `bar` screen — the bar workspace | `[x]` | `10185b5` |
 | BAR-062 | Bar list navigates to bar detail | `[x]` | Fixed 28 Aug — the `bar.id === 'bar-3'` gate is gone, so every card opens its bar under both fixture and live data |
-| BAR-063 | `waste` screen, three taps | `[x]` | Rebuilt as `src/screens/waste/WasteScreen.tsx` from design-markup.html:612-651. The design's five reasons including `Foam / line loss`, the full catalogue instead of `slice(0, 5)`, and a real write through `boa_bar_record_waste`. Verified in a browser: composition matches, CTA disabled until a reason is chosen |
+| BAR-063 | `waste` screen, three taps | `[x]` | Rebuilt as `src/screens/waste/WasteScreen.tsx` from design-markup.html:612-651. The design's five reasons including `Foam / line loss`, the full catalogue instead of `slice(0, 5)`, and a real write through `boa_bar_record_waste`. **Live write proven 29 Aug:** Warehouse / Bira 91 White / 1 can / Breakage returned Home with 0 pending and total stock 638 → 637 |
 | BAR-064 | Request top-up | `[ ]` | — |
 | BAR-065 | Bar-to-bar transfer | `[ ]` | — |
 | BAR-066 | Reference cache | `[x]` | `src/data/live/cache.ts`. Locations, SKUs, people and memberships are written on every successful reference load, and the position snapshot with the server time it was taken at. The table was declared on day one and never written to |
@@ -274,7 +274,7 @@ States are defined once in the **Status key** above.
 | BAR-076 | Service worker for a festival network | `[R]` | `06968a4` made an update applicable. No API caching strategy, and still excluded from typecheck and lint |
 | BAR-077 | Remove demo switches from the UI | `[~]` | The offline toggle and the role switch are gone: role is derived from the signed-in membership and connectivity from the browser. `?fixture=b` remains, and is deliberately disabled in production builds |
 | BAR-078 | Tap targets and focus | `[ ]` | Not measured since the rebuild. Needs a pass |
-| BAR-133 | Waste and accept post to the right location | `[x]` | Closed. The three screen literals went on 28 Aug; `boa_bar_record_waste` now takes the location from the command and validates it against the venue, and the legacy `demo-store` waste path that hardcoded `bar_3` is deleted along with the legacy screen |
+| BAR-133 | Waste and accept post to the right location | `[x]` | Closed. The three screen literals went on 28 Aug; bar workspaces now carry their selected location into waste, and `boa_bar_record_waste` enforces membership location scope in the database. The legacy `demo-store` path that hardcoded `bar_3` is deleted |
 | BAR-134 | Idempotent acceptance | `[x]` | The accept RPC rejects a second acceptance and replays idempotently on the client key |
 | BAR-135 | Dead-letter for invalid outbox entries | `[~]` | A permanent failure is now classified as such and marked terminal on the first attempt rather than after eight, with `permanent: true`. Nothing surfaces it yet — the dead-letter view is still missing |
 | BAR-136 | QR scanner | `[~]` | No scanner. `/dockets` is the deliberate substitute — smaller, and it does not depend on a camera focusing in a dark tent. The scanner is still wanted as the fast path, and `vercel.json` already grants camera permission |
@@ -561,6 +561,53 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 29 August 2026 · codex
+
+**Completed: BAR-024 waste-command slice — the first live screen write is proven.**
+
+The first Safari walkthrough exposed that the bootstrap admin has no fixed
+`membership.location_id`, so `/waste` could not identify a location. Routing
+from a selected workspace now carries that location. The database boundary was
+added at the same time: scoped roles can record waste only at their membership
+location, while manager/admin may explicitly select a venue location. The rest
+of BAR-024 (read policies and the other command RPCs) remains open.
+
+Migration `202608290001_location_scope.sql` was applied by the user. Their live
+PostgreSQL 17.6 run reported **113 pgTAP assertions passed, 0 failed**, including
+all 4 `location_scope` behaviours and 56 privilege assertions. Two pre-existing
+tests were made live-state-independent after they initially failed: membership
+now uses a transaction-local venue, and receipt compares the balance projection
+with the ledger sum rather than assuming an empty warehouse.
+
+The user drove authenticated Safari because the controllable in-app browser was
+blocked by the email rate limit. The live form showed **WAREHOUSE / Bira 91
+White / 1 can / Breakage**. After submission it returned Home showing **LIVE · 0
+PENDING**, total **637**, Warehouse **613**, Bars **0**, In transit **24**; total
+stock had been 638. The user's subsequent `node scripts/db-state.mjs` connected
+to the hosted database, showed the location-scope migration present and reported
+**3 movements**, one more than the two pre-walkthrough movements. Together these
+prove screen → service → outbox → RPC → ledger for this waste entry.
+
+**Files changed:** `src/app/AppShell.tsx`, `src/app/router.tsx`,
+`src/data/fixture/fixture-repository.ts`, `src/screens/bar/BarScreen.tsx`,
+`src/screens/waste/WasteScreen.tsx`,
+`supabase/migrations/202608290001_location_scope.sql`,
+`supabase/tests/{location_scope,membership,privileges,receipt}.test.sql`,
+`docs/{CURRENT-STATE,HANDOVER}.md`.
+
+**Architecture changes:** none. The migration extends the existing ADR-013
+command-RPC boundary.
+
+**Known issues / not verified:** `db-state.mjs` reports counts, not the new
+movement's kind, actor, reason, id or line values, so those fields were not
+directly inspected. Safari was user-driven, not agent-controlled. Count,
+receipt, and issue → docket → accept have still never been posted from a live
+screen. BAR-024 read policies and non-waste commands remain unscoped. The test
+waste is permanent in the append-only ledger; any correction must be a
+compensating movement.
+
+**Recommended next:** prove the live count write from HANDOVER §2A.
 
 ### Session — 29 August 2026 · claude
 

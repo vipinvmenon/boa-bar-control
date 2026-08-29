@@ -10,7 +10,9 @@ import { useRepository } from '../data/RepositoryProvider'
 export function AppShell() {
   const store = useAppStore()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
-  const fullFlow = ['/issue', '/waste', '/count'].some((path) => pathname.startsWith(path)) || pathname.startsWith('/dockets/')
+  const fullFlow = ['/issue', '/waste', '/count'].some((path) => pathname.startsWith(path))
+    || /^\/bars\/[^/]+\/waste$/.test(pathname)
+    || pathname.startsWith('/dockets/')
   const isHome = pathname === '/'
   const caption = pathname === '/' ? 'LIVE HOME' : pathname.replace(/^\//, '').replaceAll('-', ' ').toUpperCase()
   /**

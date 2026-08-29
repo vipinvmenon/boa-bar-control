@@ -14,6 +14,15 @@ create extension if not exists pgtap;
 
 select plan(10);
 
+-- Use an isolated venue so the live bootstrap admin cannot make the synthetic
+-- admin below look like a second admin. The whole setup is rolled back.
+insert into public.boa_bar_venue (id, code, name, event_date, timezone) values
+  ('00000000-0000-4000-8000-0000000000d0', 'TEST-MEMBERSHIP', 'Membership test', '2026-10-10', 'Asia/Kolkata');
+
+insert into public.boa_bar_location (id, venue_id, code, name, kind) values
+  ('00000000-0000-4000-8000-0000000000d4',
+   '00000000-0000-4000-8000-0000000000d0', 'BAR-TEST', 'Test bar', 'bar');
+
 -- An admin, a bar lead, and somebody arriving at 20:00 with no access at all.
 insert into auth.users (id, aud, role, email, created_at, updated_at) values
   ('00000000-0000-4000-8000-0000000000d1','authenticated','authenticated','admin@example.test',now(),now()),
@@ -21,8 +30,8 @@ insert into auth.users (id, aud, role, email, created_at, updated_at) values
   ('00000000-0000-4000-8000-0000000000d3','authenticated','authenticated','newstarter@example.test',now(),now());
 
 insert into public.boa_bar_membership (venue_id, user_id, role, active) values
-  ('00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-0000000000d1','admin',true),
-  ('00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-0000000000d2','bar_lead',true);
+  ('00000000-0000-4000-8000-0000000000d0','00000000-0000-4000-8000-0000000000d1','admin',true),
+  ('00000000-0000-4000-8000-0000000000d0','00000000-0000-4000-8000-0000000000d2','bar_lead',true);
 
 -- ---------------------------------------------------------------------------
 -- As the bar lead: cannot invite at all, and certainly cannot mint a manager.
@@ -32,7 +41,7 @@ set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000000d2","r
 
 select throws_ok(
   $$ select public.boa_bar_create_invite(jsonb_build_object(
-       'venue_id','00000000-0000-4000-8000-000000000001',
+       'venue_id','00000000-0000-4000-8000-0000000000d0',
        'role','crew','display_name','Someone')) $$,
   '42501',
   'only a manager or admin may invite staff',
@@ -47,9 +56,9 @@ set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000000d1","r
 
 select lives_ok(
   $$ select public.boa_bar_create_invite(jsonb_build_object(
-       'venue_id','00000000-0000-4000-8000-000000000001',
+       'venue_id','00000000-0000-4000-8000-0000000000d0',
        'role','bar_lead',
-       'location_id','00000000-0000-4000-8000-000000000104',
+       'location_id','00000000-0000-4000-8000-0000000000d4',
        'display_name','Aditi')) $$,
   'an admin can invite a bar lead'
 );
@@ -69,7 +78,7 @@ select is(
 
 select throws_ok(
   $$ select public.boa_bar_create_invite(jsonb_build_object(
-       'venue_id','00000000-0000-4000-8000-000000000001',
+       'venue_id','00000000-0000-4000-8000-0000000000d0',
        'role','crew','display_name','')) $$,
   '22023',
   'an invite needs the person''s name',
@@ -120,7 +129,7 @@ set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000000d1","r
 
 select throws_ok(
   $$ select public.boa_bar_set_membership(jsonb_build_object(
-       'venue_id','00000000-0000-4000-8000-000000000001',
+       'venue_id','00000000-0000-4000-8000-0000000000d0',
        'user_id','00000000-0000-4000-8000-0000000000d1',
        'active', false)) $$,
   '23514',

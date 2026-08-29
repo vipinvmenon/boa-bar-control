@@ -17,14 +17,18 @@
  * the database, which refuses more than the location holds.
  */
 import { useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useParams } from '@tanstack/react-router'
 import { ChevronLeft, Minus, Plus } from 'lucide-react'
 import { useRepositoryMutation, useRepositoryQuery } from '../../data/RepositoryProvider'
 import { recordWaste } from '../../services/waste'
 
 export function WasteScreen() {
   const navigate = useNavigate()
-  const options = useRepositoryQuery(['wasteOptions'], (r) => r.wasteOptions())
+  // BAR-024. A scoped bar worker reaches `/waste` and uses their membership
+  // location. A manager/admin reaches this flow from a bar workspace, whose
+  // route carries the selected location because their membership is global.
+  const { barId } = useParams({ strict: false }) as { barId?: string }
+  const options = useRepositoryQuery(['wasteOptions', barId ?? 'membership'], (r) => r.wasteOptions(barId))
 
   const [skuId, setSkuId] = useState<string | null>(null)
   const [containers, setContainers] = useState(1)
@@ -71,7 +75,13 @@ export function WasteScreen() {
       <header className="count-head">
         <div className="count-head-row">
           <div className="count-head-left">
-            <button className="flow-back" onClick={() => void navigate({ to: '/bars' })} aria-label="Back">
+            <button
+              className="flow-back"
+              onClick={() => void (barId
+                ? navigate({ to: '/bars/$barId', params: { barId } })
+                : navigate({ to: '/bars' }))}
+              aria-label="Back"
+            >
               <ChevronLeft size={18} strokeWidth={2} aria-hidden="true" />
             </button>
             <span className="count-title">RECORD WASTE</span>

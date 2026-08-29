@@ -43,6 +43,15 @@ const issueRoute = createRoute({
   validateSearch: parseIssueDraftSearch,
 })
 const wasteRoute = createRoute({ getParentRoute: () => rootRoute, path: '/waste', component: WasteScreen })
+// BAR-024. Managers/admins have no fixed membership location, so the bar
+// workspace must carry the selected location into the waste flow. The unscoped
+// route remains for bar staff whose membership supplies their own location and
+// for the design fixture capture.
+const barWasteRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/bars/$barId/waste',
+  component: WasteScreen,
+})
 // BAR-144. Not a design screen — enrolling staff and changing roles on site.
 const teamRoute = createRoute({ getParentRoute: () => rootRoute, path: '/team', component: TeamScreen })
 // BAR-092. Not a design screen — the paper fallback, printed before load-in.
@@ -97,6 +106,7 @@ const routeTree = rootRoute.addChildren([
   moreRoute,
   issueRoute,
   wasteRoute,
+  barWasteRoute,
   receiptRoute,
   printRoute,
   teamRoute,

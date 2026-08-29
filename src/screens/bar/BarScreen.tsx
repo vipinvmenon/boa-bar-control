@@ -120,7 +120,10 @@ export function BarScreen() {
             <ArrowUp size={18} strokeWidth={1.8} aria-hidden="true" />
             <span>TOP-UP</span>
           </button>
-          <button onClick={() => void navigate({ to: '/waste' })}>
+          <button onClick={() => void navigate({
+            to: '/bars/$barId/waste',
+            params: { barId },
+          })}>
             <Trash2 size={18} strokeWidth={1.8} aria-hidden="true" />
             <span>WASTE</span>
           </button>
