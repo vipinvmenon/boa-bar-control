@@ -22,7 +22,7 @@
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
-import { useDemoStore } from '../../lib/demo-store'
+import { useAppStore } from '../../lib/app-store'
 import type { Alert } from '../../data/repository'
 
 /** Where each alert's CTA goes. The design's targets, by alert target key. */
@@ -33,7 +33,7 @@ const TARGET_ROUTES: Record<string, string> = {
 
 export function HomeScreen() {
   const navigate = useNavigate()
-  const store = useDemoStore()
+  const store = useAppStore()
   const position = useRepositoryQuery(['position'], (r) => r.stockPosition())
   const alerts = useRepositoryQuery(['alerts'], (r) => r.alerts())
   const bars = useRepositoryQuery(['bars'], (r) => r.listBars())

@@ -22,7 +22,7 @@
  */
 import { useNavigate } from '@tanstack/react-router'
 import { ChevronRight } from 'lucide-react'
-import { useDemoStore } from '../../lib/demo-store'
+import { useAppStore } from '../../lib/app-store'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
 
 type MoreItem = {
@@ -44,7 +44,7 @@ const ITEMS: MoreItem[] = [
 ]
 
 export function MoreScreen() {
-  const store = useDemoStore()
+  const store = useAppStore()
   const navigate = useNavigate()
   const offline = store.offline
   const session = useRepositoryQuery(['session'], (r) => r.session())

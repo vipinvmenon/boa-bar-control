@@ -19,12 +19,12 @@
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { ArrowUp, ChevronLeft, ClipboardList, Trash2 } from 'lucide-react'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
-import { useDemoStore } from '../../lib/demo-store'
+import { useAppStore } from '../../lib/app-store'
 
 export function BarScreen() {
   const { barId } = useParams({ from: '/bars/$barId' })
   const navigate = useNavigate()
-  const store = useDemoStore()
+  const store = useAppStore()
   const bar = useRepositoryQuery(['bar', barId], (r) => r.barDetail(barId))
 
   if (bar.isPending) {

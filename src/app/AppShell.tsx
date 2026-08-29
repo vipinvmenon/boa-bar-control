@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import { BatteryMedium, Star, TriangleAlert, Wifi, WifiOff } from 'lucide-react'
-import { useDemoStore } from '../lib/demo-store'
+import { useAppStore } from '../lib/app-store'
 import { BottomNav } from '../components/layout/BottomNav'
 import { configError } from '../lib/supabase'
 import { applyUpdate, onUpdateAvailability } from '../lib/pwa-update'
 import { useRepository } from '../data/RepositoryProvider'
 
 export function AppShell() {
-  const store = useDemoStore()
+  const store = useAppStore()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const fullFlow = ['/issue', '/waste', '/count'].some((path) => pathname.startsWith(path)) || pathname.startsWith('/dockets/')
   const isHome = pathname === '/'
@@ -82,7 +82,14 @@ export function AppShell() {
             missing environment variable presented fixture data as live.
             Demo must always announce itself as demo.
           */}
-          <button className={`sync-line ${isDemo ? 'demo' : ''} ${store.offline ? 'offline' : ''}`} onClick={() => store.setOffline(!store.offline)}>
+          {/*
+            BAR-077. No longer a button. This toggled `offline` by hand — a demo
+            switch shipped as a user-facing control, which made the one indicator
+            telling staff whether their work had been sent mean nothing. Connection
+            state now comes from the browser and the count from the outbox, so the
+            line reports rather than pretends.
+          */}
+          <div className={`sync-line ${isDemo ? 'demo' : ''} ${store.offline ? 'offline' : ''}`}>
             <span>
               {isDemo ? <TriangleAlert size={13} /> : store.offline ? <WifiOff size={13} /> : <Wifi size={13} />}
               {isDemo
@@ -94,11 +101,11 @@ export function AppShell() {
             <small>
               {isDemo
                 ? 'NOT LIVE'
-                : store.dataError
-                  ? 'DATA NEEDS ATTENTION'
+                : store.failed > 0
+                  ? `${store.failed} NOT SENT · NEEDS ATTENTION`
                   : store.activeVenueName}
             </small>
-          </button>
+          </div>
         </header>}
 
         <main className={`app-main ${fullFlow ? 'full-flow' : ''} ${isHome ? 'home-main' : 'section-main'}`}>

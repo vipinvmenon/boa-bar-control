@@ -104,13 +104,37 @@ async function shoot(page, url) {
     }
     previous = frame
   }
-  return previous
+
+  // Never settled. The previous version RETURNED THE LAST FRAME ANYWAY, with no
+  // signal that it had given up — so two unsettled captures of the same still-
+  // moving screen could compare equal by chance and the screen was reported as
+  // hardcoded. That is the intermittent false positive: roughly one run in four,
+  // clean on every re-run, which teaches people to re-run until it passes.
+  //
+  // A capture that did not settle is not evidence either way, so it is now an
+  // error the gate reports rather than a verdict it invents.
+  throw new Error('screen never settled: 25 frames without three identical in a row')
 }
 
 async function main() {
   fs.mkdirSync(OUT, { recursive: true })
   const browser = await chromium.launch()
-  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
+  const page = await browser.newPage({
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 2,
+    /**
+     * The live dot pulses at 2.4s forever (BAR-037), and `bar` and `docket` are
+     * the two screens that render it — so those two could NEVER produce three
+     * identical consecutive frames. That was the real cause of this gate's
+     * intermittent false positives: the capture gave up, silently returned a
+     * moving frame, and two moving frames sometimes compared equal.
+     *
+     * The stylesheet already stops the animation under `prefers-reduced-motion`,
+     * so the gate asks for it rather than injecting CSS of its own. The captures
+     * are then exactly what a reduced-motion user sees, and deterministic.
+     */
+    reducedMotion: 'reduce',
+  })
 
   // Warm-up pass. Vite compiles modules on first request, so the first render of
   // each route is slower than the settle logic allows and can be captured

@@ -15,10 +15,10 @@
  */
 import { ShieldCheck } from 'lucide-react'
 import { Panel } from '../components/ui'
-import { useDemoStore } from '../lib/demo-store'
+import { useAppStore } from '../lib/app-store'
 
 export function ReportsScreen() {
-  const store = useDemoStore()
+  const store = useAppStore()
 
   if (store.role !== 'Manager') {
     return (

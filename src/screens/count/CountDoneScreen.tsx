@@ -15,12 +15,12 @@
 import { useNavigate } from '@tanstack/react-router'
 import { Check, Lock } from 'lucide-react'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
-import { useDemoStore } from '../../lib/demo-store'
+import { useAppStore } from '../../lib/app-store'
 import { DetailList, FlowFooter } from '../custody/parts'
 
 export function CountDoneScreen() {
   const navigate = useNavigate()
-  const store = useDemoStore()
+  const store = useAppStore()
   const session = useRepositoryQuery(['countSession'], (r) => r.countSession())
   const s = session.data
 

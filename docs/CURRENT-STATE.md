@@ -164,7 +164,7 @@ States are defined once in the **Status key** above.
 | BAR-005 | Archive contradicted documents | `[x]` | `docs/archive/` holds five superseded documents; `artifact-reconciliation.md` moved in |
 | BAR-006 | CI pipeline | `[?]` | `.github/workflows/ci.yml` exists with the database job advisory (`344c72d`). **No CI run has ever been observed.** A pipeline nobody has watched pass is not a gate |
 | BAR-007 | Reference captures | `[x]` | `f4cbae8` — 22 screens at 390×844@2x, each verified against the design's own stage caption |
-| BAR-008 | Two-fixture-state harness | `[~]` | The gate works and is the reason `home` and `warehouse` were caught. **It also produces an intermittent false positive**: on 28 August one run in four reported `1 hardcoded` and `14 reading` while listing every screen as `ok` — the summary contradicting its own per-screen output. Three consecutive re-runs were clean. Most likely the first run after a `build`, when Vite re-optimises dependencies and a frame is captured mid-compile. A gate that is wrong one run in four teaches people to re-run until it passes, which is the opposite of what it is for |
+| BAR-008 | Two-fixture-state harness | `[x]` | **Fixed and made deterministic 28 Aug.** The root cause of the intermittent false positive: `.status-dot` pulses at 2.4s forever and `bar` and `docket` are the only screens rendering it, so their captures could never produce three identical consecutive frames — and `shoot()` then **returned the moving frame anyway with no signal it had given up**, so two moving frames sometimes compared equal. Now the gate captures with `reducedMotion: reduce` (the stylesheet already stops the animation under it) and a capture that does not settle is an ERROR, not a verdict. Three consecutive runs now agree exactly |
 | BAR-153 | `CHECKSUMS.txt` over the design source | `[ ]` | No `CHECKSUMS.txt` anywhere in the tree. The UI contract can be edited without trace |
 | BAR-154 | Lint rule banning literals in screen files | `[x]` | Added 28 Aug. `no-restricted-syntax` over `src/screens/**` and `src/components/**` bans location ids and names, docket numbers and catalogue SKU names. **Verified by probe**: all six planted literals errored and two legitimate strings passed. Deliberately narrow — a general literal ban gets disabled, and a disabled rule catches nothing |
 | BAR-009 | `sw.ts` in typecheck and lint | `[ ]` | Still excluded: `eslint.config.js:8` ignores it, `tsconfig.app.json:23` excludes it |
@@ -220,13 +220,13 @@ States are defined once in the **Status key** above.
 | BAR-038 | Component primitives | `[R]` | `src/components/ui.tsx` is still 60 lines for the whole system |
 | BAR-039 | Shell | `[~]` | `798feb2` — bottom nav corrected to colour-only active state with the design's own SVG paths. Header composition still diverges |
 | BAR-040 | Navigation state machine | `[~]` | The hardcoded `<Link to="/">` backs are gone, and the three hardcoded bar-id destinations were fixed under BAR-133. There is still no stack: every back is a fixed destination rather than a pop |
-| BAR-041 | Toast system | `[~]` | `demo-store.tsx:309` expires at **2400 ms**; the design and the acceptance criterion are 2600 ms |
+| BAR-041 | Toast system | `[x]` | `app-store.flash` expires every toast at 2600 ms, the design's duration, including one raised while another is showing |
 | BAR-042 | Repository interface | `[~]` | Interface, fixture and live implementations all exist (`b49768c`, `743a4d4`). **The live implementation has never executed a query** — the database holds nothing to read |
-| BAR-043 | Fixture repository from the design's data | `[x]` | `design-data.ts` with line references; the gate reports 0 hardcoded screens |
+| BAR-043 | Fixture repository from the design's data | `[!]` | **The fidelity gate now reports `bar` as hardcoded, and it is right.** `fixture-repository.barDetail()` has no `v?.` branch, so it returns the same object under both fixture sets and the bar workspace cannot be proved to read its data. The screen itself does read the repository — but by the gate's own rule that is unproven. Hidden until now because the gate was flaky on this exact screen. **The gate exits non-zero until a `barDetail` variant is added** |
 | BAR-044 | Application service layer | `[~]` | `src/services/` exists with `issue.ts` and `accept.ts` — Zod validation, the custody domain rules, then the repository. Both custody writes are now wired and verified in a browser. Commands are on the `Repository` interface, so no screen imports Supabase or Dexie and no service calls an RPC. 13 service tests. Count, waste and the remaining write use cases still have no service-backed screen path |
 | BAR-045 | Remove fixture data from screen files | `[~]` | `src/features/screens.tsx` is down from 302 lines to 67 and holds **no** SKU data — only the `reports` honest empty state. All 16 routes read the repository; the gate reports 0 hardcoded and BAR-154's lint rule enforces it |
 | BAR-046 | Wire the domain layer | `[~]` | `mlFromGrossWeight` now has a caller (`services/count.ts`), as do `varianceBand`, `toleranceFor`, the whole of `domain/custody.ts`, `domain/outbox-policy.ts` and `domain/units.ts`. Still zero callers outside tests: `derivePositions`, `applyIdempotently`, `reverseMovement`, `theoreticalClosing`, `weightedAverageCost` |
-| BAR-164 | Delete the legacy parallel live path | `[ ]` | `src/lib/live-repository.ts` and `demo-store`'s snapshot loader are still present and still hardcode `bar_3` |
+| BAR-164 | Delete the legacy parallel live path | `[~]` | `src/lib/live-repository.ts` is **deleted** and `demo-store` is replaced by `app-store`, 365 lines down to ~130 holding only toasts, the derived role and outbox depth. There is now ONE live data path. `src/features/screens.tsx` still holds the `reports` empty state until BAR-107 |
 | BAR-047 | Error boundary and not-found route | `[x]` | Added 28 Aug. Router-level `defaultErrorComponent` and `defaultNotFoundComponent` so a new route cannot arrive without a boundary, plus `AppErrorBoundary` outside the router for throws in the providers. **Verified in a browser**: a planted throw in a repository read rendered the failure card in-shell with the nav intact, and cleared when the read succeeded. Also `throwOnError: true` on `useRepositoryQuery` — screens render `data?.field ?? '—'`, so a failed live read previously produced a screen of em-dashes and zeroes, visually identical to a venue with no stock |
 | BAR-048 | Zod at every boundary | `[~]` | Zod now validates both write use cases at the service boundary — the first real use outside `domain/inventory.ts`. RPC **responses**, QR payloads, POS rows and local-store reads are still unvalidated; `rows.ts` casts by hand |
 | BAR-129 | Bounded quantity inputs | `[~]` | Issue cannot exceed the warehouse position, accept cannot exceed the docket, waste floors at 1 and the database refuses more than the location holds. A non-negative position guard on the ledger itself is still BAR-028 |
@@ -266,13 +266,13 @@ States are defined once in the **Status key** above.
 | BAR-068 | Cold-start offline | `[!]` | Membership load needs the network; an offline cold start locks every staff member out |
 | BAR-069 | Stable idempotency keys | `[~]` | The idempotency key now identifies the user **action** — created once when the screen mounts, reused for every attempt — and the outbox dedupes on it, so a double tap posts once. It does **not** survive a reload (BAR-072), so a reload before the drain relies on the database refusing the second acceptance (BAR-134 asserts it does) |
 | BAR-070 | Ordered outbox replay | `[x]` | `selectDrainBatch` replays in causal order and **stops at the first blocked entry**. The previous drain skipped an entry in backoff and posted the ones behind it, so an issue that failed once could be overtaken by its own acceptance. Asserted in `outbox-policy.test.ts`, including the case that used to break |
-| BAR-071 | No silent write loss | `[!]` | `demo-store.tsx:353` — `void queueLiveMovement(…)`. An unawaited promise whose rejection is discarded while the UI toasts success |
+| BAR-071 | No silent write loss | `[x]` | Closed by deleting the code. The three unawaited `void queueLiveMovement(...)` writes lived in `demo-store`'s `issue`, `accept` and `waste` actions — all unreachable by the time they went. Every write now goes through a service to the outbox, which resolves only once Dexie has committed |
 | BAR-072 | Persist mutable state | `[!]` | Dockets, counts and optimistic deltas live in React memory only; lost on reload |
-| BAR-073 | Real connectivity detection | `[R]` | Still a hand-operated toggle in the shell |
+| BAR-073 | Real connectivity detection | `[x]` | `app-store` derives `offline` from the browser's own `online`/`offline` events. The hand-operated demo toggle is gone, and the sync line is no longer a button |
 | BAR-074 | Retry, backoff and auth stop | `[~]` | Backoff capped at 60 s with jitter; an auth failure now stops the drain **without consuming an attempt** (it previously burned all eight in two minutes and marked a shift's work failed); a rule violation dead-letters immediately instead of retrying. Not done: nothing prompts re-authentication when the drain stops |
 | BAR-075 | Real "as of" stamps | `[~]` | The live repository derives every stamp from the server's clock in the venue's timezone. `AppShell.tsx:59` still prints a hardcoded `19:44` |
 | BAR-076 | Service worker for a festival network | `[R]` | `06968a4` made an update applicable. No API caching strategy, and still excluded from typecheck and lint |
-| BAR-077 | Remove demo switches from the UI | `[!]` | `AppShell.tsx:85` — the sync line is still a button that toggles offline mode |
+| BAR-077 | Remove demo switches from the UI | `[~]` | The offline toggle and the role switch are gone: role is derived from the signed-in membership and connectivity from the browser. `?fixture=b` remains, and is deliberately disabled in production builds |
 | BAR-078 | Tap targets and focus | `[ ]` | Not measured since the rebuild. Needs a pass |
 | BAR-133 | Waste and accept post to the right location | `[x]` | Closed. The three screen literals went on 28 Aug; `boa_bar_record_waste` now takes the location from the command and validates it against the venue, and the legacy `demo-store` waste path that hardcoded `bar_3` is deleted along with the legacy screen |
 | BAR-134 | Idempotent acceptance | `[x]` | The accept RPC rejects a second acceptance and replays idempotently on the client key |
@@ -363,16 +363,16 @@ Computed from the rows above, not asserted.
 
 | | Count |
 | --- | --- |
-| `[x]` done | 55 |
+| `[x]` done | 58 |
 | `[~]` partial | 40 |
-| `[R]` rewrite | 4 |
-| `[!]` defect actively present | 11 |
-| `[ ]` not started | 52 |
+| `[R]` rewrite | 3 |
+| `[!]` defect actively present | 10 |
+| `[ ]` not started | 51 |
 | `[?]` unverifiable today | 2 |
 | **Total** | **164** |
 
-Read the middle three rows as the real position: **55 tasks are neither done nor
-untouched**, and 11 of them are defects sitting in the code right now.
+Read the middle three rows as the real position: **53 tasks are neither done nor
+untouched**, and 10 of them are defects sitting in the code right now.
 
 ## Would stop the event dead
 

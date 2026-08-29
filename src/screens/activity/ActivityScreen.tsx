@@ -20,11 +20,11 @@
 import { useState } from 'react'
 import { ACTIVITY_GROUPS, type ActivityGroup } from '../../data/repository'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
-import { useDemoStore } from '../../lib/demo-store'
+import { useAppStore } from '../../lib/app-store'
 
 export function ActivityScreen() {
   const [group, setGroup] = useState<ActivityGroup>('All')
-  const store = useDemoStore()
+  const store = useAppStore()
   const entries = useRepositoryQuery(['ledger', group], (r) => r.ledger(group))
   const asOf = useRepositoryQuery(['asOf'], (r) => r.asOf())
 

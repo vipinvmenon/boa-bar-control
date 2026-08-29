@@ -19,7 +19,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { ChevronRight, Search } from 'lucide-react'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
-import { useDemoStore } from '../../lib/demo-store'
+import { useAppStore } from '../../lib/app-store'
 
 /** design-script.jsx: `['ALL', 'BEER', 'SPIRITS']`. MIXERS is deliberately absent. */
 const FILTERS = ['ALL', 'BEER', 'SPIRITS'] as const
@@ -27,7 +27,7 @@ type Filter = (typeof FILTERS)[number]
 
 export function WarehouseScreen() {
   const navigate = useNavigate()
-  const store = useDemoStore()
+  const store = useAppStore()
   const [filter, setFilter] = useState<Filter>('ALL')
   const [query, setQuery] = useState('')
 
