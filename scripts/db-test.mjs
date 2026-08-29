@@ -140,22 +140,41 @@ async function main() {
   // said every assertion was existence-only, which stopped being true once
   // business_date.test.sql landed — and a stale caveat is the same defect as a
   // stale claim of coverage, just pointing the other way.
-  console.log(
-    '\nWhat these assertions do and do not prove:\n' +
-      '  blind_count    BEHAVIOURAL, and the only one that CONNECTS AS A ROLE.\n' +
-      '                 Sets request.jwt.claims and switches to `authenticated`, so\n' +
-      '                 RLS applies. Proves the movement_line policy: the bar lead\n' +
-      '                 can read their bar, then cannot once a count is open.\n' +
-      '  business_date  BEHAVIOURAL. Calls the function with real instants and\n' +
-      '                 asserts the date, including the 01:30 event-night case.\n' +
-      '  privileges     REAL privilege checks per role, on every table and every\n' +
-      '                 function. These caught two live EXECUTE holes, one of which\n' +
-      '                 broke every ledger read in production.\n' +
-      '  ledger         EXISTENCE ONLY. Asserts objects are present, nothing more.\n' +
-      '\nStill uncovered (BAR-030): nothing attempts an UPDATE or DELETE to prove the\n' +
-      'immutability triggers fire, and no policy other than movement_line is proved\n' +
-      'behaviourally. Replacing ledger.test.sql is the remaining work.\n',
-  )
+  // Derived from the files, never hand-maintained. This paragraph was prose three
+  // times in one day and went stale all three times — each time claiming the suite
+  // proved less than it did, which is the same defect as claiming it proves more,
+  // just pointing the other way. Each test file now declares its own level with a
+  // `-- @proves: LEVEL | text` header, so the summary cannot drift from the suite.
+  const declared = files.map((file) => {
+    const text = fs.readFileSync(path.join(TESTS, file), 'utf8')
+    const lines = [...text.matchAll(/^--\s*@proves:\s*([A-Z]+)\s*\|\s*(.*)$/gm)]
+    return {
+      file,
+      level: lines[0]?.[1] ?? 'UNDECLARED',
+      text: lines.map((m) => m[2].trim()),
+    }
+  })
+
+  console.log('\nWhat these assertions do and do not prove:')
+  for (const entry of declared) {
+    const name = entry.file.replace(/\.test\.sql$/, '')
+    console.log(`  ${name.padEnd(14)} ${entry.level}`)
+    for (const line of entry.text) console.log(`  ${''.padEnd(14)} ${line}`)
+  }
+
+  // Only EXISTENCE counts as the gap BAR-030 names. PRIVILEGES is its own valid
+  // category — inspecting granted privileges is a real check, and it caught two
+  // live holes — it simply is not the thing BAR-030 asks to be replaced.
+  const existenceOnly = declared.filter((e) => e.level === 'EXISTENCE').map((e) => e.file)
+  if (existenceOnly.length) {
+    console.log(
+      `\nNot yet behavioural (BAR-030): ${existenceOnly.join(', ')}. A file is behavioural\n` +
+        'when it exercises the rule and asserts the outcome, not when it asserts the\n' +
+        'rule\'s object exists.\n',
+    )
+  } else {
+    console.log('\nEvery suite is behavioural (BAR-030 complete).\n')
+  }
 }
 
 main().catch((err) => {

@@ -1,3 +1,6 @@
+-- @proves: BEHAVIOURAL | Connects AS a role: sets request.jwt.claims and switches to
+-- @proves: BEHAVIOURAL | `authenticated`, so RLS applies. Proves the movement_line policy —
+-- @proves: BEHAVIOURAL | the bar lead reads their bar, then cannot once a count is open.
 -- BAR-161 / BAR-083 — blind counting, proved rather than asserted.
 --
 -- The first test here that simulates a SIGNED-IN USER. `auth.uid()` reads the

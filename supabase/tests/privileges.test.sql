@@ -1,3 +1,6 @@
+-- @proves: PRIVILEGES | Real privilege checks per role, on every table and every function.
+-- @proves: PRIVILEGES | These caught two live EXECUTE holes, one of which broke every
+-- @proves: PRIVILEGES | ledger read in production.
 -- BAR-012 + BAR-122 — behavioural privilege tests.
 --
 -- These assert what the roles can actually DO, not that objects exist. They are

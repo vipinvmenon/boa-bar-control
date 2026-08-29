@@ -1,3 +1,5 @@
+-- @proves: EXISTENCE | Asserts objects are present, nothing more. The last file still to
+-- @proves: EXISTENCE | be replaced with behavioural assertions (BAR-030).
 begin;
 
 -- BAR-031 runnability fix. This suite calls pgTAP (plan/has_table/finish) but

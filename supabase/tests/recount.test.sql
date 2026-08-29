@@ -1,3 +1,5 @@
+-- @proves: BEHAVIOURAL | Attempts an UPDATE and a DELETE and asserts the immutability
+-- @proves: BEHAVIOURAL | triggers fire. Proves a bad count is superseded, never edited.
 -- BAR-145 — a bad count is superseded, never edited.
 --
 -- This file closes the last gap the suite has been reporting since it was written:

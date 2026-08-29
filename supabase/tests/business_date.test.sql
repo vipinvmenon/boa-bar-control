@@ -1,3 +1,5 @@
+-- @proves: BEHAVIOURAL | Calls the function with real instants and asserts the date,
+-- @proves: BEHAVIOURAL | including the 01:30 event-night case.
 -- BAR-123 — the business date spans the festival night.
 --
 -- The first BEHAVIOURAL test in this suite: it calls a function with real inputs
