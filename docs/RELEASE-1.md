@@ -54,11 +54,18 @@ Verified against the live database, not asserted:
 - 16 of 22 routes; fidelity gate **0 hardcoded, 0 errored**
 - 114 unit tests; typecheck, lint, build, `check:sql` green
 
-Not verified, and this is the single largest unknown in the repository:
+**Cleared 29 August.** All eleven migrations are applied and `corepack pnpm
+test:db` reports **107 assertions, 0 failed**. A user exists, the venue is
+claimed, opening stock is posted, and the ledger and the projection agree on all
+ten lines. Signed in against the live database, the home screen renders **638
+containers with the bars at zero** — the position the ledger holds, and a figure
+the fixtures cannot produce.
 
-- **`auth.users` is empty.** No live read and no live write has ever executed.
-  Everything in `src/data/live/` and `src/services/` is exercised against fixtures
-  only. Clearing this is item 0 below and only the user can do it.
+Still not verified:
+
+- **No live write from the app.** No count, waste entry, receipt or docket has
+  been posted through a service against the live database. Everything in
+  `src/services/` is exercised against fixtures and pgTAP, not through the app.
 
 ## 4. The blocking list, in order
 
@@ -69,9 +76,10 @@ Not verified, and this is the single largest unknown in the repository:
 > assertions, 0 failed, including all 9 behavioural business-date assertions. Item
 > 5's migration (`202608280007`) is **written and unapplied**.
 >
-> What is still unproven is everything that needs a signed-in user: no count, no
-> waste entry and no docket has executed, because `auth.users` is empty. Item 0 is
-> a minute of dashboard work and unblocks all of it. Start there.
+> **Items 0 and 5 were completed on 29 August.** All eleven migrations are
+> applied, `test:db` reports 107 assertions and 0 failed, and the app has read
+> live data. What remains unproven is the write path *through the app*: no count,
+> waste entry, receipt or docket has been posted from a screen.
 
 
 Ordering is my judgement, not the specification's. The reasoning is given so it

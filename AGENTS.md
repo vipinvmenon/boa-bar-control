@@ -34,9 +34,13 @@ agent's.
 - **Anything touching the database.** The password lives only in the user's shell.
   `test:db`, `db:state` and `bootstrap` will fail for you. Say so and ask; never
   record a database task as verified because the code looks right.
-- **Live reads and writes.** `auth.users` is empty as of 28 August, so no live
-  read or write has ever executed. Fixture-mode success is not evidence the live
-  path works, and the fixture commands deliberately record nothing.
+- **Live reads.** Cleared 29 August. A user exists, the venue is claimed, and the
+  home screen renders 638 containers from the ledger with the bars at zero. The
+  live *read* path works.
+- **Live writes are still unproven.** No count, waste entry, receipt or docket has
+  been posted from the app against the live database. Fixture-mode success is not
+  evidence the live path works, and the fixture commands deliberately record
+  nothing.
 
 This project's original failure was a document asserting a verification nobody
 performed. Writing "verified" without having verified is the one unrecoverable

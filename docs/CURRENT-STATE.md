@@ -175,7 +175,7 @@ States are defined once in the **Status key** above.
 | Task | Title | State | Evidence |
 | --- | --- | --- | --- |
 | BAR-155 | Command RPCs as the only write path | `[~]` | `e087d10` — `boa_bar_create_docket` and `boa_bar_accept_docket` exist and enforce their rules. **No application code calls either.** The count-submit and POS-post RPCs do not exist |
-| BAR-156 | Interim opening-stock bootstrap | `[~]` | `202608280002` applied 28 Aug; `boa_bar_claim_venue` and `boa_bar_open_stock` exist. **Opening stock has not been posted** — `pnpm bootstrap` correctly refuses while `auth.users` is empty and changes nothing. Verified by running it |
+| BAR-156 | Interim opening-stock bootstrap | `[~]` | `202608280002` applied 28 Aug; `boa_bar_claim_venue` and `boa_bar_open_stock` exist. **Opening stock posted 29 Aug**: movement `8a0c5b2c`, 10 lines, 638 containers, and the script confirms the ledger sum and the projection agree on every line. The claim window is closed |
 | BAR-011 | Verify no table-level write grants | `[x]` | **Verified against the live database 28 Aug**, not asserted: `privileges.test.sql` 52/52, plus `ledger.test.sql` 11/11 — 63 assertions, 0 failed. It failed the first time it was ever actually run, which is how the two EXECUTE holes were found. It now enumerates every function for both roles |
 | BAR-161 | Location-scope the snapshot RPC | `[x]` | **Applied and PROVEN against the live database, 28 August: `blind_count.test.sql` 6/6.** A bar lead can read their bar with no open count, and once a count is open the snapshot returns no row for it and the raw movement lines are unreadable. Required `202608280008` to fix a live defect `_0007` introduced — see event-stopper 21 |
 | BAR-163 | Count witness column | `[ ]` | `boa_bar_count_session` has `assigned_to` and `reviewed_by`; no witness column |
@@ -221,7 +221,7 @@ States are defined once in the **Status key** above.
 | BAR-039 | Shell | `[~]` | `798feb2` — bottom nav corrected to colour-only active state with the design's own SVG paths. Header composition still diverges |
 | BAR-040 | Navigation state machine | `[~]` | The hardcoded `<Link to="/">` backs are gone, and the three hardcoded bar-id destinations were fixed under BAR-133. There is still no stack: every back is a fixed destination rather than a pop |
 | BAR-041 | Toast system | `[x]` | `app-store.flash` expires every toast at 2600 ms, the design's duration, including one raised while another is showing |
-| BAR-042 | Repository interface | `[~]` | Interface, fixture and live implementations all exist (`b49768c`, `743a4d4`). **The live implementation has never executed a query** — the database holds nothing to read |
+| BAR-042 | Repository interface | `[~]` | Interface, fixture and live implementations all exist (`b49768c`, `743a4d4`). **Proven live 29 Aug**: signed in against the hosted database the home screen renders 638 containers with the bars at zero, which is the ledger's position and not a figure the fixtures can produce. Reads only — no write has been posted through the app |
 | BAR-043 | Fixture repository from the design's data | `[x]` | `design-data.ts` with line references, and **every read model now has a second fixture state**. `barDetail` was the one that did not, so the bar workspace rendered identically under both sets and could not be proved to read its data — invisible until BAR-008's flakiness was fixed. Gate: 15 reading, **0 hardcoded, 0 errored, identical across three consecutive runs** |
 | BAR-044 | Application service layer | `[~]` | `src/services/` exists with `issue.ts` and `accept.ts` — Zod validation, the custody domain rules, then the repository. Both custody writes are now wired and verified in a browser. Commands are on the `Repository` interface, so no screen imports Supabase or Dexie and no service calls an RPC. 13 service tests. Count, waste and the remaining write use cases still have no service-backed screen path |
 | BAR-045 | Remove fixture data from screen files | `[~]` | `src/features/screens.tsx` is down from 302 lines to 67 and holds **no** SKU data — only the `reports` honest empty state. All 16 routes read the repository; the gate reports 0 hardcoded and BAR-154's lint rule enforces it |
@@ -593,12 +593,30 @@ in their credentials help — the exact trap CLAUDE.md documents. Both now print
 
 **Known issues:** `ledger.test.sql` (11) is still existence-only — BAR-030, and
 the runner says so itself rather than letting the total flatter it. **`auth.users`
-is still empty: no live read and no live write has ever executed.** BAR-068
+now holds a user, the venue is claimed and the app has read live data — 638
+containers, bars at zero. **No live *write* has been posted from a screen.**
+BAR-068
 remains a live defect (offline cold start locks staff out).
 
-**Recommended next:** create the first user in the dashboard, then
-`node scripts/bootstrap.mjs`, then confirm the warehouse screen shows BEER 380 ·
-SPIRITS 142 · MIXERS 116 · 638 containers. Then BAR-068.
+**Also done, later the same day — the live path is open.** There was no
+`.env.local` at all, which is the real reason no live read had ever executed: the
+app was never pointed at Supabase, so `AuthGate` short-circuited on
+`mode === 'demo'` and served fixtures behind the DEMO DATA banner. With the
+project URL and the **publishable** key in place (never the secret key — `VITE_`
+variables are compiled into the bundle and served to every phone), the app now
+enforces sign-in, and signed in it renders **638 containers with the bars at
+zero**. That figure is the ledger's, and the fixtures cannot produce it: they
+report 1,284 across three locations. Per-SKU figures prove nothing here, since
+the opening stock was taken from the design reference and is identical in both.
+
+An unauthenticated REST read of `boa_bar_venue` returns **401, permission denied**
+— `anon` holds no privileges, confirmed against real HTTP rather than inferred
+from a grant table.
+
+**Recommended next:** BAR-068 — the offline cold start, the last item that is a
+defect rather than a gap. Then post a count, a waste entry and a docket from a
+screen against the live database: the read path is proven, the write path
+through the app is not.
 
 ### Session — 28 August 2026 · codex
 
