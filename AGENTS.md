@@ -11,13 +11,15 @@ because three separate descriptions of this system is how the project broke.
 ## Resuming — start here, every session
 
 1. Read `docs/CURRENT-STATE.md`. The session log at the bottom is newest-first.
-2. Read `docs/RELEASE-1.md` section 4 and take the **first open item**. That
+2. Read `docs/HANDOVER.md` — the complete pending list in one place, and the
+   first task to pick up.
+3. Read `docs/RELEASE-1.md` section 4 and take the **first open item**. That
    ordering already accounts for what the specification says to cut; do not
    re-derive it, and do not pick a task because it looks tractable.
-3. Confirm the gates are green before you start, so you know what you broke:
+4. Confirm the gates are green before you start, so you know what you broke:
    `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build`
-4. One task, by `BAR-nnn` id. Commit with the id in the message.
-5. Before finishing, append a session entry to `docs/CURRENT-STATE.md` using the
+5. One task, by `BAR-nnn` id. Commit with the id in the message.
+6. Before finishing, append a session entry to `docs/CURRENT-STATE.md` using the
    template at the bottom of that file, and say plainly what you did **not**
    verify.
 
@@ -53,6 +55,7 @@ mistake here.
 | File | Read it when |
 | --- | --- |
 | [docs/CURRENT-STATE.md](docs/CURRENT-STATE.md) | **Always, first** |
+| [docs/HANDOVER.md](docs/HANDOVER.md) | **Second.** Everything pending, in priority order, and the resume prompt |
 | [docs/RELEASE-1.md](docs/RELEASE-1.md) | **Second.** What must work on 10 October, in order, and what is deliberately cut |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | To find your task ID and acceptance criteria |
 | [docs/PRODUCT.md](docs/PRODUCT.md) | What we are building and why |
@@ -216,10 +219,11 @@ The most important consequences for you:
   `docs/CURRENT-STATE.md` supersedes both.
 - **Do not build from `docs/archive/`.** Those documents are retained as
   evidence of what went wrong.
-- **`src/features/screens.tsx` is not a model to follow.** 167 lines still
-  standing in for the `issue`, `waste` and `reports` screens, full of hardcoded
-  fixtures and the last file reading `demo-store` for SKU data. It is being
-  deleted, not improved (BAR-051, BAR-063, BAR-164).
-- **`src/lib/live-repository.ts` and `demo-store`'s snapshot loader are a second,
-  older live data path** that hardcodes `bar_3`. Do not extend them; BAR-164
-  deletes them. The live path is `src/data/live/`.
+- **`src/features/screens.tsx` is not a model to follow.** Down from 167 lines to
+  67: `issue` and `waste` have been rebuilt as real screens, and only the
+  `reports` empty state is left, waiting on BAR-107. It is being deleted, not
+  improved. Do not add to it.
+- **There is now exactly ONE live data path: `src/data/live/`.** The older
+  `src/lib/live-repository.ts` and `demo-store`, which hardcoded `bar_3`, were
+  deleted under BAR-164. If you find a second way to read stock, that is a
+  defect — two paths mean two answers to "what is the stock".

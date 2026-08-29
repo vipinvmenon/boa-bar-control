@@ -16,6 +16,8 @@ three separate descriptions of this system is how the project broke once already
 | File | Read it when |
 | --- | --- |
 | `docs/CURRENT-STATE.md` | Always, first |
+| `docs/HANDOVER.md` | Second — everything pending, in priority order |
+| `docs/RELEASE-1.md` | What must work on 10 October, and what is cut |
 | `docs/ROADMAP.md` | To find the task ID and its acceptance criteria |
 | `docs/PRODUCT.md` | What we are building and why |
 | `docs/ARCHITECTURE.md` | Layering, structure, dependencies |

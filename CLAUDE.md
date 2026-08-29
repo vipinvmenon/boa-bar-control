@@ -13,6 +13,7 @@ once already. It tells you where the truth is and what you may not do.
 | File | Read it when |
 | --- | --- |
 | [docs/CURRENT-STATE.md](docs/CURRENT-STATE.md) | **Always, first.** What is done, what is broken, what is next |
+| [docs/HANDOVER.md](docs/HANDOVER.md) | **Second.** The 29 Aug handover: everything pending, and the prompt to resume with |
 | [docs/PRODUCT.md](docs/PRODUCT.md) | Any question about what we are building or why |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Before touching structure, layering, or dependencies |
 | [docs/DATA-MODEL.md](docs/DATA-MODEL.md) | Before touching the schema, the ledger, or any calculation |
