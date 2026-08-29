@@ -302,9 +302,9 @@ States are defined once in the **Status key** above.
 | BAR-089 | `activity`, five filters | `[x]` | `10185b5` — all five groups; counts unioned from `count_session`, not derived from movements |
 | BAR-090 | `mv` screen — movement detail | `[ ]` | Screen missing. The live repository's `movementDetail()` is implemented and has no consumer |
 | BAR-091 | Adjustment log view | `[ ]` | — |
-| BAR-092 | Paper fallback print views | `[ ]` | No `@media print` and no `window.print` anywhere. **The specification's fallback when the network fails does not exist** |
+| BAR-092 | Paper fallback print views | `[~]` | `/print` — one A4 count sheet per location plus a blank two-party docket, from the repository. **Carries no quantity of any kind**: a printed expected figure defeats blind counting and a sheet cannot be un-printed. Two signature blocks per sheet, per spec §5 and §6. Empties column included despite BAR-160 being open, because a missed physical observation is unrecoverable and a blank column costs nothing. Verified in a browser: 7 sheets, and the only non-empty write-in cells are the unit labels. **The printed output itself has not been seen** — no print preview was available, so page breaks and A4 fit are unverified |
 | BAR-145 | In-event correction path | `[x]` | `202608280009` — a bad count is **superseded, never edited**. `boa_bar_count_line` gets an immutability trigger with its own message (the remedy is a recount, not an adjustment), the session row is guarded against being moved to another location or re-stamped, and a supersede requires a stated reason. The original stays exactly as submitted, with the name of whoever entered it. `variance()` reads the **live** count, not merely the latest. **Written, unapplied** |
-| BAR-148 | Empties capture | `[ ]` | Blocked on BAR-160 |
+| BAR-148 | Empties capture | `[~]` | An empties column is on every printed count sheet (BAR-092), so the observation can be made on the night whatever BAR-160 decides. Nothing captures empties in the app or the schema yet |
 | BAR-150 | Mid-event count scheduling | `[ ]` | `COUNT_DUE_AFTER_MINUTES = 120` in the live repository is an assumption standing in for this |
 
 ### M6 — POS ingest and show day — the cuttable milestone
@@ -364,14 +364,14 @@ Computed from the rows above, not asserted.
 | | Count |
 | --- | --- |
 | `[x]` done | 54 |
-| `[~]` partial | 37 |
+| `[~]` partial | 39 |
 | `[R]` rewrite | 4 |
 | `[!]` defect actively present | 11 |
-| `[ ]` not started | 56 |
+| `[ ]` not started | 54 |
 | `[?]` unverifiable today | 2 |
 | **Total** | **164** |
 
-Read the middle three rows as the real position: **52 tasks are neither done nor
+Read the middle three rows as the real position: **54 tasks are neither done nor
 untouched**, and 11 of them are defects sitting in the code right now.
 
 ## Would stop the event dead

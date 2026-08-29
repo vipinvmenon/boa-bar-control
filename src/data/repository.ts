@@ -434,6 +434,40 @@ export type RecordReceiptCommand = {
 }
 
 // ---------------------------------------------------------------------------
+// paper fallback (BAR-092)
+// ---------------------------------------------------------------------------
+
+export type PrintSheetLine = {
+  skuId: string
+  name: string
+  spec: string
+  /** What the partial column is measured in for this SKU, or '' where there is none. */
+  partialUnit: string
+}
+
+export type PrintSheet = {
+  locationId: string
+  locationName: string
+  lines: PrintSheetLine[]
+}
+
+/**
+ * Everything needed to print the paper fallback.
+ *
+ * Carries **no quantity of any kind** — not an expected figure, not a last count,
+ * not a par level. A printed sheet is handed to the person counting, so a number
+ * on it defeats blind counting exactly as a number on the screen would, and a
+ * sheet cannot be un-printed once it is in a folder.
+ */
+export type PrintPack = {
+  venueName: string
+  eventDate: string
+  /** When the pack was produced, so two versions in a folder can be told apart. */
+  preparedAt: string
+  sheets: PrintSheet[]
+}
+
+// ---------------------------------------------------------------------------
 // commands — the write side
 // ---------------------------------------------------------------------------
 
@@ -553,6 +587,9 @@ export interface Repository {
 
   /** Source location and products for the delivery screen (BAR-060). */
   receiptOptions(): Promise<ReceiptOptions>
+
+  /** The printable paper fallback: one count sheet per location (BAR-092). */
+  printPack(): Promise<PrintPack>
 
   /** Source, destinations and SKU positions for the issue-stock draft screen. */
   issueOptions(): Promise<IssueOptions>

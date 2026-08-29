@@ -92,6 +92,7 @@ import type {
   SessionInfo,
   StockPosition,
   SubmitCountCommand,
+  PrintPack,
   ReceiptOptions,
   RecordReceiptCommand,
   RecordWasteCommand,
@@ -735,6 +736,45 @@ export function createLiveRepository(context: LiveContext): Repository {
           }
         }),
         inTransitContainers,
+      }
+    },
+
+    /**
+     * BAR-092. The paper fallback pack.
+     *
+     * Deliberately contains no quantities. It is produced from the SKU catalogue
+     * and the location list only — the same read a count sheet on screen gets —
+     * so printing it cannot leak a position the counter is not meant to see.
+     */
+    async printPack(): Promise<PrintPack> {
+      const [ref, snap] = await Promise.all([reference(), snapshot()])
+      const venue = await db
+        .from('boa_bar_venue')
+        .select('name, event_date')
+        .eq('id', venueId)
+        .limit(1)
+        .then((r) => unwrap<{ name: string; event_date: string }[]>('venue', r))
+
+      const countable = ref.locations.filter((l) => l.kind !== 'in_transit')
+
+      return {
+        venueName: venue[0]?.name ?? 'BOA 2026',
+        eventDate: venue[0]?.event_date ?? '',
+        preparedAt: clock.time(snap.now.toISOString()),
+        sheets: countable.map((location) => ({
+          locationId: location.id,
+          locationName: location.name.toUpperCase(),
+          lines: ref.skus.map((sku) => {
+            const shape = toSkuShape(sku)
+            const mode = partialModeFor(shape)
+            return {
+              skuId: sku.id,
+              name: sku.name,
+              spec: specLabel(shape),
+              partialUnit: mode === 'ml' ? 'ml' : mode === 'litres' ? 'L' : '',
+            }
+          }),
+        })),
       }
     },
 

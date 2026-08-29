@@ -28,6 +28,7 @@ import type {
   Repository,
   SessionInfo,
   StockPosition,
+  PrintPack,
   ReceiptOptions,
   RecordReceiptCommand,
   RecordWasteCommand,
@@ -36,7 +37,7 @@ import type {
   WasteOptions,
   WriteOutcome,
 } from '../repository'
-import { ALERTS, AS_OF, BARS, BAR_DETAIL, CATALOGUE, COUNT_SESSION, CUSTODY, CUSTODY_BY_DOCKET, CUSTODY_OVERVIEW, ISSUE_OPTIONS, RECEIPT_OPTIONS, WASTE_OPTIONS, LEDGER, MOVEMENTS, SESSION, STOCK_POSITION, VARIANCE, variant } from './design-data'
+import { ALERTS, AS_OF, BARS, BAR_DETAIL, CATALOGUE, COUNT_SESSION, CUSTODY, CUSTODY_BY_DOCKET, CUSTODY_OVERVIEW, ISSUE_OPTIONS, PRINT_PACK, RECEIPT_OPTIONS, WASTE_OPTIONS, LEDGER, MOVEMENTS, SESSION, STOCK_POSITION, VARIANCE, variant } from './design-data'
 
 export type FixtureVariant = 'a' | 'b'
 
@@ -72,6 +73,10 @@ export function createFixtureRepository(which: FixtureVariant = 'a'): Repository
 
     async catalogue(): Promise<CatalogueGroup[]> {
       return v?.catalogue ?? CATALOGUE
+    },
+
+    async printPack(): Promise<PrintPack> {
+      return v?.printPack ?? PRINT_PACK
     },
 
     async receiptOptions(): Promise<ReceiptOptions> {

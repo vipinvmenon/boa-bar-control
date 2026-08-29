@@ -26,6 +26,7 @@ import type {
   Custody,
   CustodyOverview,
   IssueOptions,
+  PrintPack,
   ReceiptOptions,
   WasteOptions,
   MovementDetail,
@@ -280,6 +281,28 @@ export const CUSTODY: Custody = {
   acceptedAt: '19:38',
 }
 
+/** BAR-092. The paper fallback pack. No quantities, by design. */
+export const PRINT_PACK: PrintPack = {
+  venueName: 'Bangalore Open Air 2026',
+  eventDate: '2026-10-10',
+  preparedAt: AS_OF.label,
+  sheets: [
+    { locationId: 'warehouse', locationName: 'WAREHOUSE', lines: [] },
+    ...BARS.map((bar) => ({ locationId: bar.id, locationName: bar.name, lines: [] })),
+    { locationId: 'hospitality', locationName: 'HOSPITALITY', lines: [] },
+  ].map((sheet) => ({
+    ...sheet,
+    lines: CATALOGUE.flatMap((group) =>
+      group.items.map((item) => ({
+        skuId: item.skuId,
+        name: item.name,
+        spec: item.spec,
+        partialUnit: /keg$/i.test(item.spec) ? 'L' : /Spirit/i.test(item.spec) ? 'ml' : '',
+      })),
+    ),
+  })),
+}
+
 /** BAR-060. The warehouse and its catalogue for the delivery screen. */
 export const RECEIPT_OPTIONS: ReceiptOptions = {
   locationId: 'warehouse',
@@ -446,6 +469,12 @@ export function variant() {
       toLocationId: 'bar-1',
     },
     catalogue,
+    printPack: {
+      ...PRINT_PACK,
+      venueName: 'Bangalore Open Air 2026 (v2)',
+      preparedAt: '21:07',
+      sheets: PRINT_PACK.sheets.slice(0, 2),
+    },
     receiptOptions: {
       ...RECEIPT_OPTIONS,
       products: RECEIPT_OPTIONS.products.map((p) => ({ ...p, name: `${p.name} (v2)` })),
