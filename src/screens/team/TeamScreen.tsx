@@ -15,7 +15,7 @@
  */
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { ChevronLeft, Ticket, UserPlus } from 'lucide-react'
+import { ChevronLeft, UserPlus } from 'lucide-react'
 import { useRepository, useRepositoryMutation, useRepositoryQuery } from '../../data/RepositoryProvider'
 import type { VenueRole } from '../../data/repository'
 
@@ -36,14 +36,11 @@ export function TeamScreen() {
   const [name, setName] = useState('')
   const [role, setRole] = useState<VenueRole>('crew')
   const [locationId, setLocationId] = useState('')
-  const [code, setCode] = useState('')
   const [issued, setIssued] = useState<{ code: string; name: string } | null>(null)
-  const [claimed, setClaimed] = useState<string | null>(null)
 
   const invite = useRepositoryMutation((r, input: { displayName: string; role: VenueRole; locationId?: string }) =>
     r.createInvite(input),
   )
-  const claim = useRepositoryMutation((r, input: { code: string }) => r.claimInvite(input.code))
   const change = useRepositoryMutation((r, input: { userId: string; role: VenueRole }) =>
     r.setMembership({ userId: input.userId, role: input.role, active: true }),
   )
@@ -62,34 +59,10 @@ export function TeamScreen() {
       </header>
 
       <div className="section-body">
-        {/* Anyone can redeem a code — including somebody with no access yet. */}
-        <section className="panel team-card">
-          <span className="issue-label"><Ticket size={13} strokeWidth={2} aria-hidden="true" /> JOIN WITH A CODE</span>
-          <div className="team-claim">
-            <input
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="K7F2QX"
-              maxLength={6}
-              aria-label="Invite code"
-            />
-            <button
-              className="flow-cta-ghost"
-              disabled={code.trim().length < 6 || claim.isPending}
-              onClick={() => claim.mutate({ code: code.trim() }, {
-                onSuccess: (result) => { setClaimed(result.name); setCode('') },
-              })}
-            >
-              {claim.isPending ? 'Joining…' : 'Join'}
-            </button>
-          </div>
-          {claim.isError && <p className="flow-error" role="alert">{claim.error.message}</p>}
-          {claimed && <p className="team-ok" role="status">Joined as {claimed}. Reload to pick up your new access.</p>}
-        </section>
-
         {data?.canManage && (
           <section className="panel team-card">
             <span className="issue-label"><UserPlus size={13} strokeWidth={2} aria-hidden="true" /> INVITE SOMEBODY</span>
+            <p className="team-helper">Create a single-use code, then give it to the staff member who will receive this access.</p>
             <label className="field">
               <span className="issue-label">NAME</span>
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Aditi" />
@@ -117,7 +90,7 @@ export function TeamScreen() {
               </select>
             </label>
             <button
-              className="flow-cta"
+              className="ritual-button wide"
               disabled={name.trim() === '' || invite.isPending}
               onClick={() => invite.mutate(
                 { displayName: name.trim(), role, locationId: locationId || undefined },
