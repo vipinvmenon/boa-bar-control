@@ -197,7 +197,7 @@ States are defined once in the **Status key** above.
 | BAR-027 | Missing spec §13 columns | `[~]` | BAR-124 added display names. `abv`, `supplier_vendor_id`, `is_licenced`, `is_blind`, `witnessed_by`, `counted_at`, empties and delivery-note remain absent |
 | BAR-028 | Non-negative position guard | `[ ]` | Nothing prevents issuing more than is held. The per-column `>= 0` checks are on docket and count lines, not on the position |
 | BAR-029 | Index `movement_line.movement_id` | `[ ]` | The two indexes are `(venue_id, business_date, occurred_at)` and `(location_id, sku_id)`. `movement_id` is still an unindexed FK, evaluated per row by the read policy — and the live repository queries it by `movement_id` on every ledger read |
-| BAR-030 | Behavioural pgTAP suite | `[~]` | **80 assertions pass against the live database**, and `recount.test.sql` (9, unapplied) finally **attempts an UPDATE and a DELETE and asserts the triggers fire** — the gap this row has reported since it was written. `blind_count` (6) connects as a role and proves an RLS policy. `business_date` (9) is behavioural. `privileges` (54) has caught two live EXECUTE holes. `ledger.test.sql` (11) remains existence-only and is the last file to replace |
+| BAR-030 | Behavioural pgTAP suite | `[~]` | **107 assertions pass against the live database, 0 failed** (29 Aug, all eleven migrations applied), and `recount.test.sql` (9) finally **attempts an UPDATE and a DELETE and asserts the triggers fire** — the gap this row has reported since it was written. `blind_count` (6) connects as a role and proves an RLS policy. `business_date` (9) is behavioural. `privileges` (54) has caught two live EXECUTE holes. `ledger.test.sql` (11) remains existence-only and is the last file to replace |
 | BAR-031 | Execute migrations | `[x]` | **All seven migrations applied and confirmed by object existence, 28 Aug.** PostgreSQL 17.6. `pnpm db:state` reports the history and checks that each migration's objects actually exist, rather than trusting the history table |
 | BAR-032 | Deterministic seed that renders the design | `[~]` | **Reference data verified present in the hosted project 28 Aug: 1 venue, 9 locations, 11 SKUs.** Opening ledger not yet posted — blocked on the first `auth.users` row. Still no serve mappings (BAR-159) and no tolerance bands in the database (BAR-025) |
 | BAR-033 | Generate database types | `[ ]` | The client is untyped. `src/data/live/rows.ts` hand-writes every row shape precisely because generated types do not exist — 156 lines that a generator would own |
@@ -249,7 +249,7 @@ States are defined once in the **Status key** above.
 | BAR-057 | `received` screen | `[x]` | `c987c24` |
 | BAR-058 | Short-acceptance ownership | `[~]` | The accept RPC rejects an unexplained shortfall. It does not assign the shortfall an owner or post a compensating adjustment |
 | BAR-059 | Docket SLA alert | `[~]` | Derived in the live repository's `alerts()` from the oldest awaiting docket against a 30-minute SLA. The legacy home path is still static |
-| BAR-060 | `receipt` screen | `[x]` | `202608280010` plus `/receipt`. Multi-line delivery capture against a supplier and delivery note, both **required** — spec §4 posts a receipt against that document, and it is what the excise return and the STOK settlement reconcile to. Refuses a repeat of the same note from the same supplier, which no idempotency key can catch. **Not a design screen**: the design has no receipt (`received` is docket acceptance). Verified in a browser: adding the same product twice merges to one line of 48 rather than duplicating. **Migration unapplied** |
+| BAR-060 | `receipt` screen | `[x]` | `202608280010` plus `/receipt`. Multi-line delivery capture against a supplier and delivery note, both **required** — spec §4 posts a receipt against that document, and it is what the excise return and the STOK settlement reconcile to. Refuses a repeat of the same note from the same supplier, which no idempotency key can catch. **Not a design screen**: the design has no receipt (`received` is docket acceptance). Verified in a browser: adding the same product twice merges to one line of 48 rather than duplicating. **Applied and proven 29 Aug** — 8 behavioural assertions, including the duplicate delivery-note guard |
 | BAR-140 | Opening stock entry | `[x]` | Closed by BAR-060. `boa_bar_open_stock` still loads the warehouse at bootstrap, and `/receipt` now covers a delivery arriving during the event — which was the half that needed the database password |
 
 ### M4 — Bar operations and offline
@@ -303,7 +303,7 @@ States are defined once in the **Status key** above.
 | BAR-090 | `mv` screen — movement detail | `[ ]` | Screen missing. The live repository's `movementDetail()` is implemented and has no consumer |
 | BAR-091 | Adjustment log view | `[ ]` | — |
 | BAR-092 | Paper fallback print views | `[~]` | `/print` — one A4 count sheet per location plus a blank two-party docket, from the repository. **Carries no quantity of any kind**: a printed expected figure defeats blind counting and a sheet cannot be un-printed. Two signature blocks per sheet, per spec §5 and §6. Empties column included despite BAR-160 being open, because a missed physical observation is unrecoverable and a blank column costs nothing. Verified in a browser: 7 sheets, and the only non-empty write-in cells are the unit labels. **The printed output itself has not been seen** — no print preview was available, so page breaks and A4 fit are unverified |
-| BAR-145 | In-event correction path | `[x]` | `202608280009` — a bad count is **superseded, never edited**. `boa_bar_count_line` gets an immutability trigger with its own message (the remedy is a recount, not an adjustment), the session row is guarded against being moved to another location or re-stamped, and a supersede requires a stated reason. The original stays exactly as submitted, with the name of whoever entered it. `variance()` reads the **live** count, not merely the latest. **Written, unapplied** |
+| BAR-145 | In-event correction path | `[x]` | `202608280009` — a bad count is **superseded, never edited**. `boa_bar_count_line` gets an immutability trigger with its own message (the remedy is a recount, not an adjustment), the session row is guarded against being moved to another location or re-stamped, and a supersede requires a stated reason. The original stays exactly as submitted, with the name of whoever entered it. `variance()` reads the **live** count, not merely the latest. **Applied and proven 29 Aug** — 9 behavioural assertions; the UPDATE and the DELETE are both refused by the database |
 | BAR-148 | Empties capture | `[~]` | An empties column is on every printed count sheet (BAR-092), so the observation can be made on the night whatever BAR-160 decides. Nothing captures empties in the app or the schema yet |
 | BAR-150 | Mid-event count scheduling | `[ ]` | `COUNT_DUE_AFTER_MINUTES = 120` in the live repository is an assumption standing in for this |
 
@@ -351,7 +351,7 @@ States are defined once in the **Status key** above.
 | BAR-116 | Staff onboarding and roster | `[ ]` | — |
 | BAR-117 | Shift handover and manager-absent path | `[ ]` | — |
 | BAR-143 | Onboarding that works at load-in | `[~]` | The **membership half** is done and works with any sign-in method: `boa_bar_claim_invite` binds an already signed-in user to a named membership, and the name comes from the invite so custody carries a real name from the first movement. **The sign-in method itself is undecided** — ADR-014 is PROPOSED and needs the user. Until then load-in still depends on magic links |
-| BAR-144 | In-app membership and role management | `[x]` | `202608280011` plus `/team`. A manager invites by name and role and reads out a six-character code; roles can be changed on site. **Escalation is refused in the database**: only an admin may mint or grant manager/admin, so a manager cannot promote themselves via a second account. The last admin cannot be removed or demoted — that would be unrecoverable from inside the app. Verified in a browser: a manager is offered CREW/WAREHOUSE/BAR LEAD/AUDITOR only, and their own row has no selector. **Migration unapplied** |
+| BAR-144 | In-app membership and role management | `[x]` | `202608280011` plus `/team`. A manager invites by name and role and reads out a six-character code; roles can be changed on site. **Escalation is refused in the database**: only an admin may mint or grant manager/admin, so a manager cannot promote themselves via a second account. The last admin cannot be removed or demoted — that would be unrecoverable from inside the app. Verified in a browser: a manager is offered CREW/WAREHOUSE/BAR LEAD/AUDITOR only, and their own row has no selector. **Applied and proven 29 Aug** — 10 behavioural assertions, including that escalation is refused and an invite code is single-use |
 | BAR-118 | Backup and restore verified | `[ ]` | — |
 | BAR-119 | Observability | `[ ]` | — |
 | BAR-120 | Staging deploy and acceptance | `[ ]` | — |
@@ -394,7 +394,7 @@ original audit.
 | 10 | **Onboarding is email magic-link only** — ~20 temporary staff, many without a work email, on congested cellular at load-in. Those who installed the PWA find the installed app still signed out while the browser tab is in | BAR-143 |
 | 11 | ~~**Nobody can change a role from inside the app.**~~ **Closed 28 Aug**, `202608280011` + `/team`. A manager can enrol a bar lead arriving at 20:00 and promote somebody before leaving at 23:00, without a database password. Escalation is refused in the database and the last admin cannot be removed | BAR-144 |
 | 12 | **`business_date` is the IST calendar date**, so the festival night splits at midnight and the identity cannot close for the event. A close-out count at 01:30 belongs to 10 October | BAR-123 |
-| 13 | ~~**Nothing resolves a user id to a person's name**~~ **Addressed 28 Aug, unapplied.** `boa_bar_person` plus an append-only name history and `boa_bar_set_person_name` are written in `supabase/migrations/202608280001_person_names.sql`. The migration has **not been executed** — until it is, this row still stands | BAR-124 |
+| 13 | ~~**Nothing resolves a user id to a person's name**~~ **Closed 29 Aug.** `boa_bar_person` plus an append-only name history and `boa_bar_set_person_name`, `supabase/migrations/202608280001_person_names.sql`, now **applied**. A movement can be attributed to a named person rather than a UUID | BAR-124 |
 | 14 | **Empties are never counted** and cannot be reconstructed afterwards. This is a physical observation that exists only between 23:00 and 03:00 on 10 October, and both the excise return and the STOK settlement have a line for it | BAR-148 |
 | 15 | **There is no QR scanner anywhere in the app** — so the acceptance side of two-party custody has no input device, while `vercel.json` already grants camera permission for the capability that was never built | BAR-136 |
 | 16 | **No alert reaches anyone.** Every alert is passive, existing only while someone holds the phone on the home screen. The warehouse never learns Bar 3 is 26 minutes from dry, and the bar has no way to ask | BAR-149 |
@@ -561,6 +561,44 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 29 August 2026 · claude
+
+**Completed: the database is now fully applied and behaviourally proven.**
+
+All eleven migrations are applied. `corepack pnpm test:db` reports **107
+assertions, 0 failed** across seven files. The three files that had never
+executed — `recount` (9), `receipt` (8), `membership` (10) — are green, so
+BAR-145, BAR-060 and BAR-144 move from "written" to proven: a bad count is
+superseded and both an UPDATE and a DELETE are refused by triggers; a repeated
+delivery note is refused with `23505`; privilege escalation is refused and an
+invite code is single-use.
+
+**One test was wrong and the schema was right.** `receipt.test.sql` test 5 used
+pgTAP's three-argument `throws_ok`, whose third argument is the expected
+*message*, not the description — so it compared my prose against the real error
+text. The duplicate guard had fired correctly all along. The message names the
+note, the supplier and the instant of the first recording, so it cannot be
+matched literally; the assertion now checks the SQLSTATE and states why in place.
+**The SQLSTATE is the contract; the prose is for the person at load-in.**
+
+`scripts/db-test.mjs` and `scripts/bootstrap.mjs` printed a bare `pnpm` command
+in their credentials help — the exact trap CLAUDE.md documents. Both now print
+`corepack pnpm`.
+
+**Files changed:** `supabase/tests/receipt.test.sql`, `scripts/db-test.mjs`,
+`scripts/bootstrap.mjs`, `docs/CURRENT-STATE.md`.
+
+**Architecture changes:** none.
+
+**Known issues:** `ledger.test.sql` (11) is still existence-only — BAR-030, and
+the runner says so itself rather than letting the total flatter it. **`auth.users`
+is still empty: no live read and no live write has ever executed.** BAR-068
+remains a live defect (offline cold start locks staff out).
+
+**Recommended next:** create the first user in the dashboard, then
+`node scripts/bootstrap.mjs`, then confirm the warehouse screen shows BEER 380 ·
+SPIRITS 142 · MIXERS 116 · 638 containers. Then BAR-068.
 
 ### Session — 28 August 2026 · codex
 

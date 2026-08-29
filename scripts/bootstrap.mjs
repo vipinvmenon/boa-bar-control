@@ -49,7 +49,7 @@ function fail(...lines) {
   process.exit(1)
 }
 
-const { url, error } = resolveDbUrl({ root: ROOT, command: 'pnpm bootstrap' })
+const { url, error } = resolveDbUrl({ root: ROOT, command: 'corepack pnpm bootstrap' })
 if (error) fail(...error)
 
 const client = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } })

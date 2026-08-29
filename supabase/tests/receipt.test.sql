@@ -82,6 +82,10 @@ select throws_ok(
        'lines', jsonb_build_array(
          jsonb_build_object('sku_id', '00000000-0000-4000-8000-000000000201', 'containers', 144)))) $$,
   '23505',
+  -- The message names the note, the supplier and the instant of the first
+  -- recording, so it cannot be matched literally. The SQLSTATE is the contract;
+  -- the prose is for the person at load-in.
+  null::text,
   'the same delivery note cannot be recorded twice'
 );
 

@@ -32,7 +32,7 @@ const TESTS = path.join(ROOT, 'supabase', 'tests')
  * the pooler URL's shape wrong — `supabase link` writes no password segment — so it
  * is now in one place.
  */
-const { url, error: urlError } = resolveDbUrl({ root: ROOT, command: 'pnpm test:db' })
+const { url, error: urlError } = resolveDbUrl({ root: ROOT, command: 'corepack pnpm test:db' })
 if (urlError) {
   console.error('')
   for (const line of urlError) console.error(line ? `  ${line}` : '')
