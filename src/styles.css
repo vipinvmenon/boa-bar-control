@@ -714,3 +714,5 @@ h1 { font: 400 31px/1 'Anton', sans-serif; letter-spacing: .035em; text-transfor
 .team-row small { color: rgba(166,201,180,.7); font: 400 10px/1.4 'Oswald', sans-serif; letter-spacing: .1em; }
 .team-self { color: rgba(166,201,180,.5); font: 700 9px/1 'Oswald', sans-serif; letter-spacing: .16em; }
 .team-ok { color: var(--green); font: 400 11px/1.5 'Archivo', sans-serif; }
+/* BAR-072 — a restored count says so rather than resuming silently. */
+.count-resumed { margin: 0 0 8px; padding: 8px 12px; border: 1px solid rgba(212,175,55,.36); border-radius: 12px; background: rgba(212,175,55,.08); color: var(--gold); font: 700 9px/1.4 'Oswald', sans-serif; letter-spacing: .12em; }

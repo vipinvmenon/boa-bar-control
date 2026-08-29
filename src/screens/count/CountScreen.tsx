@@ -31,32 +31,62 @@ import { useRepository, useRepositoryMutation, useRepositoryQuery } from '../../
 import { submitCount } from '../../services/count'
 import type { CountLineCommand } from '../../data/repository'
 import { partialToMl } from '../../domain/units'
+import { useDraft } from '../../data/useDraft'
+
+/**
+ * BAR-072. What is kept across a reload: the counted lines so far, which line the
+ * counter is on, and the action id.
+ *
+ * The action id matters as much as the lines. It is the idempotency key, so
+ * restoring it means a count resumed after a reload SUPERSEDES nothing and
+ * duplicates nothing — it finishes the same count. Minting a fresh one would make
+ * the resumed sheet a second, competing count of the same location.
+ */
+type CountDraft = {
+  actionId: string
+  lineIndex: number
+  counted: Record<string, CountLineCommand>
+}
+
+/** Validated, not cast: a draft written by an older build must not reach a submit. */
+function isCountDraft(raw: unknown): raw is CountDraft {
+  if (!raw || typeof raw !== 'object') return false
+  const d = raw as Partial<CountDraft>
+  return (
+    typeof d.actionId === 'string' &&
+    typeof d.lineIndex === 'number' &&
+    !!d.counted &&
+    typeof d.counted === 'object'
+  )
+}
 
 export function CountScreen() {
   const navigate = useNavigate()
   const session = useRepositoryQuery(['countSession'], (r) => r.countSession())
 
-  const [lineIndex, setLineIndex] = useState(0)
   const [full, setFull] = useState(0)
   const [partial, setPartial] = useState(0)
 
   /**
-   * BAR-082. The counted lines, accumulated.
+   * BAR-082 + BAR-072. The counted lines and the position in the sheet, kept in
+   * Dexie so a reload does not lose them.
    *
-   * This screen previously collected `full` and `partial`, reset them on Save &
-   * next, and navigated to the confirmation screen — so **every count taken on it
-   * was discarded**. Nothing was accumulated and nothing was ever written; the
-   * schema had no write path for a count either.
+   * This screen originally collected `full` and `partial`, reset them on Save &
+   * next, and navigated away — so every count taken on it was discarded. Then the
+   * lines were accumulated but only in React memory, so a browser reclaiming the
+   * tab at line twelve of eighteen lost the lot. A count cannot be retried from
+   * the same facts the way a write can: by the time anybody notices, the stock has
+   * moved.
+   *
+   * Keyed by location, so counting Bar 1 does not resume Bar 3's sheet.
    */
-  const [counted, setCounted] = useState<Record<string, CountLineCommand>>({})
-
-  /**
-   * One id for this COUNT, created once when the screen mounts and reused for
-   * every submit attempt, so a double tap or a retry after a lost reply produces
-   * one count rather than two (BAR-069). It does not survive a reload — that is
-   * BAR-072 — but the RPC's unique idempotency key refuses the duplicate.
-   */
-  const [actionId] = useState(() => crypto.randomUUID())
+  const draftKey = session.data?.locationId ? `count:${session.data.locationId}` : null
+  const draft = useDraft<CountDraft>(
+    draftKey,
+    { actionId: crypto.randomUUID(), lineIndex: 0, counted: {} },
+    isCountDraft,
+  )
+  const { actionId, lineIndex, counted } = draft.value
 
   /**
    * BAR-161. Open the count as soon as the sheet is shown.
@@ -96,7 +126,10 @@ export function CountScreen() {
   }) => submitCount({ repository, actionId, ...input }))
 
   const s = session.data
-  if (!s) {
+  // BAR-072. Wait for the stored draft as well as the sheet. Rendering a zeroed
+  // sheet and replacing it a moment later invites somebody to start typing into
+  // the wrong one.
+  if (!s || !draft.ready) {
     return (
       <div className="flow-screen">
         <div className="flow-body">
@@ -130,15 +163,18 @@ export function CountScreen() {
         partialMl: partialToMl(partial, line.partial),
       },
     }
-    setCounted(next)
 
     if (!isLast) {
-      setLineIndex((i) => i + 1)
+      // Persisted before the input is cleared, so the line just counted survives
+      // even if the tab dies between one line and the next.
+      draft.setValue((current) => ({ ...current, counted: next, lineIndex: current.lineIndex + 1 }))
       // Reset per line. A carried-over value is a silent miscount.
       setFull(0)
       setPartial(0)
       return
     }
+
+    draft.setValue((current) => ({ ...current, counted: next }))
 
     submit.mutate(
       {
@@ -160,7 +196,13 @@ export function CountScreen() {
             }
           : {}),
       },
-      { onSuccess: () => void navigate({ to: '/count/submitted' }) },
+      {
+        onSuccess: () => {
+          // Only after the write is accepted. Clearing on submit would lose the
+          // count if the submit then failed.
+          void draft.clear().then(() => navigate({ to: '/count/submitted' }))
+        },
+      },
     )
   }
 
@@ -244,6 +286,16 @@ export function CountScreen() {
       </div>
 
       <footer className="flow-foot">
+        {/*
+          BAR-072. Say so, rather than silently resuming. A counter who does not
+          know the sheet was restored may recount lines already done, or trust a
+          figure somebody else entered.
+        */}
+        {draft.restored && (
+          <p className="count-resumed" role="status">
+            RESUMED · {Object.keys(counted).length} line{Object.keys(counted).length === 1 ? '' : 's'} already counted on this device
+          </p>
+        )}
         {openError && (
           <p className="flow-error" role="alert">
             COUNT NOT OPENED · {openError} · Do not count from this sheet

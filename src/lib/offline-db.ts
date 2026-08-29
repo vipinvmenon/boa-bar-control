@@ -68,9 +68,25 @@ type CachedReference = {
   refreshedAt: number
 }
 
+/**
+ * BAR-072 — work in progress that has not been submitted yet.
+ *
+ * Distinct from the outbox: an outbox entry is a finished action waiting to be
+ * sent, a draft is an unfinished one. A count halfway through eighteen lines is
+ * not a write yet, but losing it is worse than losing a write — a write can be
+ * retried from the same facts, and a count cannot, because by the time anybody
+ * notices the stock has moved.
+ */
+type StoredDraft = {
+  key: string
+  value: unknown
+  updatedAt: number
+}
+
 class BoaOfflineDatabase extends Dexie {
   outbox!: EntityTable<QueuedCommand, 'id'>
   referenceCache!: EntityTable<CachedReference, 'key'>
+  draft!: EntityTable<StoredDraft, 'key'>
 
   constructor() {
     super('boa-bar-control')
@@ -94,6 +110,12 @@ class BoaOfflineDatabase extends Dexie {
           legacy.map((row: Record<string, unknown>) => ({ ...row, kind: 'movement' as CommandKind })),
         )
       })
+    // v3 — drafts. Additive only, so nothing queued on a device is disturbed.
+    this.version(3).stores({
+      outbox: 'id, kind, idempotencyKey, status, nextAttemptAt, createdAt',
+      referenceCache: 'key, refreshedAt',
+      draft: 'key, updatedAt',
+    })
   }
 }
 
@@ -187,6 +209,26 @@ export class OutboxPendingError extends Error {
     this.name = 'OutboxPendingError'
     this.outboxId = outboxId
   }
+}
+
+/**
+ * BAR-072. Read, write and clear unfinished work.
+ *
+ * Deliberately typed as `unknown` at this boundary: the store does not know what a
+ * count draft is, and a screen reading one back validates it before use. A draft
+ * written by an older build must never be trusted into a submit.
+ */
+export async function readDraft(key: string): Promise<unknown> {
+  const row = await offlineDb.draft.get(key)
+  return row?.value
+}
+
+export async function writeDraft(key: string, value: unknown): Promise<void> {
+  await offlineDb.draft.put({ key, value, updatedAt: Date.now() })
+}
+
+export async function clearDraft(key: string): Promise<void> {
+  await offlineDb.draft.delete(key)
 }
 
 export async function getQueueSummary() {

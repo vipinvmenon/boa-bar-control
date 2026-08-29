@@ -264,10 +264,10 @@ States are defined once in the **Status key** above.
 | BAR-066 | Reference cache | `[!]` | `referenceCache` is declared in `offline-db.ts:23` and **written to by nothing** (grep: zero writes) |
 | BAR-067 | Offline reads from cache | `[~]` | The dangerous half is fixed: `RepositoryProvider` cannot fall back to fixtures, and as of BAR-047 a failed read now *surfaces* instead of rendering as empty data. The useful half still does not exist — there is no cache to read, so a failed read shows an error rather than the last known position |
 | BAR-068 | Cold-start offline | `[!]` | Membership load needs the network; an offline cold start locks every staff member out |
-| BAR-069 | Stable idempotency keys | `[~]` | The idempotency key now identifies the user **action** — created once when the screen mounts, reused for every attempt — and the outbox dedupes on it, so a double tap posts once. It does **not** survive a reload (BAR-072), so a reload before the drain relies on the database refusing the second acceptance (BAR-134 asserts it does) |
+| BAR-069 | Stable idempotency keys | `[x]` | Keys are minted once per user action and now **survive a reload**: the count draft persists its `actionId`, so a resumed count finishes the same count rather than starting a competing one. The outbox dedupes on the key, and every command RPC replays rather than duplicating |
 | BAR-070 | Ordered outbox replay | `[x]` | `selectDrainBatch` replays in causal order and **stops at the first blocked entry**. The previous drain skipped an entry in backoff and posted the ones behind it, so an issue that failed once could be overtaken by its own acceptance. Asserted in `outbox-policy.test.ts`, including the case that used to break |
 | BAR-071 | No silent write loss | `[x]` | Closed by deleting the code. The three unawaited `void queueLiveMovement(...)` writes lived in `demo-store`'s `issue`, `accept` and `waste` actions — all unreachable by the time they went. Every write now goes through a service to the outbox, which resolves only once Dexie has committed |
-| BAR-072 | Persist mutable state | `[!]` | Dockets, counts and optimistic deltas live in React memory only; lost on reload |
+| BAR-072 | Persist mutable state | `[~]` | **The count survives a reload**, which was the acceptance criterion. Counted lines, sheet position and the action id are persisted to Dexie on every line and restored on mount, keyed by location. Verified in a browser: counted, reloaded, and the sheet came back at `5 OF 18` saying `RESUMED · 2 lines already counted on this device`. Dockets and counts are no longer React-memory-only — dockets go to the durable outbox. **Still in memory: the receipt screen's line list**, so a delivery being entered is lost on reload |
 | BAR-073 | Real connectivity detection | `[x]` | `app-store` derives `offline` from the browser's own `online`/`offline` events. The hand-operated demo toggle is gone, and the sync line is no longer a button |
 | BAR-074 | Retry, backoff and auth stop | `[~]` | Backoff capped at 60 s with jitter; an auth failure now stops the drain **without consuming an attempt** (it previously burned all eight in two minutes and marked a shift's work failed); a rule violation dead-letters immediately instead of retrying. Not done: nothing prompts re-authentication when the drain stops |
 | BAR-075 | Real "as of" stamps | `[~]` | The live repository derives every stamp from the server's clock in the venue's timezone. `AppShell.tsx:59` still prints a hardcoded `19:44` |
@@ -363,16 +363,16 @@ Computed from the rows above, not asserted.
 
 | | Count |
 | --- | --- |
-| `[x]` done | 59 |
+| `[x]` done | 60 |
 | `[~]` partial | 40 |
 | `[R]` rewrite | 3 |
-| `[!]` defect actively present | 9 |
+| `[!]` defect actively present | 8 |
 | `[ ]` not started | 51 |
 | `[?]` unverifiable today | 2 |
 | **Total** | **164** |
 
-Read the middle three rows as the real position: **52 tasks are neither done nor
-untouched**, and 9 of them are defects sitting in the code right now.
+Read the middle three rows as the real position: **51 tasks are neither done nor
+untouched**, and 8 of them are defects sitting in the code right now.
 
 ## Would stop the event dead
 
