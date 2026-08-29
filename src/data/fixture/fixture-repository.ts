@@ -28,8 +28,11 @@ import type {
   Repository,
   SessionInfo,
   StockPosition,
+  CreateInviteCommand,
   PrintPack,
   ReceiptOptions,
+  Team,
+  VenueRole,
   RecordReceiptCommand,
   RecordWasteCommand,
   SubmitCountCommand,
@@ -37,7 +40,7 @@ import type {
   WasteOptions,
   WriteOutcome,
 } from '../repository'
-import { ALERTS, AS_OF, BARS, BAR_DETAIL, CATALOGUE, COUNT_SESSION, CUSTODY, CUSTODY_BY_DOCKET, CUSTODY_OVERVIEW, ISSUE_OPTIONS, PRINT_PACK, RECEIPT_OPTIONS, WASTE_OPTIONS, LEDGER, MOVEMENTS, SESSION, STOCK_POSITION, VARIANCE, variant } from './design-data'
+import { ALERTS, AS_OF, BARS, BAR_DETAIL, CATALOGUE, COUNT_SESSION, CUSTODY, CUSTODY_BY_DOCKET, CUSTODY_OVERVIEW, ISSUE_OPTIONS, PRINT_PACK, TEAM, RECEIPT_OPTIONS, WASTE_OPTIONS, LEDGER, MOVEMENTS, SESSION, STOCK_POSITION, VARIANCE, variant } from './design-data'
 
 export type FixtureVariant = 'a' | 'b'
 
@@ -73,6 +76,27 @@ export function createFixtureRepository(which: FixtureVariant = 'a'): Repository
 
     async catalogue(): Promise<CatalogueGroup[]> {
       return v?.catalogue ?? CATALOGUE
+    },
+
+    async team(): Promise<Team> {
+      return v?.team ?? TEAM
+    },
+
+    /**
+     * A fixed code, not a random one: the fidelity gate compares two renders of
+     * the same screen, and a fresh code each call would read as data changing when
+     * nothing had.
+     */
+    async createInvite(command: CreateInviteCommand): Promise<{ code: string; name: string }> {
+      return { code: 'DEMO42', name: command.displayName }
+    },
+
+    async claimInvite(): Promise<{ name: string; role: VenueRole }> {
+      return { name: 'Demo', role: 'crew' }
+    },
+
+    async setMembership(): Promise<void> {
+      // Records nothing, like every other fixture command.
     },
 
     async printPack(): Promise<PrintPack> {

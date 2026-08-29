@@ -425,3 +425,51 @@ table is a defect, and `supabase/tests/privileges.test.sql` fails if one appears
 
 **Consequence.** What this obliges or forbids from now on.
 ```
+
+## ADR-014 — How twenty temporary staff get an auth session
+
+**Status:** PROPOSED — needs the user's decision · **Date:** 28 August 2026
+
+**Provenance: MINE.** Specification §16 does not cover authentication, and no
+design screen shows a sign-in. This is a genuine gap, not a restatement.
+
+### The problem
+
+Onboarding is email magic-link only. On 10 October that means ~20 temporary staff,
+many without a work email, on congested cellular at load-in, each waiting for a
+mail to arrive and opening it on the right device. A staff member who installed the
+PWA also finds the installed app signed out while the browser tab is signed in,
+because they are separate storage contexts.
+
+BAR-143 and BAR-144 have been built in a way that does **not** depend on the
+answer: `boa_bar_claim_invite` binds an **already signed-in** user to a named
+membership with a six-character code. Whatever produces that session plugs in
+underneath. This ADR is only about what produces it.
+
+### Options
+
+| | How it works | Cost |
+| --- | --- | --- |
+| **A. Magic link (today)** | Email, one-hour JWT | Unworkable at load-in for the reasons above |
+| **B. Email + password, pre-created** | A manager creates accounts ahead of time and hands out cards | Needs the service-role key to create users in bulk, which must never reach the app (ADR: rule 2 in SECURITY.md). Doable as an operator script |
+| **C. Anonymous sign-in + invite code** | The app calls `signInAnonymously()`, then the person enters their code. Supabase issues a real, distinct `auth.users` row | No email, no password, no typing on a phone in the dark. The identity is still distinct and carries a real name from the invite |
+
+### Recommendation
+
+**C, with B as the fallback for managers and auditors.** Anonymous does not mean
+unattributed here: the row is distinct and permanent, and
+`boa_bar_claim_invite` attaches the manager-chosen name before the person can post
+anything, so every movement still carries a real name. Crew never type an address
+or a password; managers, who need their access to survive a lost phone, use B.
+
+### What is NOT decided until the user rules
+
+Whether to enable anonymous sign-in on the Supabase project at all. It widens who
+can obtain a JWT, and although every table and function is already gated on
+membership — an anonymous user with no membership can reach nothing — that is a
+security posture change and it is the user's call, not an agent's.
+
+### Consequence if unanswered
+
+Load-in falls back to magic links, and the realistic outcome is shared logins,
+which destroys the named-person guarantee that §4 and §5 exist to provide.

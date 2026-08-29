@@ -468,6 +468,53 @@ export type PrintPack = {
 }
 
 // ---------------------------------------------------------------------------
+// team (BAR-143 / BAR-144)
+// ---------------------------------------------------------------------------
+
+export type VenueRole = 'crew' | 'warehouse' | 'bar_lead' | 'manager' | 'auditor' | 'admin'
+
+export type TeamMember = {
+  userId: string
+  name: string
+  role: VenueRole
+  locationName: string | null
+  /** True for the signed-in user, so a screen can avoid offering self-demotion. */
+  isSelf: boolean
+}
+
+export type TeamInvite = {
+  code: string
+  name: string
+  role: VenueRole
+  claimed: boolean
+  expiresLabel: string
+}
+
+export type Team = {
+  members: TeamMember[]
+  /** Outstanding invites. Empty for anyone who is not a manager or admin. */
+  invites: TeamInvite[]
+  locations: { id: string; name: string }[]
+  /** Whether the caller may invite and change roles at all. */
+  canManage: boolean
+  /** Only an admin may create or grant manager and admin. */
+  canGrantManagement: boolean
+}
+
+export type CreateInviteCommand = {
+  displayName: string
+  role: VenueRole
+  locationId?: string
+}
+
+export type SetMembershipCommand = {
+  userId: string
+  role?: VenueRole
+  locationId?: string
+  active: boolean
+}
+
+// ---------------------------------------------------------------------------
 // commands — the write side
 // ---------------------------------------------------------------------------
 
@@ -591,6 +638,9 @@ export interface Repository {
   /** The printable paper fallback: one count sheet per location (BAR-092). */
   printPack(): Promise<PrintPack>
 
+  /** Who has access to this venue, and what the caller may change (BAR-144). */
+  team(): Promise<Team>
+
   /** Source, destinations and SKU positions for the issue-stock draft screen. */
   issueOptions(): Promise<IssueOptions>
 
@@ -637,4 +687,13 @@ export interface Repository {
 
   /** Record a delivery against its delivery note (BAR-060). */
   recordReceipt(command: RecordReceiptCommand): Promise<CountWriteOutcome>
+
+  /** Mint a single-use code that enrols somebody by name and role (BAR-143). */
+  createInvite(command: CreateInviteCommand): Promise<{ code: string; name: string }>
+
+  /** Redeem a code on this device. */
+  claimInvite(code: string): Promise<{ name: string; role: VenueRole }>
+
+  /** Change or revoke a role on site (BAR-144). */
+  setMembership(command: SetMembershipCommand): Promise<void>
 }

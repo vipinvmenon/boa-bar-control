@@ -20,7 +20,7 @@
  *   2. Time is the server's, in the venue's timezone. A crew phone with a wrong
  *      clock must not be able to age a docket or stamp a count.
  */
-import { openCountRpc, supabase } from '../../lib/supabase'
+import { openCountRpc, rpc, supabase } from '../../lib/supabase'
 import { enqueueCommand, OutboxPendingError, waitForCommand } from '../../lib/offline-db'
 import { toleranceFor, varianceBand } from '../../domain/inventory'
 import { mlForContainers } from '../../domain/custody'
@@ -92,8 +92,12 @@ import type {
   SessionInfo,
   StockPosition,
   SubmitCountCommand,
+  CreateInviteCommand,
   PrintPack,
   ReceiptOptions,
+  SetMembershipCommand,
+  Team,
+  VenueRole,
   RecordReceiptCommand,
   RecordWasteCommand,
   Tone,
@@ -737,6 +741,83 @@ export function createLiveRepository(context: LiveContext): Repository {
         }),
         inTransitContainers,
       }
+    },
+
+    /** BAR-144. Who has access, and what this caller may change. */
+    async team(): Promise<Team> {
+      const ref = await reference()
+      const canManage = context.role === 'manager' || context.role === 'admin'
+      const canGrantManagement = context.role === 'admin'
+
+      const invites = canManage
+        ? await db
+            .from('boa_bar_invite')
+            .select('code, display_name, role, claimed_by, expires_at')
+            .eq('venue_id', venueId)
+            .order('created_at', { ascending: false })
+            .limit(25)
+            .then((r) =>
+              unwrap<{ code: string; display_name: string; role: VenueRole; claimed_by: string | null; expires_at: string }[]>(
+                'invites',
+                r,
+              ),
+            )
+        : []
+
+      return {
+        canManage,
+        canGrantManagement,
+        locations: ref.locations
+          .filter((l) => l.kind !== 'in_transit')
+          .map((l) => ({ id: l.id, name: l.name.toUpperCase() })),
+        members: ref.memberships.map((m) => ({
+          userId: m.user_id,
+          name: ref.people.get(m.user_id)?.display_name ?? 'UNNAMED',
+          role: m.role,
+          locationName: m.location_id ? (ref.locationById.get(m.location_id)?.name ?? null) : null,
+          isSelf: m.user_id === context.userId,
+        })),
+        invites: invites.map((i) => ({
+          code: i.code,
+          name: i.display_name,
+          role: i.role,
+          claimed: i.claimed_by !== null,
+          expiresLabel: clock.time(i.expires_at),
+        })),
+      }
+    },
+
+    async createInvite(command: CreateInviteCommand): Promise<{ code: string; name: string }> {
+      const result = (await rpc('boa_bar_create_invite', {
+        p_payload: {
+          venue_id: venueId,
+          role: command.role,
+          location_id: command.locationId ?? null,
+          display_name: command.displayName,
+        },
+      })) as { code?: string; display_name?: string } | null
+      if (!result?.code) throw new Error('The invite could not be created')
+      return { code: result.code, name: result.display_name ?? command.displayName }
+    },
+
+    async claimInvite(code: string): Promise<{ name: string; role: VenueRole }> {
+      const result = (await rpc('boa_bar_claim_invite', { p_code: code })) as
+        | { display_name?: string; role?: VenueRole }
+        | null
+      if (!result?.role) throw new Error('That code is not valid')
+      return { name: result.display_name ?? '', role: result.role }
+    },
+
+    async setMembership(command: SetMembershipCommand): Promise<void> {
+      await rpc('boa_bar_set_membership', {
+        p_payload: {
+          venue_id: venueId,
+          user_id: command.userId,
+          role: command.role ?? null,
+          location_id: command.locationId ?? null,
+          active: command.active,
+        },
+      })
     },
 
     /**

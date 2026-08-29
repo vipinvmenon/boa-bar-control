@@ -55,6 +55,18 @@ export async function acceptDocketRpc(payload: unknown) {
   return data
 }
 
+/**
+ * BAR-143/BAR-144. Membership administration. Called directly rather than queued:
+ * a manager standing next to a new starter needs the code now, and enrolling
+ * somebody offline would hand out a code the server has never heard of.
+ */
+export async function rpc(name: string, payload: unknown) {
+  if (!supabase) throw new Error('Supabase is not configured')
+  const { data, error } = await supabase.rpc(name, payload as Record<string, unknown>)
+  if (error) throw error
+  return data
+}
+
 export async function recordReceiptRpc(payload: unknown) {
   if (!supabase) throw new Error('Supabase is not configured')
   const { data, error } = await supabase.rpc('boa_bar_record_receipt', { p_payload: payload })

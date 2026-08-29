@@ -278,7 +278,7 @@ States are defined once in the **Status key** above.
 | BAR-134 | Idempotent acceptance | `[x]` | The accept RPC rejects a second acceptance and replays idempotently on the client key |
 | BAR-135 | Dead-letter for invalid outbox entries | `[~]` | A permanent failure is now classified as such and marked terminal on the first attempt rather than after eight, with `permanent: true`. Nothing surfaces it yet — the dead-letter view is still missing |
 | BAR-136 | QR scanner | `[~]` | No scanner. `/dockets` is the deliberate substitute — smaller, and it does not depend on a camera focusing in a dark tent. The scanner is still wanted as the fast path, and `vercel.json` already grants camera permission |
-| BAR-137 | Session longevity for shared devices | `[ ]` | Magic-link only, and no device registry — which is why the live `deviceLabel` falls back to the membership's location code |
+| BAR-137 | Session longevity for shared devices | `[ ]` | Untouched. `persistSession` is on, but JWT lifetime and refresh behaviour are Supabase project configuration rather than code, and none of it has been tested on a shared device with no data |
 | BAR-138 | Security headers and build identity | `[x]` | `06968a4` — a waiting service worker can now actually be activated; previously it could never be replaced |
 | BAR-141 | Attribute movements to their real actor | `[ ]` | The RPC stamps `auth.uid()` at flush time, so a shift handover re-attributes the previous crew member's work |
 | BAR-142 | Outbox visibility and device loss | `[ ]` | — |
@@ -350,8 +350,8 @@ States are defined once in the **Status key** above.
 | BAR-115 | Real-device offline and QR checks | `[?]` | Cannot be assessed — there is no QR scanner and no offline read path to test |
 | BAR-116 | Staff onboarding and roster | `[ ]` | — |
 | BAR-117 | Shift handover and manager-absent path | `[ ]` | — |
-| BAR-143 | Onboarding that works at load-in | `[ ]` | Magic-link only, ~20 temporary staff, congested cellular |
-| BAR-144 | In-app membership and role management | `[ ]` | When the manager leaves, variance and count sign-off leave with them |
+| BAR-143 | Onboarding that works at load-in | `[~]` | The **membership half** is done and works with any sign-in method: `boa_bar_claim_invite` binds an already signed-in user to a named membership, and the name comes from the invite so custody carries a real name from the first movement. **The sign-in method itself is undecided** — ADR-014 is PROPOSED and needs the user. Until then load-in still depends on magic links |
+| BAR-144 | In-app membership and role management | `[x]` | `202608280011` plus `/team`. A manager invites by name and role and reads out a six-character code; roles can be changed on site. **Escalation is refused in the database**: only an admin may mint or grant manager/admin, so a manager cannot promote themselves via a second account. The last admin cannot be removed or demoted — that would be unrecoverable from inside the app. Verified in a browser: a manager is offered CREW/WAREHOUSE/BAR LEAD/AUDITOR only, and their own row has no selector. **Migration unapplied** |
 | BAR-118 | Backup and restore verified | `[ ]` | — |
 | BAR-119 | Observability | `[ ]` | — |
 | BAR-120 | Staging deploy and acceptance | `[ ]` | — |
@@ -363,15 +363,15 @@ Computed from the rows above, not asserted.
 
 | | Count |
 | --- | --- |
-| `[x]` done | 54 |
-| `[~]` partial | 39 |
+| `[x]` done | 55 |
+| `[~]` partial | 40 |
 | `[R]` rewrite | 4 |
 | `[!]` defect actively present | 11 |
-| `[ ]` not started | 54 |
+| `[ ]` not started | 52 |
 | `[?]` unverifiable today | 2 |
 | **Total** | **164** |
 
-Read the middle three rows as the real position: **54 tasks are neither done nor
+Read the middle three rows as the real position: **55 tasks are neither done nor
 untouched**, and 11 of them are defects sitting in the code right now.
 
 ## Would stop the event dead
@@ -392,7 +392,7 @@ original audit.
 | 8 | **An unaccepted docket parks the full quantity in `in_transit`, which no screen reads.** Stock vanishes from every report while the ledger says it exists — exactly the case §5 exists to resolve | BAR-146 |
 | 9 | **Unsynced work exists only on one phone**, with no manager visibility and no handover or device-loss procedure. A flat, dropped or wiped phone takes its movements with it and leaves no record they existed | BAR-142 |
 | 10 | **Onboarding is email magic-link only** — ~20 temporary staff, many without a work email, on congested cellular at load-in. Those who installed the PWA find the installed app still signed out while the browser tab is in | BAR-143 |
-| 11 | **Nobody can change a role from inside the app.** When the manager leaves at 23:00, variance, reports and count sign-off leave with them | BAR-144 |
+| 11 | ~~**Nobody can change a role from inside the app.**~~ **Closed 28 Aug**, `202608280011` + `/team`. A manager can enrol a bar lead arriving at 20:00 and promote somebody before leaving at 23:00, without a database password. Escalation is refused in the database and the last admin cannot be removed | BAR-144 |
 | 12 | **`business_date` is the IST calendar date**, so the festival night splits at midnight and the identity cannot close for the event. A close-out count at 01:30 belongs to 10 October | BAR-123 |
 | 13 | ~~**Nothing resolves a user id to a person's name**~~ **Addressed 28 Aug, unapplied.** `boa_bar_person` plus an append-only name history and `boa_bar_set_person_name` are written in `supabase/migrations/202608280001_person_names.sql`. The migration has **not been executed** — until it is, this row still stands | BAR-124 |
 | 14 | **Empties are never counted** and cannot be reconstructed afterwards. This is a physical observation that exists only between 23:00 and 03:00 on 10 October, and both the excise return and the STOK settlement have a line for it | BAR-148 |

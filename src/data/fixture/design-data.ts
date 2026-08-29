@@ -28,6 +28,7 @@ import type {
   IssueOptions,
   PrintPack,
   ReceiptOptions,
+  Team,
   WasteOptions,
   MovementDetail,
   StockPosition,
@@ -281,6 +282,34 @@ export const CUSTODY: Custody = {
   acceptedAt: '19:38',
 }
 
+/**
+ * BAR-144. The team, from the design's own cast: the bar leads named on the bars
+ * list, plus the two people the custody flow names.
+ */
+export const TEAM: Team = {
+  canManage: true,
+  canGrantManagement: false,
+  locations: [
+    { id: 'warehouse', name: 'WAREHOUSE' },
+    ...BARS.map((bar) => ({ id: bar.id, name: bar.name })),
+    { id: 'hospitality', name: 'HOSPITALITY' },
+  ],
+  members: [
+    { userId: 'u-chandan', name: 'Chandan', role: 'warehouse', locationName: 'Warehouse', isSelf: false },
+    { userId: 'u-rahul', name: 'Rahul', role: 'manager', locationName: null, isSelf: true },
+    ...BARS.map((bar) => ({
+      userId: `u-${bar.lead.toLowerCase()}`,
+      name: bar.lead,
+      role: 'bar_lead' as const,
+      locationName: bar.name,
+      isSelf: false,
+    })),
+  ],
+  invites: [
+    { code: 'K7F2QX', name: 'Salman', role: 'crew', claimed: false, expiresLabel: '23:00' },
+  ],
+}
+
 /** BAR-092. The paper fallback pack. No quantities, by design. */
 export const PRINT_PACK: PrintPack = {
   venueName: 'Bangalore Open Air 2026',
@@ -469,6 +498,11 @@ export function variant() {
       toLocationId: 'bar-1',
     },
     catalogue,
+    team: {
+      ...TEAM,
+      members: TEAM.members.map((m) => ({ ...m, name: `${m.name} (v2)` })),
+      invites: [{ code: 'M4RT9B', name: 'Imran', role: 'crew' as const, claimed: true, expiresLabel: '01:00' }],
+    },
     printPack: {
       ...PRINT_PACK,
       venueName: 'Bangalore Open Air 2026 (v2)',
