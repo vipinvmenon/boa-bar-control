@@ -43,6 +43,15 @@ const ITEMS: MoreItem[] = [
   { label: 'SETTINGS', sub: 'Device · sync · printed fallback sheets', todo: 'SETTINGS' },
 ]
 
+const FAILED_ACTION: Record<string, string> = {
+  movement: 'Movement',
+  create_docket: 'Docket issue',
+  accept_docket: 'Docket acceptance',
+  submit_count: 'Count submission',
+  record_waste: 'Waste entry',
+  record_receipt: 'Stock receipt',
+}
+
 export function MoreScreen() {
   const store = useAppStore()
   const navigate = useNavigate()
@@ -85,12 +94,18 @@ export function MoreScreen() {
         <section className="sync-card">
           <div className="sync-card-top">
             <span className="sync-card-eyebrow">SYNC STATE</span>
-            <span className={`sync-card-badge ${offline ? 'offline' : ''}`}>
-              {offline ? '○ OFFLINE' : '✓ SYNCED'}
+            <span className={`sync-card-badge ${store.failed > 0 ? 'failed' : offline ? 'offline' : ''}`}>
+              {store.failed > 0
+                ? `! ${store.failed} NOT SENT`
+                : offline
+                  ? '○ OFFLINE'
+                  : '✓ SYNCED'}
             </span>
           </div>
           <p className="sync-card-copy">
-            {offline
+            {store.failed > 0
+              ? `${store.failed} action${store.failed === 1 ? '' : 's'} needs attention. ${store.lastFailureKind ? `${FAILED_ACTION[store.lastFailureKind] ?? 'Write'}: ` : ''}${store.lastFailure ?? 'The server refused the write.'} It is retained on this device; later writes wait until it is resolved.`
+              : offline
               ? `${store.pending} action${store.pending === 1 ? '' : 's'} queued on this device. They are recorded locally and will post in order when the network returns. Nothing is lost.`
               : `All movements posted. Last sync ${asOf.data?.label ?? '—'}. The device keeps a local copy of the SKU list and this bar’s ledger.`}
           </p>

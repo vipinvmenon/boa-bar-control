@@ -88,9 +88,10 @@ export function AcceptScreen() {
   // Just the "2 cases" part of the design's "2 cases · 650 ml · 31.2 L".
   const casesLabel = (describeQuantity(expected, d.unitsPerCase, d.mlPerContainer).split(' · ')[0] ?? '').toUpperCase()
 
-  // Disabled while the write is in flight, so a second tap cannot start a second
-  // acceptance before the first has landed.
-  const canAccept = (!isShort || reason !== null) && !submit.isPending
+  // Disabled while the write is in flight, or once it is durably queued, so a
+  // second tap cannot claim another acceptance before the first has landed.
+  const isQueued = submit.data?.status === 'queued'
+  const canAccept = (!isShort || reason !== null) && !submit.isPending && !isQueued
 
   /**
    * The write is awaited before navigating. The design's received screen is a
@@ -103,9 +104,15 @@ export function AcceptScreen() {
       { accepted: qty, why: reason ?? undefined },
       {
         onSuccess: (outcome) => {
+          // A queued acceptance is durable but is not yet a custody receipt.
+          // Stay here and say so; RECEIVED is reserved for a server-posted
+          // acceptance holding both people's names permanently.
+          if (outcome.status !== 'posted') return
           void navigate({
             to: '/dockets/$docketId/received',
-            params: { docketId: outcome.status === 'posted' ? outcome.docketId : d.docketId },
+            // `custody()` resolves its route identifier by docket number. The
+            // UUID is the RPC identity, not the user-facing route key.
+            params: { docketId: outcome.docketNo },
             search: { qty, reason: reason ?? undefined },
           })
         },
@@ -211,6 +218,11 @@ export function AcceptScreen() {
             NOT ACCEPTED · {submit.error.message}
           </p>
         )}
+        {isQueued ? (
+          <Advisory tone="gold">
+            ACCEPTANCE QUEUED ON THIS DEVICE · IT WILL POST AFTER SYNC.
+          </Advisory>
+        ) : null}
         <button
           className={`flow-cta ${isShort ? 'is-short' : ''}`}
           onClick={accept}

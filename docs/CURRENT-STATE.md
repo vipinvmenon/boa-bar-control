@@ -1,6 +1,6 @@
 # BOA Bar Control — Current State
 
-**Last updated: 29 August 2026 (M0 in progress)** · Event: 10 October 2026 — **42 days out**
+**Last updated: 30 August 2026 (M0 in progress)** · Event: 10 October 2026 — **41 days out**
 
 This is the single handoff record. Read it first, before writing any code.
 
@@ -276,7 +276,7 @@ States are defined once in the **Status key** above.
 | BAR-078 | Tap targets and focus | `[ ]` | Not measured since the rebuild. Needs a pass |
 | BAR-133 | Waste and accept post to the right location | `[x]` | Closed. The three screen literals went on 28 Aug; bar workspaces now carry their selected location into waste, and `boa_bar_record_waste` enforces membership location scope in the database. The legacy `demo-store` path that hardcoded `bar_3` is deleted |
 | BAR-134 | Idempotent acceptance | `[x]` | The accept RPC rejects a second acceptance and replays idempotently on the client key |
-| BAR-135 | Dead-letter for invalid outbox entries | `[~]` | A permanent failure is now classified as such and marked terminal on the first attempt rather than after eight, with `permanent: true`. Nothing surfaces it yet — the dead-letter view is still missing |
+| BAR-135 | Dead-letter for invalid outbox entries | `[x]` | Completed 30 Aug. Permanent failures stop on the first refusal and the existing SYNC STATE card shows the failed action and retained server message. A queued acceptance stays on RECEIVE STOCK; only a posted acceptance opens RECEIVED, using the docket number that `custody()` resolves. Proven against live D-0002: its self-acceptance moved from `1 PENDING` to `1 NOT SENT` while stock and docket status remained unchanged |
 | BAR-136 | QR scanner | `[~]` | No scanner. `/dockets` is the deliberate substitute — smaller, and it does not depend on a camera focusing in a dark tent. The scanner is still wanted as the fast path, and `vercel.json` already grants camera permission |
 | BAR-137 | Session longevity for shared devices | `[ ]` | Untouched. `persistSession` is on, but JWT lifetime and refresh behaviour are Supabase project configuration rather than code, and none of it has been tested on a shared device with no data |
 | BAR-138 | Security headers and build identity | `[x]` | `06968a4` — a waiting service worker can now actually be activated; previously it could never be replaced |
@@ -363,8 +363,8 @@ Computed from the rows above, not asserted.
 
 | | Count |
 | --- | --- |
-| `[x]` done | 61 |
-| `[~]` partial | 40 |
+| `[x]` done | 62 |
+| `[~]` partial | 39 |
 | `[R]` rewrite | 3 |
 | `[!]` defect actively present | 7 |
 | `[ ]` not started | 51 |
@@ -561,6 +561,70 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 30 August 2026 · codex
+
+**Completed: BAR-135 — invalid outbox entries stop, remain visible, and cannot produce a false custody receipt.**
+
+An authenticated live session created docket **D-0002** for 6 cans of Bira 91
+White, Warehouse → Bar 3. The create half posted: Warehouse moved 613 → 607,
+in-transit moved 24 → 30, total stock stayed 637, and the open-docket count moved
+1 → 2. This proves screen → service → outbox → RPC → ledger for the issue leg.
+
+The same signed-in user (VIPIN, the issuer) then attempted acceptance. The
+database's BAR-147 rule correctly prevented the custody transfer: after the
+attempt Bars remained 0, in-transit remained 30 and D-0002 remained awaiting.
+The walkthrough exposed two client defects:
+
+1. The RPC raises `42501` with `a docket cannot be accepted by the person who
+   issued it`. `classifyFailure` treats every `42501` as an authentication stop,
+   so this permanent rule violation remains `pending` instead of dead-lettering.
+   The shell now shows **LIVE · 1 PENDING**, and ordered replay means it can block
+   every later write on this browser.
+2. After the eight-second settle timeout, `AcceptScreen` treats the queued result
+   as success and navigates to the RECEIVED route with the docket UUID. The live
+   `custody()` query accepts only a docket number, so the supposed receipt renders
+   `Docket <uuid> was not found`. A genuinely posted acceptance would take the
+   same UUID branch and fail the same way.
+
+Both are fixed. The explicit self-acceptance refusal is classified before the
+general `42501` authentication stop, so it dead-letters permanently on its first
+attempt. PostgREST-shaped plain objects now retain their `message` instead of
+being flattened to `Unknown sync failure`. The existing SYNC STATE card displays
+the failed action and newest retained error rather than claiming `✓ SYNCED / All
+movements posted`. `AcceptScreen` remains on RECEIVE STOCK for a durable queued
+write and opens RECEIVED only for `status = posted`, routing by the server-minted
+docket number rather than its UUID.
+
+The original live entry was created before error-message preservation changed,
+so it can identify itself only as `Docket acceptance: Unknown sync failure`.
+After hot reload the same retained row changed from **LIVE · 1 PENDING** to **LIVE
+· 0 PENDING / 1 NOT SENT · NEEDS ATTENTION**. It did not retry again. Warehouse
+remained 607, Bars 0, in-transit 30 and D-0002 remained awaiting acceptance.
+
+**Verified:** typecheck, lint, **138 unit tests**, build, `check:sql` and the
+fixture visual gate pass. The visual gate needed an unsandboxed Chromium launch;
+its first sandboxed attempt failed before opening a page, then the approved rerun
+completed successfully. Live browser evidence is the retained D-0002 transition
+above.
+
+**Files changed:** `src/domain/{outbox-policy,outbox-policy.test}.ts`,
+`src/lib/offline-db.ts`, `src/lib/app-store.tsx`, `src/screens/custody/AcceptScreen.tsx`,
+`src/screens/more/MoreScreen.tsx`, `src/styles.css`, `docs/CURRENT-STATE.md`.
+
+**Architecture changes:** none.
+
+**Known issues / not verified:** D-0002 has not been accepted by a second person.
+The failed self-acceptance is retained in this browser's durable outbox and was
+not deleted or altered; ordered replay deliberately holds later writes until a
+human resolves it. Raw database rows were not inspected because the database
+password is available only in the user's shell. Active members also have no
+sign-out control, so this device cannot perform the required account handoff.
+
+**Recommended next:** scope the BAR-137 sign-out/account-handoff affordance, then
+retry D-0002 with a different Bar 3 user. Do not claim the custody chain is proven
+until Bars moves 0 → 6, in-transit moves 30 → 24, and both names render on the
+RECEIVED screen.
 
 ### Session — 29 August 2026 · codex
 

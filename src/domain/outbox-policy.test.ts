@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   classifyFailure,
+  failureMessage,
   isTerminal,
   MAX_ATTEMPTS,
   nextAttemptDelayMs,
@@ -158,6 +159,10 @@ describe('classifyFailure', () => {
       new Error('cannot accept more than issued for sku x (issued 48, offered 60)'),
       new Error('custody movements must balance across locations'),
       { message: 'each line needs positive containers and ml', code: '23514' },
+      // The RPC deliberately uses 42501 for this custody boundary, but a new
+      // login cannot make the issuer a different person. It is permanent, not
+      // the auth-stop case used for an expired session.
+      { message: 'a docket cannot be accepted by the person who issued it', code: '42501' },
     ]) {
       expect(classifyFailure(error)).toBe('invalid')
     }
@@ -184,6 +189,20 @@ describe('classifyFailure', () => {
   it('classifies a duplicate ahead of an auth match when both appear', () => {
     // A duplicate is success; misreading it as auth would stop the entire drain.
     expect(classifyFailure(new Error('duplicate key — jwt also mentioned'))).toBe('duplicate')
+  })
+})
+
+describe('failureMessage', () => {
+  it('retains the message from a PostgREST-shaped plain object', () => {
+    expect(failureMessage({
+      message: 'a docket cannot be accepted by the person who issued it',
+      code: '42501',
+    })).toBe('a docket cannot be accepted by the person who issued it')
+  })
+
+  it('falls back only when no usable message exists', () => {
+    expect(failureMessage(new Error('network unavailable'))).toBe('network unavailable')
+    expect(failureMessage({ code: 'XX000' })).toBe('Unknown sync failure')
   })
 })
 

@@ -54,6 +54,9 @@ type AppStore = {
   /** Writes sitting in the outbox, and writes that have given up. */
   pending: number
   failed: number
+  lastFailureKind?: string
+  /** Exact server refusal for the newest retained dead letter (BAR-135). */
+  lastFailure?: string
   toast?: string
   flash: (message: string) => void
 }
@@ -64,7 +67,15 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
   const auth = useAuth()
   const [toast, setToast] = useState<string>()
   const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine)
-  const [queue, setQueue] = useState({ pending: 0, failed: 0 })
+  const [queue, setQueue] = useState<{
+    pending: number
+    failed: number
+    lastFailureKind?: string
+    lastFailure?: string
+  }>({
+    pending: 0,
+    failed: 0,
+  })
 
   /**
    * BAR-073. Real connectivity, from the browser's own events, replacing a
@@ -121,10 +132,12 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       offline,
       pending: queue.pending,
       failed: queue.failed,
+      lastFailureKind: queue.lastFailureKind,
+      lastFailure: queue.lastFailure,
       toast,
       flash,
     }),
-    [venueRole, auth.activeMembership?.venueName, offline, queue.pending, queue.failed, toast, flash],
+    [venueRole, auth.activeMembership?.venueName, offline, queue.pending, queue.failed, queue.lastFailureKind, queue.lastFailure, toast, flash],
   )
 
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>

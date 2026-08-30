@@ -275,6 +275,7 @@ h1 { font: 400 31px/1 'Anton', sans-serif; letter-spacing: .035em; text-transfor
 .sync-card-eyebrow { color: rgba(166,201,180,.72); font: 700 10px/1 'Oswald', sans-serif; letter-spacing: .2em; }
 .sync-card-badge { color: var(--green); font: 600 11px/1 'Oswald', sans-serif; letter-spacing: .1em; }
 .sync-card-badge.offline { color: var(--gold); }
+.sync-card-badge.failed { color: var(--red); }
 .sync-card-copy { margin-top: 10px; color: rgba(166,201,180,.72); font: 400 12px/1.5 'Archivo', sans-serif; }
 .sync-card-grid { margin-top: 12px; padding-top: 12px; display: flex; gap: 12px; border-top: 1px solid rgba(166,201,180,.14); }
 .sync-card-grid > div { flex: 1; }

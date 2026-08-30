@@ -30,12 +30,22 @@ export type FailureKind = 'auth' | 'duplicate' | 'invalid' | 'transient'
 /** The shape both a thrown Error and a PostgrestError satisfy. */
 export type FailureLike = { message?: unknown; code?: unknown } | string | null | undefined
 
+/** Preserve the server's explanation even when PostgREST throws a plain object. */
+export function failureMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = String((error as { message?: unknown }).message ?? '').trim()
+    if (message) return message
+  }
+  return 'Unknown sync failure'
+}
+
 function partsOf(error: FailureLike): { message: string; code: string } {
-  if (typeof error === 'string') return { message: error.toLowerCase(), code: '' }
-  if (!error || typeof error !== 'object') return { message: '', code: '' }
+  if (!error) return { message: '', code: '' }
   return {
-    message: String((error as { message?: unknown }).message ?? '').toLowerCase(),
-    code: String((error as { code?: unknown }).code ?? ''),
+    message: failureMessage(error).toLowerCase(),
+    code: typeof error === 'object' ? String((error as { code?: unknown }).code ?? '') : '',
   }
 }
 
@@ -70,6 +80,14 @@ export function classifyFailure(error: FailureLike): FailureKind {
   // ---- duplicate: the server already has it -------------------------------
   // 23505 unique_violation, and boa_bar_accept_docket's 'docket % is already %'.
   if (code === '23505' || /duplicate key|\bis already\b/.test(message)) return 'duplicate'
+
+  // ---- permanent custody rule, despite its authorisation SQLSTATE ---------
+  // Self-acceptance is rejected with 42501 because it is an authorisation
+  // boundary, but re-authenticating cannot make this action valid: the issuer is
+  // permanently the issuer for this docket. Classify the exact RPC message
+  // before the general 42501 auth stop or this entry stays pending forever and
+  // blocks every later movement on the device (BAR-135 / BAR-147).
+  if (/docket cannot be accepted by the person who issued it/.test(message)) return 'invalid'
 
   // ---- auth: stop the drain -----------------------------------------------
   // 28000 invalid_authorization_specification, 42501 insufficient_privilege.

@@ -31,6 +31,7 @@
 import Dexie, { type EntityTable } from 'dexie'
 import {
   classifyFailure,
+  failureMessage,
   isTerminal,
   nextAttemptDelayMs,
   selectDrainBatch,
@@ -232,12 +233,18 @@ export async function clearDraft(key: string): Promise<void> {
 }
 
 export async function getQueueSummary() {
-  const [pending, syncing, failed] = await Promise.all([
+  const [pending, syncing, failedRows] = await Promise.all([
     offlineDb.outbox.where('status').equals('pending').count(),
     offlineDb.outbox.where('status').equals('syncing').count(),
-    offlineDb.outbox.where('status').equals('failed').count(),
+    offlineDb.outbox.where('status').equals('failed').toArray(),
   ])
-  return { pending: pending + syncing, failed }
+  const newestFailure = [...failedRows].sort((a, b) => b.createdAt - a.createdAt)[0]
+  return {
+    pending: pending + syncing,
+    failed: failedRows.length,
+    lastFailureKind: newestFailure?.kind,
+    lastFailure: newestFailure?.lastError,
+  }
 }
 
 async function flushOutbox() {
@@ -256,7 +263,7 @@ async function flushOutbox() {
       await offlineDb.outbox.update(row.id, { status: 'done', result, lastError: undefined })
     } catch (error) {
       const kind = classifyFailure(error as { message?: unknown; code?: unknown })
-      const message = error instanceof Error ? error.message : 'Unknown sync failure'
+      const message = failureMessage(error)
 
       if (kind === 'duplicate') {
         // The server already holds it. Marking this failed would be a lie about a
