@@ -19,7 +19,7 @@ restate the architecture — `/docs` is canonical. Read in this order:
 
 | | |
 | --- | --- |
-| Tasks | **62 done · 39 partial · 3 rewrite · 7 defects · 51 not started · 2 unverifiable** (164 total) |
+| Tasks | **62 done · 40 partial · 3 rewrite · 7 defects · 51 not started · 2 unverifiable** (164 total) |
 | Unit tests | 138 passing |
 | Database | All local migrations through `202608290002` applied · **128 pgTAP assertions, 0 failed** |
 | Gates | typecheck, lint, test, build, `check:sql` all green |
@@ -82,7 +82,8 @@ them.
 - **Item 10 — BAR-148 empties.** On the printed sheet only; nothing captures
   empties in the app or the schema. Blocked on the user's BAR-160 decision.
 - **Item 11 — BAR-068** (above) and **BAR-137**, session longevity on shared
-  phones. Untouched, and largely Supabase project configuration.
+  phones. Sign-out/cache isolation is implemented; offline cold start and JWT
+  longevity remain unverified, and much of this is Supabase project configuration.
 - **Item 12 — BAR-164 remainder.** `src/features/screens.tsx` still holds the
   `reports` empty state until BAR-107.
 

@@ -130,7 +130,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     },
     signOut: async () => {
       if (!supabase) return
-      const { error: signOutError } = await supabase.auth.signOut()
+      // A shared phone must be handable to the next person even in a dead spot.
+      // Local scope clears this device's session without requiring a network
+      // round-trip; server-side sessions remain governed by their expiry.
+      const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' })
       if (signOutError) throw signOutError
     },
     claimInvite: async (code) => {

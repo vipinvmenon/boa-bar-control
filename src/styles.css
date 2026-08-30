@@ -282,6 +282,7 @@ h1 { font: 400 31px/1 'Anton', sans-serif; letter-spacing: .035em; text-transfor
 .sync-card-grid span { display: block; color: rgba(166,201,180,.6); font: 500 9px/1 'Oswald', sans-serif; letter-spacing: .14em; }
 .sync-card-grid strong { display: block; margin-top: 6px; color: var(--bone); font: 600 13px/1 'Oswald', sans-serif; letter-spacing: .06em; }
 .more-build { text-align: center; color: rgba(166,201,180,.35); font: 400 10px/1.6 'Oswald', sans-serif; letter-spacing: .12em; }
+.sync-signout { margin-top: 0; }
 
 /* ---------------------------------------------------------------------------
    BAR-102 — home. Values from design-markup.html:15-127.

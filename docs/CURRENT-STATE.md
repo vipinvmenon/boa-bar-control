@@ -278,7 +278,7 @@ States are defined once in the **Status key** above.
 | BAR-134 | Idempotent acceptance | `[x]` | The accept RPC rejects a second acceptance and replays idempotently on the client key |
 | BAR-135 | Dead-letter for invalid outbox entries | `[x]` | Completed 30 Aug. Permanent failures stop on the first refusal and the existing SYNC STATE card shows the failed action and retained server message. A queued acceptance stays on RECEIVE STOCK; only a posted acceptance opens RECEIVED, using the docket number that `custody()` resolves. Proven against live D-0002: its self-acceptance moved from `1 PENDING` to `1 NOT SENT` while stock and docket status remained unchanged |
 | BAR-136 | QR scanner | `[~]` | No scanner. `/dockets` is the deliberate substitute — smaller, and it does not depend on a camera focusing in a dark tent. The scanner is still wanted as the fast path, and `vercel.json` already grants camera permission |
-| BAR-137 | Session longevity for shared devices | `[ ]` | Untouched. `persistSession` is on, but JWT lifetime and refresh behaviour are Supabase project configuration rather than code, and none of it has been tested on a shared device with no data |
+| BAR-137 | Session longevity for shared devices | `[~]` | Sign-out/account handoff slice completed 30 Aug: More exposes SIGN OUT, clears user-scoped reference cache and drafts, clears in-memory query data, retains unsent outbox commands, and uses local-scope Supabase sign-out so it works without a network round-trip. Browser verified: active VIPIN session returned to Staff sign in. Full offline cold-start, JWT lifetime and refresh behaviour remain unverified |
 | BAR-138 | Security headers and build identity | `[x]` | `06968a4` — a waiting service worker can now actually be activated; previously it could never be replaced |
 | BAR-141 | Attribute movements to their real actor | `[ ]` | The RPC stamps `auth.uid()` at flush time, so a shift handover re-attributes the previous crew member's work |
 | BAR-142 | Outbox visibility and device loss | `[ ]` | — |
@@ -564,6 +564,34 @@ Recommended next: BAR-nnn
 
 ### Session — 30 August 2026 · codex
 
+**Completed: BAR-137 (partial) — shared-device sign-out and cache isolation.**
+
+The approved handoff slice is now in More. `SIGN OUT` clears the user-scoped
+reference cache and unfinished drafts in one Dexie transaction, clears React Query
+data, retains pending/failed outbox commands for the user's next sign-in, and
+calls Supabase local-scope sign-out so a dead spot cannot prevent handoff. A
+browser run as VIPIN showed the button and returned to the Staff sign-in screen
+after tapping it; no live venue data remained visible.
+
+**Verified:** typecheck, lint, **138 unit tests**, build, `check:sql` and the
+fixture visual gate pass. The sign-out path was exercised in the live browser.
+
+**Files changed:** `src/lib/offline-db.ts`, `src/lib/auth.tsx`,
+`src/screens/more/MoreScreen.tsx`, `src/styles.css`, `docs/CURRENT-STATE.md`,
+`docs/HANDOVER.md`.
+
+**Architecture changes:** none.
+
+**Known issues / not verified:** This proves handoff while online; a real
+offline cold start, JWT expiry/refresh over a shift, and direct inspection of the
+retained outbox rows were not performed. D-0002 still needs a different Bar 3
+account to complete acceptance.
+
+**Recommended next:** use the cleared browser to sign in as the independent Bar 3
+receiver and complete D-0002.
+
+### Session — 30 August 2026 · codex
+
 **Completed: BAR-135 — invalid outbox entries stop, remain visible, and cannot produce a false custody receipt.**
 
 An authenticated live session created docket **D-0002** for 6 cans of Bira 91
@@ -621,10 +649,9 @@ human resolves it. Raw database rows were not inspected because the database
 password is available only in the user's shell. Active members also have no
 sign-out control, so this device cannot perform the required account handoff.
 
-**Recommended next:** scope the BAR-137 sign-out/account-handoff affordance, then
-retry D-0002 with a different Bar 3 user. Do not claim the custody chain is proven
-until Bars moves 0 → 6, in-transit moves 30 → 24, and both names render on the
-RECEIVED screen.
+**Recommended next:** sign in a second account in the now-cleared browser and
+retry D-0002 as Bar 3's receiver. Do not claim the custody chain is proven until
+Bars moves 0 → 6, in-transit moves 30 → 24, and both names render on RECEIVED.
 
 ### Session — 29 August 2026 · codex
 

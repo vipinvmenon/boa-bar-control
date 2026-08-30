@@ -20,9 +20,13 @@
  * offline and to say so; this is where a bar lead checks whether the queue has
  * drained before they go home.
  */
+import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { ChevronRight } from 'lucide-react'
 import { useAppStore } from '../../lib/app-store'
+import { useAuth } from '../../lib/auth'
+import { clearUserCache } from '../../lib/offline-db'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
 
 type MoreItem = {
@@ -54,10 +58,27 @@ const FAILED_ACTION: Record<string, string> = {
 
 export function MoreScreen() {
   const store = useAppStore()
+  const auth = useAuth()
+  const queryClient = useQueryClient()
   const navigate = useNavigate()
   const offline = store.offline
+  const [signingOut, setSigningOut] = useState(false)
+  const [signOutError, setSignOutError] = useState<string>()
   const session = useRepositoryQuery(['session'], (r) => r.session())
   const asOf = useRepositoryQuery(['asOf'], (r) => r.asOf())
+
+  const signOut = async () => {
+    setSigningOut(true)
+    setSignOutError(undefined)
+    try {
+      await clearUserCache()
+      queryClient.clear()
+      await auth.signOut()
+    } catch (error) {
+      setSignOutError(error instanceof Error ? error.message : 'Could not sign out')
+      setSigningOut(false)
+    }
+  }
 
   const activate = (item: MoreItem) => {
     if (item.managerOnly && store.role !== 'Manager') {
@@ -120,6 +141,11 @@ export function MoreScreen() {
             </div>
           </div>
         </section>
+
+        {signOutError ? <p className="flow-error" role="alert">NOT SIGNED OUT · {signOutError}</p> : null}
+        <button className="flow-cta-ghost sync-signout" onClick={() => void signOut()} disabled={signingOut}>
+          {signingOut ? 'Signing out…' : 'Sign out'}
+        </button>
 
         <p className="more-build">BOA BAR INVENTORY · BUILD 0.4 · BOA 2026</p>
       </div>

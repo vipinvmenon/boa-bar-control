@@ -232,6 +232,19 @@ export async function clearDraft(key: string): Promise<void> {
   await offlineDb.draft.delete(key)
 }
 
+/**
+ * BAR-137. Remove data scoped to the signed-in person before a shared device is
+ * handed to somebody else. Unsent commands are deliberately retained: the
+ * security contract says they belong to this user's next sign-in and must not be
+ * silently discarded. The shell and query cache are cleared by the caller.
+ */
+export async function clearUserCache(): Promise<void> {
+  await offlineDb.transaction('rw', offlineDb.referenceCache, offlineDb.draft, async () => {
+    await offlineDb.referenceCache.clear()
+    await offlineDb.draft.clear()
+  })
+}
+
 export async function getQueueSummary() {
   const [pending, syncing, failedRows] = await Promise.all([
     offlineDb.outbox.where('status').equals('pending').count(),
