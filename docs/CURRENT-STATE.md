@@ -196,7 +196,7 @@ States are defined once in the **Status key** above.
 | BAR-026 | `excise_category` NOT NULL | `[~]` | Still nullable free text, so the constraint half of the task is undone. But it is no longer NULL for every SKU: the bootstrap populates a **provisional** vocabulary (`beer`, `spirit`, NULL for mixers) so the excise view has a shape to be built against. The vocabulary will change once BAR-158 lands |
 | BAR-027 | Missing spec §13 columns | `[~]` | BAR-124 added display names. `abv`, `supplier_vendor_id`, `is_licenced`, `is_blind`, `witnessed_by`, `counted_at`, empties and delivery-note remain absent |
 | BAR-028 | Non-negative position guard | `[~]` | `202608310004_non_negative_position.sql` adds a trigger on the sole balance-projection writer, rejecting any resulting negative containers or millilitres. Migration written and `check:sql` passes; live application and behavioral proof are parked with the test work |
-| BAR-029 | Index `movement_line.movement_id` | `[ ]` | The two indexes are `(venue_id, business_date, occurred_at)` and `(location_id, sku_id)`. `movement_id` is still an unindexed FK, evaluated per row by the read policy — and the live repository queries it by `movement_id` on every ledger read |
+| BAR-029 | Index `movement_line.movement_id` | `[~]` | `202608310008_movement_line_index.sql` adds the missing movement-id join index used by ledger detail/audit reads. Migration written and `check:sql` passes; hosted application is parked |
 | BAR-030 | Behavioural pgTAP suite | `[~]` | **134 assertions pass against the live database, 0 failed** (31 Aug). `movement_guards` adds six behavioural checks for BAR-017/018/022; `location_scope` has 11; `privileges` has 64; `recount` has 9 immutability checks. `ledger.test.sql` (11) remains existence-only and is the last file to replace |
 | BAR-031 | Execute migrations | `[x]` | **All migrations through `202608310003_comp_two_leg` applied and present in remote migration history, 31 Aug.** PostgreSQL 17.6. `test:db` reports 128 assertions, 0 failed; `db-state.mjs` reports 1 venue, 9 locations, 11 SKUs, 2 memberships, 4 movements, 2 count sessions, and 3 auth users |
 | BAR-032 | Deterministic seed that renders the design | `[~]` | **Reference data verified present in the hosted project 28 Aug: 1 venue, 9 locations, 11 SKUs.** Opening ledger not yet posted — blocked on the first `auth.users` row. Still no serve mappings (BAR-159) and no tolerance bands in the database (BAR-025) |
@@ -561,6 +561,28 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 31 August 2026 · codex
+
+**Completed: BAR-029 implementation — movement-line join index.**
+
+Added `202608310008_movement_line_index.sql` with an index on
+`boa_bar_movement_line(movement_id)`, the join key used by movement detail and
+audit reads. `check:sql`, typecheck, lint, and 143 unit tests pass.
+
+**Not verified:** the migration has not been applied to the hosted database while
+DB verification is parked.
+
+**Files changed:** `supabase/migrations/202608310008_movement_line_index.sql`,
+`docs/CURRENT-STATE.md`
+
+**Architecture changes:** none.
+
+**Known issues:** hosted migration application and device/print checks remain
+pending.
+
+**Recommended next:** continue the implementation pass, then apply migrations
+004–008 and run the full verification suite.
 
 ### Session — 31 August 2026 · codex
 
