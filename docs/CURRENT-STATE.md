@@ -564,6 +564,30 @@ Recommended next: BAR-nnn
 
 ### Session — 31 August 2026 · codex
 
+**Completed: BAR-104 UI correction — More list no longer clips SETTINGS.**
+
+The supplied screenshot showed the SETTINGS label present but its wrapped subtitle
+cut off where the list flex item met the sync card. `.more-list` now keeps its
+intrinsic height (`flex: none`), allowing the section body to scroll instead of
+shrinking and clipping the final option. Browser screenshot verification shows
+the complete SETTINGS row and subtitle.
+
+**Verified:** typecheck, lint, 139 unit tests, and build pass. The visual gate was
+not green in this environment (it reported the existing fixture harness as
+hardcoded), so no fidelity claim is made from that command.
+
+**Files changed:** `src/styles.css`, `docs/CURRENT-STATE.md`.
+
+**Architecture changes:** none.
+
+**Known issues / not verified:** Other overlap reports need their own reproducible
+viewport capture; D-0002 acceptance still has not been confirmed in the database.
+
+**Recommended next:** retry D-0002 acceptance, then audit each reported screen at
+the user's viewport.
+
+### Session — 31 August 2026 · codex
+
 **Completed: BAR-135 follow-up — explicit resolution for retained invalid outbox entries.**
 
 The More screen now exposes `Resolve failed action` when a dead-lettered command
