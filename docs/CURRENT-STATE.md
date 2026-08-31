@@ -181,7 +181,7 @@ States are defined once in the **Status key** above.
 | BAR-163 | Count witness column | `[ ]` | `boa_bar_count_session` has `assigned_to` and `reviewed_by`; no witness column |
 | BAR-012 | `GRANT USAGE ON SCHEMA private` | `[x]` | `3c6acd9`, verified 28 Aug — `authenticated` has USAGE on `private`, `anon` has none, and `private.boa_bar_balance` is unreachable |
 | BAR-013 | Harden ledger immutability | `[~]` | Row triggers on `movement`, `movement_line` and now `person_name_history`; `alter default privileges … revoke truncate` present. Still no `ENABLE ALWAYS` and no `FORCE ROW LEVEL SECURITY`, so a table owner bypasses both |
-| BAR-014 | `v_position` sums the ledger | `[ ]` | **No view of any kind exists in any migration** (grep `create .*view` → 0 hits). `boa_bar_inventory_snapshot` reads the projection exclusively |
+| BAR-014 | `v_position` sums the ledger | `[~]` | `202608310006_position_view.sql` adds security-invoker `public.boa_bar_v_position`, aggregating immutable movement lines independently of the projection. Migration written and `check:sql` passes; hosted application and behavior proof are parked |
 | BAR-015 | Reconciliation view and test | `[ ]` | Same. Nothing compares the projection against a ledger sum |
 | BAR-016 | Protect the balance projection | `[~]` | `private.boa_bar_balance` now has exactly one writer, `private.boa_bar_post_movement`, instead of the insert being duplicated per entry point. Still no trigger and no scheduled reconciliation — `pnpm bootstrap` compares the projection against a ledger sum once, at bootstrap, which is not the same as protecting it |
 | BAR-017 | Fix `comp` to a two-leg move | `[x]` | `202608310003_comp_two_leg.sql` applied live; `movement_guards.test.sql` proves balanced hospitality comps and rejects unbalanced comps. Full suite: 134 assertions, 0 failed |
@@ -561,6 +561,29 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 31 August 2026 · codex
+
+**Completed: BAR-014 implementation — ledger-derived position view.**
+
+Added security-invoker `public.boa_bar_v_position`, aggregating containers,
+millilitres, value, and last movement time directly from immutable movement lines.
+It is not granted to client roles yet, so it cannot create a second live read path.
+`check:sql`, typecheck, lint, and 143 unit tests pass.
+
+**Not verified:** migration application and view behavior against the hosted
+database remain parked.
+
+**Files changed:** `supabase/migrations/202608310006_position_view.sql`,
+`docs/CURRENT-STATE.md`
+
+**Architecture changes:** none.
+
+**Known issues:** BAR-015 reconciliation view is still open; DB/device/print
+verification remains parked.
+
+**Recommended next:** continue the remaining implementation pass, then apply and
+verify the migrations together.
 
 ### Session — 31 August 2026 · codex
 
