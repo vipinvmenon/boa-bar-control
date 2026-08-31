@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, Outlet, useRouterState } from '@tanstack/react-router'
-import { BatteryMedium, Star, TriangleAlert, Wifi, WifiOff } from 'lucide-react'
+import { Star, TriangleAlert, Wifi, WifiOff } from 'lucide-react'
 import { useAppStore } from '../lib/app-store'
 import { BottomNav } from '../components/layout/BottomNav'
 import { configError } from '../lib/supabase'
@@ -59,11 +59,6 @@ export function AppShell() {
             DEMO DATA · NOT LIVE · NOTHING IS RECORDED
           </div>
         )}
-        <div className="status-line" aria-hidden="true">
-          <span>19:44</span>
-          <span className="status-network"><BatteryMedium size={16} strokeWidth={1.7} />4G</span>
-        </div>
-
         {isHome && <header className="app-header">
           <div className="brand-line">
             <div className="brand-lockup">

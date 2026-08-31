@@ -231,7 +231,7 @@ States are defined once in the **Status key** above.
 | BAR-048 | Zod at every boundary | `[~]` | Zod now validates both write use cases at the service boundary — the first real use outside `domain/inventory.ts`. RPC **responses**, QR payloads, POS rows and local-store reads are still unvalidated; `rows.ts` casts by hand |
 | BAR-129 | Bounded quantity inputs | `[~]` | Issue cannot exceed the warehouse position, accept cannot exceed the docket, waste floors at 1 and the database refuses more than the location holds. A non-negative position guard on the ledger itself is still BAR-028 |
 | BAR-130 | Full SKU catalogue on every screen | `[x]` | Issue, count and waste all list the full active catalogue through the repository. The `slice(0, 5)` and `slice(0, 3)` screens are deleted |
-| BAR-131 | Remove the fake OS status bar | `[!]` | `AppShell.tsx:59` still renders `status-line` with a hardcoded `19:44` and a fake 4G indicator |
+| BAR-131 | Remove the fake OS status bar | `[x]` | Removed the hardcoded `19:44` / `4G` chrome from `AppShell` and its CSS; real OS/browser chrome is no longer impersonated |
 | BAR-132 | Seven roles, not two | `[~]` | `auth.tsx` carries all seven. `demo-store.tsx:287` still collapses them to a `managerRoles` boolean |
 
 ### M3 — Stock enters, and moves with custody
@@ -561,6 +561,25 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 31 August 2026 · codex
+
+**Completed: BAR-131 — removed fake OS status chrome.**
+
+Deleted the shell's hardcoded `19:44`, battery icon, and `4G` indicator. The app
+no longer presents a frozen device status bar beside real venue-local timestamps.
+
+**Verified:** typecheck, lint, 139 unit tests, and build pass.
+
+**Files changed:** `src/app/AppShell.tsx`, `src/styles.css`, `docs/CURRENT-STATE.md`.
+
+**Architecture changes:** none.
+
+**Known issues / not verified:** the visual gate remains unsuitable in this
+environment because its fixture run reports stale hardcoded-screen results.
+
+**Recommended next:** apply and prove pending migrations, then continue Release 1
+verification.
 
 ### Session — 31 August 2026 · codex
 
