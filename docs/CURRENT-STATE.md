@@ -178,7 +178,7 @@ States are defined once in the **Status key** above.
 | BAR-156 | Interim opening-stock bootstrap | `[~]` | `202608280002` applied 28 Aug; `boa_bar_claim_venue` and `boa_bar_open_stock` exist. **Opening stock posted 29 Aug**: movement `8a0c5b2c`, 10 lines, 638 containers, and the script confirms the ledger sum and the projection agree on every line. The claim window is closed |
 | BAR-011 | Verify no table-level write grants | `[x]` | **Verified against the live database 28 Aug**, not asserted: `privileges.test.sql` 52/52, plus `ledger.test.sql` 11/11 — 63 assertions, 0 failed. It failed the first time it was ever actually run, which is how the two EXECUTE holes were found. It now enumerates every function for both roles |
 | BAR-161 | Location-scope the snapshot RPC | `[x]` | **Applied and PROVEN against the live database, 28 August: `blind_count.test.sql` 6/6.** A bar lead can read their bar with no open count, and once a count is open the snapshot returns no row for it and the raw movement lines are unreadable. Required `202608280008` to fix a live defect `_0007` introduced — see event-stopper 21 |
-| BAR-163 | Count witness column | `[ ]` | `boa_bar_count_session` has `assigned_to` and `reviewed_by`; no witness column |
+| BAR-163 | Count witness column | `[~]` | V1 decision: witnessing remains paper-only. The printed count sheet has a `WITNESSED BY` signature block; the app keeps `assigned_to` and manager review without adding a second-user submit gate |
 | BAR-012 | `GRANT USAGE ON SCHEMA private` | `[x]` | `3c6acd9`, verified 28 Aug — `authenticated` has USAGE on `private`, `anon` has none, and `private.boa_bar_balance` is unreachable |
 | BAR-013 | Harden ledger immutability | `[~]` | Row triggers on `movement`, `movement_line` and now `person_name_history`; `alter default privileges … revoke truncate` present. Still no `ENABLE ALWAYS` and no `FORCE ROW LEVEL SECURITY`, so a table owner bypasses both |
 | BAR-014 | `v_position` sums the ledger | `[~]` | `202608310006_position_view.sql` adds security-invoker `public.boa_bar_v_position`, aggregating immutable movement lines independently of the projection. Migration written and `check:sql` passes; hosted application and behavior proof are parked |
@@ -561,6 +561,24 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 31 August 2026 · codex
+
+**Completed: BAR-163 decision — paper-only count witnessing.**
+
+The user selected the V1 approach of recording the second person's witness on the
+printed count sheet only. The app will not add a required second-user submission
+step; its existing assigned-counter and manager-review fields remain unchanged.
+
+**Files changed:** `docs/CURRENT-STATE.md`
+
+**Architecture changes:** none.
+
+**Known issues:** app-level witness capture is deferred; paper print verification
+remains pending.
+
+**Recommended next:** continue with the next release decision or implementation
+gap.
 
 ### Session — 31 August 2026 · codex
 
