@@ -497,6 +497,8 @@ export type Team = {
   locations: { id: string; name: string }[]
   /** Whether the caller may invite and change roles at all. */
   canManage: boolean
+  /** Explicit operator allowlist for issuing invitations. */
+  canInvite: boolean
   /** Only an admin may create or grant manager and admin. */
   canGrantManagement: boolean
 }

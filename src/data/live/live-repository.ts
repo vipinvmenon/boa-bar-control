@@ -825,8 +825,9 @@ export function createLiveRepository(context: LiveContext): Repository {
       const ref = await reference()
       const canManage = context.role === 'manager' || context.role === 'admin'
       const canGrantManagement = context.role === 'admin'
+      const canInvite = Boolean(await rpc('boa_bar_can_invite', {}))
 
-      const invites = canManage
+      const invites = canInvite
         ? await db
             .from('boa_bar_invite')
             .select('code, display_name, role, claimed_by, expires_at')
@@ -843,6 +844,7 @@ export function createLiveRepository(context: LiveContext): Repository {
 
       return {
         canManage,
+        canInvite,
         canGrantManagement,
         locations: ref.locations
           .filter((l) => l.kind !== 'in_transit')

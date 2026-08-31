@@ -59,7 +59,7 @@ export function TeamScreen() {
       </header>
 
       <div className="section-body">
-        {data?.canManage && (
+        {data?.canInvite && (
           <section className="panel team-card">
             <span className="issue-label"><UserPlus size={13} strokeWidth={2} aria-hidden="true" /> INVITE SOMEBODY</span>
             <p className="team-helper">Create a single-use code, then give it to the staff member who will receive this access.</p>

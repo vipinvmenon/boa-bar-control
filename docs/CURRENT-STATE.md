@@ -2134,3 +2134,11 @@ literal-ban lint rule.
 substantially as audited — nothing in `src/` has been corrected yet.
 
 **Recommended next:** BAR-001, then BAR-004, then BAR-007.
+
+### Session — 31 August 2026 · codex
+
+Completed: BAR-143 — restricted invitation creation to the two designated BOA operators (Vipin Menon and Salman) through a server-side auth allowlist; Team hides invite controls for other accounts. Verified with typecheck, lint, unit tests (143 passed), and SQL arity checks.
+Files changed: `supabase/migrations/202608310011_invite_admin_allowlist.sql`, `src/data/repository.ts`, `src/data/live/live-repository.ts`, `src/data/fixture/design-data.ts`, `src/screens/team/TeamScreen.tsx`
+Architecture changes: none
+Known issues: The new migration has not been pushed to or behavior-tested against the hosted database; live auth identities must use the supplied email addresses.
+Recommended next: Apply the migration, then continue the remaining Release 1 implementation work.

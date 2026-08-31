@@ -288,6 +288,7 @@ export const CUSTODY: Custody = {
  */
 export const TEAM: Team = {
   canManage: true,
+  canInvite: true,
   canGrantManagement: false,
   locations: [
     { id: 'warehouse', name: 'WAREHOUSE' },
