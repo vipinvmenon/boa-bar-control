@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { isSupabaseConfigured, rpc, supabase } from './supabase'
+import { offlineDb } from './offline-db'
 
 export type VenueMembership = {
   venueId: string
@@ -71,6 +72,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
     let active = true
     const load = async () => {
       setLoading(true)
+      const cacheKey = `auth:memberships:${session.user.id}`
+      // BAR-068. A cold start in a dead spot must be able to reach the already
+      // signed-in venue. Only use a cached membership with a still-valid JWT;
+      // sign-out clears this cache before the device changes hands.
+      if (!navigator.onLine && (!session.expires_at || session.expires_at * 1000 > Date.now())) {
+        const cached = await offlineDb.referenceCache.get(cacheKey)
+        if (cached?.value && Array.isArray(cached.value)) {
+          setMemberships(cached.value as VenueMembership[])
+          setActiveVenueId((current) => current && (cached.value as VenueMembership[]).some((item) => item.venueId === current) ? current : (cached.value as VenueMembership[])[0]?.venueId)
+          setError(undefined)
+          setLoading(false)
+          return
+        }
+      }
       const { data: membershipRows, error: membershipError } = await client
         .from('boa_bar_membership')
         .select('venue_id, role, location_id')
@@ -98,6 +113,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }))
       if (!active) return
       setMemberships(next)
+      await offlineDb.referenceCache.put({ key: cacheKey, value: next, refreshedAt: Date.now() })
       setActiveVenueId((current) => current && next.some((item) => item.venueId === current) ? current : next[0]?.venueId)
       setError(undefined)
       setLoading(false)
@@ -108,7 +124,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setLoading(false)
     })
     return () => { active = false }
-  }, [session?.user])
+  }, [session?.user, session?.expires_at])
 
   const value = useMemo<AuthState>(() => ({
     mode: isSupabaseConfigured ? 'live' : 'demo',

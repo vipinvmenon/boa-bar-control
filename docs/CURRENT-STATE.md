@@ -263,7 +263,7 @@ States are defined once in the **Status key** above.
 | BAR-065 | Bar-to-bar transfer | `[ ]` | — |
 | BAR-066 | Reference cache | `[x]` | `src/data/live/cache.ts`. Locations, SKUs, people and memberships are written on every successful reference load, and the position snapshot with the server time it was taken at. The table was declared on day one and never written to |
 | BAR-067 | Offline reads from cache | `[~]` | A failed live load now reads the cache, and an empty cache throws `NoCachedDataError` — an explicit error, **never fixture data**. A cached position is safe to show only because every screen carries the design's AS OF stamp and the cached snapshot carries the instant it was taken, so a stale screen reads "AS OF 19:43" at 21:00. **Cached rows for a location this device is counting are dropped**, so the cache cannot hand back what BAR-161 withheld. 8 tests cover the filtering and payload validation; the Dexie IO itself needs a browser (BAR-114) and is unproven |
-| BAR-068 | Cold-start offline | `[!]` | Untouched. `auth.tsx` still loads memberships over the network on start, so a cold start with no signal locks the staff member out before any of the caching above can help them |
+| BAR-068 | Cold-start offline | `[~]` | `auth.tsx` now caches memberships per user and restores them on an offline cold start while the JWT remains valid; browser offline cold-start and refresh longevity are not yet verified |
 | BAR-069 | Stable idempotency keys | `[x]` | Keys are minted once per user action and now **survive a reload**: the count draft persists its `actionId`, so a resumed count finishes the same count rather than starting a competing one. The outbox dedupes on the key, and every command RPC replays rather than duplicating |
 | BAR-070 | Ordered outbox replay | `[x]` | `selectDrainBatch` replays in causal order and **stops at the first blocked entry**. The previous drain skipped an entry in backoff and posted the ones behind it, so an issue that failed once could be overtaken by its own acceptance. Asserted in `outbox-policy.test.ts`, including the case that used to break |
 | BAR-071 | No silent write loss | `[x]` | Closed by deleting the code. The three unawaited `void queueLiveMovement(...)` writes lived in `demo-store`'s `issue`, `accept` and `waste` actions — all unreachable by the time they went. Every write now goes through a service to the outbox, which resolves only once Dexie has committed |
@@ -561,6 +561,28 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 31 August 2026 · codex
+
+**Completed: BAR-068 (implementation) — cached membership for offline cold start.**
+
+Successful live membership loads are now cached per authenticated user. When a
+previously signed-in device starts offline with a still-valid JWT, auth restores
+the cached venue membership instead of locking the staff member at the network
+gate. Sign-out still clears the cache before handoff.
+
+**Verified:** typecheck, lint, 139 unit tests, and build pass.
+
+**Files changed:** `src/lib/auth.tsx`, `docs/CURRENT-STATE.md`.
+
+**Architecture changes:** none.
+
+**Known issues / not verified:** a real offline cold-start, token refresh, and
+shared-phone longevity still need a browser/device test; no live database access
+was required for this code change.
+
+**Recommended next:** BAR-131, then the remaining Release 1 verification and
+database-application work.
 
 ### Session — 31 August 2026 · codex
 
