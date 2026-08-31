@@ -564,6 +564,29 @@ Recommended next: BAR-nnn
 
 ### Session — 31 August 2026 · codex
 
+**Completed: focused movement-guard coverage — BAR-017 / BAR-018 / BAR-022.**
+
+Added `supabase/tests/movement_guards.test.sql` with behavioural assertions for
+hand-keyed sale rejection, cross-venue SKU protection, balanced hospitality comps,
+and unbalanced comp rejection. `check:sql`, typecheck, lint, 139 unit tests, and
+the production build all pass locally.
+
+**Not verified:** the new pgTAP file has not yet been run against the hosted
+database in this environment; the user must run `corepack pnpm test:db`.
+
+**Files changed:** `supabase/tests/movement_guards.test.sql`,
+`docs/CURRENT-STATE.md`
+
+**Architecture changes:** none.
+
+**Known issues:** the visual harness still reports stale hardcoded-screen output;
+the six cut/missing screens remain intentionally out of scope.
+
+**Recommended next:** run the expanded pgTAP suite, then BAR-068 offline cold-start
+verification or the next open Release 1 item.
+
+### Session — 31 August 2026 · codex
+
 **Completed: live migration verification — BAR-018, BAR-022, and BAR-017 migrations applied.**
 
 The user applied the three new migrations with the local Supabase CLI. `db-state`
