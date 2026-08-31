@@ -182,7 +182,7 @@ States are defined once in the **Status key** above.
 | BAR-012 | `GRANT USAGE ON SCHEMA private` | `[x]` | `3c6acd9`, verified 28 Aug — `authenticated` has USAGE on `private`, `anon` has none, and `private.boa_bar_balance` is unreachable |
 | BAR-013 | Harden ledger immutability | `[~]` | Row triggers on `movement`, `movement_line` and now `person_name_history`; `alter default privileges … revoke truncate` present. Still no `ENABLE ALWAYS` and no `FORCE ROW LEVEL SECURITY`, so a table owner bypasses both |
 | BAR-014 | `v_position` sums the ledger | `[~]` | `202608310006_position_view.sql` adds security-invoker `public.boa_bar_v_position`, aggregating immutable movement lines independently of the projection. Migration written and `check:sql` passes; hosted application and behavior proof are parked |
-| BAR-015 | Reconciliation view and test | `[ ]` | Same. Nothing compares the projection against a ledger sum |
+| BAR-015 | Reconciliation view and test | `[~]` | `202608310007_reconciliation_view.sql` adds an ungranted audit view returning only ledger/projection mismatches. Migration written and `check:sql` passes; hosted behavior proof is parked |
 | BAR-016 | Protect the balance projection | `[~]` | `private.boa_bar_balance` now has exactly one writer, `private.boa_bar_post_movement`, instead of the insert being duplicated per entry point. Still no trigger and no scheduled reconciliation — `pnpm bootstrap` compares the projection against a ledger sum once, at bootstrap, which is not the same as protecting it |
 | BAR-017 | Fix `comp` to a two-leg move | `[x]` | `202608310003_comp_two_leg.sql` applied live; `movement_guards.test.sql` proves balanced hospitality comps and rejects unbalanced comps. Full suite: 134 assertions, 0 failed |
 | BAR-018 | Restrict `sale` to the POS path | `[x]` | `202608310001_restrict_sale.sql` applied live; `movement_guards.test.sql` proves hand-keyed sales are rejected. Full suite: 134 assertions, 0 failed |
@@ -561,6 +561,29 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 31 August 2026 · codex
+
+**Completed: BAR-015 implementation — ledger/projection reconciliation view.**
+
+Added ungranted security-invoker `public.boa_bar_v_reconciliation`, comparing
+ledger aggregates with `private.boa_bar_balance` and returning only mismatches.
+An empty result is the audit invariant. `check:sql`, typecheck, lint, and 143
+unit tests pass.
+
+**Not verified:** the migration has not been applied to the hosted database and
+the empty-result behavior remains parked with DB verification.
+
+**Files changed:** `supabase/migrations/202608310007_reconciliation_view.sql`,
+`docs/CURRENT-STATE.md`
+
+**Architecture changes:** none.
+
+**Known issues:** hosted migration application and behavioral checks remain
+pending; offline/device and print verification are parked.
+
+**Recommended next:** continue implementation on remaining release-critical
+items, then run the database suite across migrations 004–007.
 
 ### Session — 31 August 2026 · codex
 
