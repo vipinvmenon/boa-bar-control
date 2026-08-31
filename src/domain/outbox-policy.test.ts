@@ -100,6 +100,17 @@ describe('selectDrainBatch — the ordering guarantee', () => {
     expect(batch.map((e) => e.id)).toEqual(['next'])
   })
 
+  it('skips a resolved dead letter after an explicit human decision', () => {
+    const batch = selectDrainBatch(
+      [
+        entry({ id: 'resolved', createdAt: NOW - 9_000, status: 'resolved' }),
+        entry({ id: 'next', createdAt: NOW - 5_000 }),
+      ],
+      NOW,
+    )
+    expect(batch.map((e) => e.id)).toEqual(['next'])
+  })
+
   it('returns everything eligible when nothing is blocked', () => {
     const batch = selectDrainBatch(
       [

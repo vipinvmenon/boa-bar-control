@@ -16,7 +16,7 @@
 
 export type OutboxEntryState = {
   id: string
-  status: 'pending' | 'syncing' | 'done' | 'failed'
+  status: 'pending' | 'syncing' | 'done' | 'failed' | 'resolved'
   attempts: number
   /** Epoch ms. An entry is not eligible before this. */
   nextAttemptAt: number
@@ -167,7 +167,7 @@ export function selectDrainBatch(entries: OutboxEntryState[], now: number): Outb
     // carry the server's reply (a docket number is minted server-side, so it
     // exists nowhere else) and they are the local evidence that a write landed.
     // They are skipped, not treated as blocking.
-    if (entry.status === 'done') continue
+    if (entry.status === 'done' || entry.status === 'resolved') continue
     // A terminal entry blocks everything behind it, permanently, until a human
     // deals with it. That is deliberate: silently stepping over a write that
     // could not be posted is how a ledger acquires a gap nobody notices.

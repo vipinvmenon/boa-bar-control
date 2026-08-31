@@ -26,7 +26,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { ChevronRight } from 'lucide-react'
 import { useAppStore } from '../../lib/app-store'
 import { useAuth } from '../../lib/auth'
-import { clearUserCache } from '../../lib/offline-db'
+import { clearUserCache, resolveFailedCommand } from '../../lib/offline-db'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
 
 type MoreItem = {
@@ -64,6 +64,7 @@ export function MoreScreen() {
   const offline = store.offline
   const [signingOut, setSigningOut] = useState(false)
   const [signOutError, setSignOutError] = useState<string>()
+  const [resolvingFailure, setResolvingFailure] = useState(false)
   const session = useRepositoryQuery(['session'], (r) => r.session())
   const asOf = useRepositoryQuery(['asOf'], (r) => r.asOf())
 
@@ -77,6 +78,19 @@ export function MoreScreen() {
     } catch (error) {
       setSignOutError(error instanceof Error ? error.message : 'Could not sign out')
       setSigningOut(false)
+    }
+  }
+
+  const resolveFailure = async () => {
+    if (!store.lastFailureId) return
+    setResolvingFailure(true)
+    try {
+      await resolveFailedCommand(store.lastFailureId)
+      store.flash('FAILED ACTION RESOLVED · QUEUE UNBLOCKED')
+    } catch (error) {
+      store.flash(error instanceof Error ? error.message : 'Could not resolve failed action')
+    } finally {
+      setResolvingFailure(false)
     }
   }
 
@@ -140,6 +154,9 @@ export function MoreScreen() {
               <strong>{session.data?.signedInName ?? '—'}</strong>
             </div>
           </div>
+          {store.failed > 0 ? <button className="flow-cta-ghost sync-resolve" onClick={() => void resolveFailure()} disabled={resolvingFailure}>
+            {resolvingFailure ? 'Resolving…' : 'Resolve failed action'}
+          </button> : null}
         </section>
 
         {signOutError ? <p className="flow-error" role="alert">NOT SIGNED OUT · {signOutError}</p> : null}

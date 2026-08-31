@@ -52,7 +52,7 @@ export type QueuedCommand = {
    */
   idempotencyKey: string
   payload: unknown
-  status: 'pending' | 'syncing' | 'done' | 'failed'
+  status: 'pending' | 'syncing' | 'done' | 'failed' | 'resolved'
   attempts: number
   nextAttemptAt: number
   createdAt: number
@@ -177,6 +177,17 @@ export async function getCommand(id: string): Promise<QueuedCommand | undefined>
 }
 
 /**
+ * Resolve a permanently rejected command without deleting its audit record.
+ * This is the explicit human decision that unblocks later causal writes.
+ */
+export async function resolveFailedCommand(id: string): Promise<void> {
+  const row = await offlineDb.outbox.get(id)
+  if (!row || row.status !== 'failed') throw new Error('That failed action is no longer available')
+  await offlineDb.outbox.update(id, { status: 'resolved' })
+  announce()
+}
+
+/**
  * Wait for one queued command to post, and return the server's reply.
  *
  * This is what lets an online action still show a server-minted docket number
@@ -255,6 +266,7 @@ export async function getQueueSummary() {
   return {
     pending: pending + syncing,
     failed: failedRows.length,
+    lastFailureId: newestFailure?.id,
     lastFailureKind: newestFailure?.kind,
     lastFailure: newestFailure?.lastError,
   }

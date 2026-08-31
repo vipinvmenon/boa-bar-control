@@ -562,6 +562,34 @@ Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
 
+### Session — 31 August 2026 · codex
+
+**Completed: BAR-135 follow-up — explicit resolution for retained invalid outbox entries.**
+
+The More screen now exposes `Resolve failed action` when a dead-lettered command
+blocks ordered replay. Resolving marks the entry `resolved` without deleting its
+audit record, then unblocks later commands. The acceptance device was browser-
+verified: the stale self-accept failure was resolved and the sync card returned to
+`✓ SYNCED`.
+
+**Verified:** typecheck, lint, 138 unit tests, and build pass. The visual gate was
+run but reported the existing fixture harness as 14 hardcoded screens / 0 data
+layer screens, so it is not a green UI gate in this environment.
+
+**Files changed:** `src/domain/outbox-policy.ts`, `src/domain/outbox-policy.test.ts`,
+`src/lib/offline-db.ts`, `src/lib/app-store.tsx`, `src/screens/more/MoreScreen.tsx`,
+`src/styles.css`, `docs/CURRENT-STATE.md`.
+
+**Architecture changes:** none.
+
+**Known issues / not verified:** D-0002 has not yet been re-posted after resolving
+the old failure; no database inspection was possible without the user's password.
+The current More and acceptance captures show no geometric overlap at 390×844;
+the user's reported overlap at another viewport still needs a reproducible capture.
+
+**Recommended next:** retry D-0002 acceptance, then capture the reported UI overlap
+at the user's viewport before making any fidelity changes.
+
 ### Session — 30 August 2026 · codex
 
 **Completed: BAR-137 (partial) — shared-device sign-out and cache isolation.**

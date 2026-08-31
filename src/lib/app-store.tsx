@@ -54,6 +54,7 @@ type AppStore = {
   /** Writes sitting in the outbox, and writes that have given up. */
   pending: number
   failed: number
+  lastFailureId?: string
   lastFailureKind?: string
   /** Exact server refusal for the newest retained dead letter (BAR-135). */
   lastFailure?: string
@@ -70,11 +71,13 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
   const [queue, setQueue] = useState<{
     pending: number
     failed: number
+    lastFailureId?: string
     lastFailureKind?: string
     lastFailure?: string
   }>({
     pending: 0,
     failed: 0,
+    lastFailureId: undefined,
   })
 
   /**
@@ -132,12 +135,13 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       offline,
       pending: queue.pending,
       failed: queue.failed,
+      lastFailureId: queue.lastFailureId,
       lastFailureKind: queue.lastFailureKind,
       lastFailure: queue.lastFailure,
       toast,
       flash,
     }),
-    [venueRole, auth.activeMembership?.venueName, offline, queue.pending, queue.failed, queue.lastFailureKind, queue.lastFailure, toast, flash],
+    [venueRole, auth.activeMembership?.venueName, offline, queue.pending, queue.failed, queue.lastFailureId, queue.lastFailureKind, queue.lastFailure, toast, flash],
   )
 
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>
