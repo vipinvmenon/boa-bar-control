@@ -184,12 +184,12 @@ States are defined once in the **Status key** above.
 | BAR-014 | `v_position` sums the ledger | `[ ]` | **No view of any kind exists in any migration** (grep `create .*view` → 0 hits). `boa_bar_inventory_snapshot` reads the projection exclusively |
 | BAR-015 | Reconciliation view and test | `[ ]` | Same. Nothing compares the projection against a ledger sum |
 | BAR-016 | Protect the balance projection | `[~]` | `private.boa_bar_balance` now has exactly one writer, `private.boa_bar_post_movement`, instead of the insert being duplicated per entry point. Still no trigger and no scheduled reconciliation — `pnpm bootstrap` compares the projection against a ledger sum once, at bootstrap, which is not the same as protecting it |
-| BAR-017 | Fix `comp` to a two-leg move | `[~]` | `202608310003_comp_two_leg.sql` changes comp validation to balanced two-leg custody and requires a hospitality destination. Migration written and gates pass; live application and behavioural proof still need the user's database credentials |
-| BAR-018 | Restrict `sale` to the POS path | `[~]` | `202608310001_restrict_sale.sql` adds an append-only trigger rejecting hand-keyed sales unless `source = 'pos'`. Migration written and `check:sql` passes; live database application and pgTAP proof still need the user's database credentials |
+| BAR-017 | Fix `comp` to a two-leg move | `[x]` | `202608310003_comp_two_leg.sql` applied live; `movement_guards.test.sql` proves balanced hospitality comps and rejects unbalanced comps. Full suite: 134 assertions, 0 failed |
+| BAR-018 | Restrict `sale` to the POS path | `[x]` | `202608310001_restrict_sale.sql` applied live; `movement_guards.test.sql` proves hand-keyed sales are rejected. Full suite: 134 assertions, 0 failed |
 | BAR-019 | Receipt movement path | `[x]` | `boa_bar_record_receipt` is the receipt path, with the delivery note the spec requires and a duplicate guard. Previously a toast message |
 | BAR-020 | Return and transfer paths | `[~]` | Transfer legs exist inside the docket RPCs. No standalone return path |
 | BAR-021 | Adjustment path with role and reason | `[ ]` | No adjustment RPC; `reverses_movement_id` is not unique, so one movement can be reversed twice |
-| BAR-022 | Venue-scope every foreign key | `[~]` | `202608310002_scope_movement_lines.sql` adds an insert trigger rejecting SKU/location venue mismatches. Migration written and `check:sql` passes; live application and behavioural proof still need the user's database credentials |
+| BAR-022 | Venue-scope every foreign key | `[x]` | `202608310002_scope_movement_lines.sql` applied live; `movement_guards.test.sql` proves cross-venue SKU references are rejected. Full suite: 134 assertions, 0 failed |
 | BAR-023 | Server-validate the timestamps | `[~]` | `business_date` is now derived server-side and a timestamp more than an hour in the future is refused. Still unvalidated: nothing checks `occurred_at` against the venue event window, and POS timestamps are unvalidated because POS is cut |
 | BAR-024 | Location-scoped authorisation | `[~]` | Waste and count command RPCs now enforce the boundary: scoped roles may write only their membership location; manager/admin may explicitly select a venue location. Proven by 11 live pgTAP behaviours. Read policies and the remaining command RPCs remain open |
 | BAR-025 | Tolerance bands in the database | `[ ]` | They exist only in TypeScript (`domain/inventory.ts` `toleranceFor`) |
@@ -197,7 +197,7 @@ States are defined once in the **Status key** above.
 | BAR-027 | Missing spec §13 columns | `[~]` | BAR-124 added display names. `abv`, `supplier_vendor_id`, `is_licenced`, `is_blind`, `witnessed_by`, `counted_at`, empties and delivery-note remain absent |
 | BAR-028 | Non-negative position guard | `[ ]` | Nothing prevents issuing more than is held. The per-column `>= 0` checks are on docket and count lines, not on the position |
 | BAR-029 | Index `movement_line.movement_id` | `[ ]` | The two indexes are `(venue_id, business_date, occurred_at)` and `(location_id, sku_id)`. `movement_id` is still an unindexed FK, evaluated per row by the read policy — and the live repository queries it by `movement_id` on every ledger read |
-| BAR-030 | Behavioural pgTAP suite | `[~]` | **128 assertions pass against the live database, 0 failed** (29 Aug). `location_scope` has 11 behavioural checks for waste/count own-location, cross-location refusal/no-write, and global-role selection; `privileges` has 64 checks. `recount.test.sql` (9) attempts an UPDATE and a DELETE and asserts the triggers fire. `ledger.test.sql` (11) remains existence-only and is the last file to replace |
+| BAR-030 | Behavioural pgTAP suite | `[~]` | **134 assertions pass against the live database, 0 failed** (31 Aug). `movement_guards` adds six behavioural checks for BAR-017/018/022; `location_scope` has 11; `privileges` has 64; `recount` has 9 immutability checks. `ledger.test.sql` (11) remains existence-only and is the last file to replace |
 | BAR-031 | Execute migrations | `[x]` | **All migrations through `202608310003_comp_two_leg` applied and present in remote migration history, 31 Aug.** PostgreSQL 17.6. `test:db` reports 128 assertions, 0 failed; `db-state.mjs` reports 1 venue, 9 locations, 11 SKUs, 2 memberships, 4 movements, 2 count sessions, and 3 auth users |
 | BAR-032 | Deterministic seed that renders the design | `[~]` | **Reference data verified present in the hosted project 28 Aug: 1 venue, 9 locations, 11 SKUs.** Opening ledger not yet posted — blocked on the first `auth.users` row. Still no serve mappings (BAR-159) and no tolerance bands in the database (BAR-025) |
 | BAR-033 | Generate database types | `[ ]` | The client is untyped. `src/data/live/rows.ts` hand-writes every row shape precisely because generated types do not exist — 156 lines that a generator would own |
@@ -561,6 +561,44 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 31 August 2026 · codex
+
+**Completed: BAR-146 follow-through — home docket alerts open the custody list.**
+
+The home screen's awaiting-docket alert previously still flashed the retired
+BAR-055 placeholder even though the custody list and accept flow existed. Its
+OPEN action now routes to `/dockets`, where every awaiting docket (including the
+in-transit total) can be selected. Typecheck, lint, and 139 unit tests pass.
+
+**Files changed:** `src/screens/home/HomeScreen.tsx`, `docs/CURRENT-STATE.md`
+
+**Architecture changes:** none.
+
+**Known issues:** live acceptance and print/offline operational checks still need
+to be completed; the visual harness remains stale.
+
+**Recommended next:** BAR-068 offline cold-start verification.
+
+### Session — 31 August 2026 · codex
+
+**Completed: live movement-guard verification — BAR-017 / BAR-018 / BAR-022.**
+
+The user ran the expanded hosted PostgreSQL suite. `movement_guards.test.sql`
+passes all 6 assertions, and the complete suite now reports **134 assertions
+passed, 0 failed**. The three migrations are therefore applied and behaviourally
+proven against PostgreSQL 17.6.
+
+**Files changed:** `docs/CURRENT-STATE.md`
+
+**Architecture changes:** none.
+
+**Known issues:** `ledger.test.sql` remains existence-only; the visual harness
+still reports stale hardcoded-screen output; six cut/missing screens remain out
+of scope.
+
+**Recommended next:** BAR-068 offline cold-start verification, then the next
+open Release 1 item.
 
 ### Session — 31 August 2026 · codex
 

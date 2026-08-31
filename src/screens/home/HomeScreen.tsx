@@ -29,6 +29,9 @@ import type { Alert } from '../../data/repository'
 const TARGET_ROUTES: Record<string, string> = {
   issue: '/issue',
   count: '/count',
+  // BAR-146. The alert may represent more than one awaiting docket; open the
+  // custody list so the receiver can choose the exact docket to accept.
+  accept: '/dockets',
 }
 
 export function HomeScreen() {
@@ -44,8 +47,6 @@ export function HomeScreen() {
       void navigate({ to: route })
       return
     }
-    // `accept` is BAR-055 and does not exist yet. Name the task rather than
-    // silently doing nothing, which is what the old docket alert did.
     store.flash('RECEIVING SCREEN IS BAR-055')
   }
 
