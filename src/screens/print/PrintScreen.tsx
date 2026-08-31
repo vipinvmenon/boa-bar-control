@@ -112,15 +112,13 @@ export function PrintScreen() {
           </table>
 
           {/*
-            Empties are on the sheet even though BAR-160 is still an open decision.
-            They are a physical observation that exists only between 23:00 and 03:00
-            on the night and cannot be reconstructed afterwards, so printing a column
-            costs nothing and omitting it is unrecoverable. If the licence turns out
-            not to require them the column is simply left blank.
+            The selected V1 rule is to record returnable empties per location during
+            close-out. Storage and the responsible person are written in the note
+            space below, so the observation survives even if the app is offline.
           */}
           <p className="pw-note">
-            EMPTIES: count returnable empties in the same pass. If the column is not needed it
-            can be left blank — but it cannot be counted afterwards.
+            EMPTIES: count returnable empties in the close-out pass. Note the storage location
+            and responsible person here; this observation cannot be reconstructed afterwards.
           </p>
 
           <SignatureBlock roles={['COUNTED BY', 'WITNESSED BY']} />

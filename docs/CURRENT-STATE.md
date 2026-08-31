@@ -304,7 +304,7 @@ States are defined once in the **Status key** above.
 | BAR-091 | Adjustment log view | `[ ]` | — |
 | BAR-092 | Paper fallback print views | `[~]` | `/print` — one A4 count sheet per location plus a blank two-party docket, from the repository. **Carries no quantity of any kind**: a printed expected figure defeats blind counting and a sheet cannot be un-printed. Two signature blocks per sheet, per spec §5 and §6. Empties column included despite BAR-160 being open, because a missed physical observation is unrecoverable and a blank column costs nothing. Verified in a browser: 7 sheets, and the only non-empty write-in cells are the unit labels. **The printed output itself has not been seen** — no print preview was available, so page breaks and A4 fit are unverified |
 | BAR-145 | In-event correction path | `[x]` | `202608280009` — a bad count is **superseded, never edited**. `boa_bar_count_line` gets an immutability trigger with its own message (the remedy is a recount, not an adjustment), the session row is guarded against being moved to another location or re-stamped, and a supersede requires a stated reason. The original stays exactly as submitted, with the name of whoever entered it. `variance()` reads the **live** count, not merely the latest. **Applied and proven 29 Aug** — 9 behavioural assertions; the UPDATE and the DELETE are both refused by the database |
-| BAR-148 | Empties capture | `[~]` | An empties column is on every printed count sheet (BAR-092), so the observation can be made on the night whatever BAR-160 decides. Nothing captures empties in the app or the schema yet |
+| BAR-148 | Empties capture | `[~]` | V1 now records returnable empties per location on the printed close-out sheet, with manual storage/responsible-person notes. App/database capture remains intentionally out of scope |
 | BAR-150 | Mid-event count scheduling | `[ ]` | `COUNT_DUE_AFTER_MINUTES = 120` in the live repository is an assumption standing in for this |
 
 ### M6 — POS ingest and show day — the cuttable milestone
@@ -345,7 +345,7 @@ States are defined once in the **Status key** above.
 | --- | --- | --- | --- |
 | BAR-158 | Excise return template — **by 31 August** | `[ ]` | **Three days out and unowned.** Decides what must be physically observed on the night; a missed observation is not backfillable |
 | BAR-159 | Confirm the POS owner and export format | `[ ]` | Decides whether BAR-094 is buildable at all |
-| BAR-160 | Decide empties | `[ ]` | Must be settled before the count sheet is printed at load-in |
+| BAR-160 | Decide empties | `[x]` | User selected the recommended V1 rule: count returnable empties per location on the close-out paper sheet and note storage/responsibility manually |
 | BAR-114 | Component and interaction tests | `[ ]` | Testing Library is installed and typed; no jsdom environment is configured, so no component test can run |
 | BAR-115 | Real-device offline and QR checks | `[?]` | Cannot be assessed — there is no QR scanner and no offline read path to test |
 | BAR-116 | Staff onboarding and roster | `[ ]` | — |
@@ -561,6 +561,29 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 31 August 2026 · codex
+
+**Completed: BAR-160 decision and BAR-148 paper implementation.**
+
+The user selected the recommended V1 rule: count returnable empties per location
+on the close-out paper sheet, and note storage location and responsible person
+manually. The print pack copy now states that rule explicitly. BAR-160 is closed;
+BAR-148 remains partial because app/database capture is intentionally deferred.
+Typecheck, lint, and 143 unit tests pass.
+
+**Not verified:** physical print output and A4 fit remain pending.
+
+**Files changed:** `src/screens/print/PrintScreen.tsx`,
+`docs/CURRENT-STATE.md`
+
+**Architecture changes:** none.
+
+**Known issues:** app/database empties capture is out of scope for V1; live,
+offline, and print verification remain pending.
+
+**Recommended next:** continue the remaining implementation pass, then perform
+the parked verification run.
 
 ### Session — 31 August 2026 · codex
 
