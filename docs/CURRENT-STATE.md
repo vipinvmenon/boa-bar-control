@@ -189,7 +189,7 @@ States are defined once in the **Status key** above.
 | BAR-019 | Receipt movement path | `[x]` | `boa_bar_record_receipt` is the receipt path, with the delivery note the spec requires and a duplicate guard. Previously a toast message |
 | BAR-020 | Return and transfer paths | `[~]` | Transfer legs exist inside the docket RPCs. No standalone return path |
 | BAR-021 | Adjustment path with role and reason | `[ ]` | No adjustment RPC; `reverses_movement_id` is not unique, so one movement can be reversed twice |
-| BAR-022 | Venue-scope every foreign key | `[!]` | `movement_line.sku_id` and `.location_id` are not venue-scoped — a movement can post against another venue's SKUs |
+| BAR-022 | Venue-scope every foreign key | `[~]` | `202608310002_scope_movement_lines.sql` adds an insert trigger rejecting SKU/location venue mismatches. Migration written and `check:sql` passes; live application and behavioural proof still need the user's database credentials |
 | BAR-023 | Server-validate the timestamps | `[~]` | `business_date` is now derived server-side and a timestamp more than an hour in the future is refused. Still unvalidated: nothing checks `occurred_at` against the venue event window, and POS timestamps are unvalidated because POS is cut |
 | BAR-024 | Location-scoped authorisation | `[~]` | Waste and count command RPCs now enforce the boundary: scoped roles may write only their membership location; manager/admin may explicitly select a venue location. Proven by 11 live pgTAP behaviours. Read policies and the remaining command RPCs remain open |
 | BAR-025 | Tolerance bands in the database | `[ ]` | They exist only in TypeScript (`domain/inventory.ts` `toleranceFor`) |
@@ -561,6 +561,26 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 31 August 2026 · codex
+
+**Completed: BAR-022 (implementation) — venue-scope movement lines.**
+
+Added `202608310002_scope_movement_lines.sql`, an insert trigger that verifies a
+movement line's SKU and location belong to the parent movement's venue.
+
+**Verified:** `check:sql`, typecheck, lint, 139 unit tests, and build pass.
+
+**Files changed:** `supabase/migrations/202608310002_scope_movement_lines.sql`,
+`docs/CURRENT-STATE.md`.
+
+**Architecture changes:** none.
+
+**Known issues / not verified:** migration has not been applied or behaviourally
+tested against the live database because the database password is user-only.
+
+**Recommended next:** BAR-017, then apply and prove the pending migrations with the
+user's database credentials.
 
 ### Session — 31 August 2026 · codex
 
