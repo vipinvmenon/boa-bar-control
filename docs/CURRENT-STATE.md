@@ -564,6 +564,29 @@ Recommended next: BAR-nnn
 
 ### Session — 31 August 2026 · codex
 
+**Completed: database tolerance-band wiring.**
+
+Added read-only `public.boa_bar_tolerance_bands()` and updated the live variance
+repository to grade each line from the versioned database thresholds rather than
+the TypeScript constants. Fixture mode remains deterministic. Typecheck, lint,
+143 unit tests, and `check:sql` pass.
+
+**Not verified:** the RPC and live variance response require migration application
+and a hosted database run, which remain parked.
+
+**Files changed:** `supabase/migrations/202608310009_tolerance_bands.sql`,
+`src/data/live/live-repository.ts`, `src/data/live/rows.ts`,
+`docs/CURRENT-STATE.md`
+
+**Architecture changes:** none.
+
+**Known issues:** hosted migration/device/print verification remains pending.
+
+**Recommended next:** continue implementation, then apply migrations 004–009 and
+run the full DB suite before release sign-off.
+
+### Session — 31 August 2026 · codex
+
 **Completed: BAR-025 implementation — versioned tolerance bands.**
 
 Added `boa_bar_tolerance_band` with four seeded categories and the documented

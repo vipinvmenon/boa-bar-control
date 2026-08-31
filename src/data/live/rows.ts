@@ -41,6 +41,13 @@ export type MembershipRow = {
 }
 export const MEMBERSHIP_COLUMNS = 'user_id, role, location_id'
 
+export type ToleranceBandRow = {
+  category_key: string
+  green_max_pct: number
+  amber_max_pct: number
+  effective_from: string
+}
+
 export type SnapshotRow = {
   location_id: string
   location_code: string

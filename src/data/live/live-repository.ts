@@ -29,7 +29,6 @@ import {
   readCachedSnapshot,
 } from './cache'
 import { enqueueCommand, OutboxPendingError, waitForCommand } from '../../lib/offline-db'
-import { toleranceFor, varianceBand } from '../../domain/inventory'
 import { mlForContainers } from '../../domain/custody'
 import {
   actorLabel,
@@ -76,6 +75,7 @@ import {
   type PersonRow,
   type SkuRow,
   type SnapshotRow,
+  type ToleranceBandRow,
 } from './rows'
 import type {
   AcceptDocketCommand,
@@ -173,6 +173,14 @@ type Snapshot = {
   now: Date
 }
 
+function bandFor(category: string, percentage: number | null, bands: Map<string, [number, number]>): 'green' | 'amber' | 'red' {
+  if (percentage === null) return 'amber'
+  const [greenMax, amberMax] = bands.get(category) ?? [2, 5]
+  const absolute = Math.abs(percentage)
+  const onMagnitude = absolute <= greenMax ? 'green' : absolute <= amberMax ? 'amber' : 'red'
+  return percentage > 0 && onMagnitude === 'green' ? 'amber' : onMagnitude
+}
+
 function client() {
   if (!supabase) {
     // Unreachable in practice: RepositoryProvider only builds a live repository
@@ -214,6 +222,11 @@ export function createLiveRepository(context: LiveContext): Repository {
   const db = client()
   const clock: Clock = makeClock(context.timezone)
   const { venueId } = context
+
+  async function toleranceBands(): Promise<Map<string, [number, number]>> {
+    const rows = await db.rpc('boa_bar_tolerance_bands').then((r) => unwrap<ToleranceBandRow[]>('tolerance bands', r))
+    return new Map(rows.map((row) => [row.category_key, [Number(row.green_max_pct), Number(row.amber_max_pct)] as [number, number]]))
+  }
 
   // -------------------------------------------------------------------------
   // Reference data and the position snapshot
@@ -1408,7 +1421,7 @@ export function createLiveRepository(context: LiveContext): Repository {
     },
 
     async variance(locationId?: string): Promise<VarianceReport> {
-      const ref = await reference()
+      const [ref, bands] = await Promise.all([reference(), toleranceBands()])
       const target = locationId ?? context.locationId
       if (!target) throw new Error('Variance needs a location')
 
@@ -1468,9 +1481,9 @@ export function createLiveRepository(context: LiveContext): Repository {
           totalVarianceMl += deltaMl
           totalReceiptsMl += receiptsMl
 
-          const band = varianceBand(sku.category_key, pct)
+          const band = bandFor(sku.category_key, pct, bands)
           if (band === 'red' || (band === 'amber' && worst === 'green')) worst = band
-          const [greenMax, amberMax] = toleranceFor(sku.category_key)
+          const [greenMax, amberMax] = bands.get(sku.category_key) ?? [2, 5]
 
           const note =
             deltaMl > 0

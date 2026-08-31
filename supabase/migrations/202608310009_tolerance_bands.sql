@@ -23,4 +23,25 @@ values
 
 revoke all on public.boa_bar_tolerance_band from anon, authenticated;
 
+create function public.boa_bar_tolerance_bands()
+returns table (
+  category_key text,
+  green_max_pct numeric,
+  amber_max_pct numeric,
+  effective_from date
+)
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select category_key, green_max_pct, amber_max_pct, effective_from
+    from public.boa_bar_tolerance_band
+   where effective_from <= current_date
+   order by category_key;
+$$;
+
+revoke all on function public.boa_bar_tolerance_bands() from public, anon;
+grant execute on function public.boa_bar_tolerance_bands() to authenticated;
+
 commit;
