@@ -198,7 +198,7 @@ States are defined once in the **Status key** above.
 | BAR-028 | Non-negative position guard | `[ ]` | Nothing prevents issuing more than is held. The per-column `>= 0` checks are on docket and count lines, not on the position |
 | BAR-029 | Index `movement_line.movement_id` | `[ ]` | The two indexes are `(venue_id, business_date, occurred_at)` and `(location_id, sku_id)`. `movement_id` is still an unindexed FK, evaluated per row by the read policy — and the live repository queries it by `movement_id` on every ledger read |
 | BAR-030 | Behavioural pgTAP suite | `[~]` | **128 assertions pass against the live database, 0 failed** (29 Aug). `location_scope` has 11 behavioural checks for waste/count own-location, cross-location refusal/no-write, and global-role selection; `privileges` has 64 checks. `recount.test.sql` (9) attempts an UPDATE and a DELETE and asserts the triggers fire. `ledger.test.sql` (11) remains existence-only and is the last file to replace |
-| BAR-031 | Execute migrations | `[x]` | **All migrations through `202608290002_count_location_scope` applied and confirmed by object existence, 29 Aug.** PostgreSQL 17.6. `db-state.mjs` reports the history and checks that migration objects actually exist, rather than trusting the history table |
+| BAR-031 | Execute migrations | `[x]` | **All migrations through `202608310003_comp_two_leg` applied and present in remote migration history, 31 Aug.** PostgreSQL 17.6. `test:db` reports 128 assertions, 0 failed; `db-state.mjs` reports 1 venue, 9 locations, 11 SKUs, 2 memberships, 4 movements, 2 count sessions, and 3 auth users |
 | BAR-032 | Deterministic seed that renders the design | `[~]` | **Reference data verified present in the hosted project 28 Aug: 1 venue, 9 locations, 11 SKUs.** Opening ledger not yet posted — blocked on the first `auth.users` row. Still no serve mappings (BAR-159) and no tolerance bands in the database (BAR-025) |
 | BAR-033 | Generate database types | `[ ]` | The client is untyped. `src/data/live/rows.ts` hand-writes every row shape precisely because generated types do not exist — 156 lines that a generator would own |
 | BAR-122 | Revoke `TRUNCATE` everywhere | `[x]` | `3c6acd9` — verified empirically over REST: `anon` receives `HTTP 401 permission denied` |
@@ -561,6 +561,27 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 31 August 2026 · codex
+
+**Completed: live migration verification — BAR-018, BAR-022, and BAR-017 migrations applied.**
+
+The user applied the three new migrations with the local Supabase CLI. `db-state`
+shows all three versions in remote history, and the hosted PostgreSQL 17.6 suite
+passes **128 assertions, 0 failed** after application.
+
+**Verified:** `corepack pnpm test:db` (user shell), with the migration history and
+live object/data summary captured from `db-state`.
+
+**Files changed:** `docs/CURRENT-STATE.md`.
+
+**Architecture changes:** none.
+
+**Known issues / not verified:** the new BAR-017/BAR-018/BAR-022 rules do not yet
+have dedicated pgTAP behaviour cases; the existing suite remains green.
+
+**Recommended next:** add focused behavioural pgTAP cases for the three new
+migrations, then continue the Release 1 checklist.
 
 ### Session — 31 August 2026 · codex
 
