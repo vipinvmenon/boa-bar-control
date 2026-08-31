@@ -188,7 +188,7 @@ States are defined once in the **Status key** above.
 | BAR-018 | Restrict `sale` to the POS path | `[x]` | `202608310001_restrict_sale.sql` applied live; `movement_guards.test.sql` proves hand-keyed sales are rejected. Full suite: 134 assertions, 0 failed |
 | BAR-019 | Receipt movement path | `[x]` | `boa_bar_record_receipt` is the receipt path, with the delivery note the spec requires and a duplicate guard. Previously a toast message |
 | BAR-020 | Return and transfer paths | `[~]` | Transfer legs exist inside the docket RPCs. No standalone return path |
-| BAR-021 | Adjustment path with role and reason | `[ ]` | No adjustment RPC; `reverses_movement_id` is not unique, so one movement can be reversed twice |
+| BAR-021 | Adjustment path with role and reason | `[~]` | `202608310005_adjustment_guard.sql` adds manager/admin authorship, non-blank reasons, same-venue reversal checks, and a unique reversal index. Migration written and `check:sql` passes; live application and behavior proof are parked |
 | BAR-022 | Venue-scope every foreign key | `[x]` | `202608310002_scope_movement_lines.sql` applied live; `movement_guards.test.sql` proves cross-venue SKU references are rejected. Full suite: 134 assertions, 0 failed |
 | BAR-023 | Server-validate the timestamps | `[~]` | `business_date` is now derived server-side and a timestamp more than an hour in the future is refused. Still unvalidated: nothing checks `occurred_at` against the venue event window, and POS timestamps are unvalidated because POS is cut |
 | BAR-024 | Location-scoped authorisation | `[~]` | Waste and count command RPCs now enforce the boundary: scoped roles may write only their membership location; manager/admin may explicitly select a venue location. Proven by 11 live pgTAP behaviours. Read policies and the remaining command RPCs remain open |
@@ -561,6 +561,29 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 31 August 2026 · codex
+
+**Completed: BAR-021 implementation — guarded adjustment movements.**
+
+Added `202608310005_adjustment_guard.sql`: adjustments now require an active
+manager/admin actor, a non-blank reason, and a same-venue reversal target; a
+partial unique index prevents reversing one movement twice. `check:sql`,
+typecheck, lint, and 143 unit tests pass.
+
+**Not verified:** the migration and rejection cases have not been run against the
+hosted database while DB tests are parked.
+
+**Files changed:** `supabase/migrations/202608310005_adjustment_guard.sql`,
+`docs/CURRENT-STATE.md`
+
+**Architecture changes:** none.
+
+**Known issues:** live migration application and behavior proof remain pending;
+offline/device and print checks are parked.
+
+**Recommended next:** continue implementation on the next release-critical gap,
+then run the full database suite after the implementation pass.
 
 ### Session — 31 August 2026 · codex
 
