@@ -207,7 +207,7 @@ States are defined once in the **Status key** above.
 | BAR-125 | Seal submitted counts | `[x]` | `boa_bar_submit_count` sets `submitted_at` and writes the append-only private count seal. The live Bar 2 submission created one submitted session with 11 lines; the raw sealed rows were not directly inspected |
 | BAR-126 | Storage bucket for POS files | `[ ]` | — |
 | BAR-127 | Read `venue.timezone` and `event_date` | `[~]` | `timezone` is now read (`auth.tsx:81`) and threaded into the live repository's clock, so no stamp uses the device timezone. `event_date` is still never read |
-| BAR-128 | Deterministic membership selection | `[~]` | `auth.tsx` takes `memberships[0]` with no explicit ordering, so a person holding two roles gets whichever the query returns first |
+| BAR-128 | Deterministic membership selection | `[x]` | `auth.tsx` orders active memberships by venue, role, and location before selecting `memberships[0]`, so refreshes cannot change the active venue/role arbitrarily |
 
 ### M2 — Architecture spine: repository, services, navigation
 
@@ -561,6 +561,28 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 31 August 2026 · codex
+
+**Completed: BAR-128 — deterministic membership selection.**
+
+Active memberships are now ordered by venue, role, and location before the first
+membership is selected. A user with multiple roles therefore gets the same active
+venue/role after refreshes and on different devices. Typecheck, lint, and 143 unit
+tests pass.
+
+**Not verified:** the ordering has not been exercised against a multi-membership
+live account while database/device tests are parked.
+
+**Files changed:** `src/lib/auth.tsx`, `docs/CURRENT-STATE.md`
+
+**Architecture changes:** none.
+
+**Known issues:** live migration verification, offline/device checks, and print
+output remain parked.
+
+**Recommended next:** continue the remaining implementation pass, then run the
+full verification suite.
 
 ### Session — 31 August 2026 · codex
 

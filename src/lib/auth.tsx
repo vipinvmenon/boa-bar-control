@@ -92,6 +92,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
         .select('venue_id, role, location_id')
         .eq('user_id', session.user.id)
         .eq('active', true)
+        // BAR-128. A user can hold more than one active role; stable ordering
+        // keeps the selected venue deterministic across refreshes and devices.
+        .order('venue_id', { ascending: true })
+        .order('role', { ascending: true })
+        .order('location_id', { ascending: true, nullsFirst: true })
       if (membershipError) throw membershipError
       const venueIds = [...new Set((membershipRows ?? []).map((row) => row.venue_id as string))]
       const locationIds = [...new Set((membershipRows ?? []).map((row) => row.location_id as string | null).filter(Boolean))] as string[]
