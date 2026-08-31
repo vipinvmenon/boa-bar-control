@@ -564,6 +564,29 @@ Recommended next: BAR-nnn
 
 ### Session — 31 August 2026 · codex
 
+**Completed: BAR-068 guard coverage — offline membership eligibility.**
+
+Extracted the offline-session eligibility check into a pure helper and added four
+tests covering valid/expired JWTs, online bypass, and sessions without an expiry.
+Auth now uses that helper before reading cached memberships. Typecheck, lint, and
+**143 unit tests** pass.
+
+**Not verified:** a real browser airplane-mode cold start and refresh longevity
+still require a signed-in session and device-level network toggle.
+
+**Files changed:** `src/lib/auth.tsx`, `src/lib/auth-offline.ts`,
+`src/lib/auth-offline.test.ts`, `docs/CURRENT-STATE.md`
+
+**Architecture changes:** none.
+
+**Known issues:** live acceptance and physical print output remain unverified;
+the visual harness remains stale.
+
+**Recommended next:** perform the signed-in browser offline test, then close the
+remaining live Release 1 checks.
+
+### Session — 31 August 2026 · codex
+
 **Completed: BAR-092 entry point — SETTINGS opens the print fallback pack.**
 
 The `/print` route and repository-backed sheets already existed, but the visible

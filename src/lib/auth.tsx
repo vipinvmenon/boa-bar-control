@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type PropsWith
 import type { Session, User } from '@supabase/supabase-js'
 import { isSupabaseConfigured, rpc, supabase } from './supabase'
 import { offlineDb } from './offline-db'
+import { canUseCachedMemberships } from './auth-offline'
 
 export type VenueMembership = {
   venueId: string
@@ -76,7 +77,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       // BAR-068. A cold start in a dead spot must be able to reach the already
       // signed-in venue. Only use a cached membership with a still-valid JWT;
       // sign-out clears this cache before the device changes hands.
-      if (!navigator.onLine && (!session.expires_at || session.expires_at * 1000 > Date.now())) {
+      if (canUseCachedMemberships({ online: navigator.onLine, expiresAt: session.expires_at })) {
         const cached = await offlineDb.referenceCache.get(cacheKey)
         if (cached?.value && Array.isArray(cached.value)) {
           setMemberships(cached.value as VenueMembership[])
