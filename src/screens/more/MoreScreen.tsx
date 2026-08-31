@@ -44,7 +44,10 @@ const ITEMS: MoreItem[] = [
   { label: 'VARIANCE', sub: 'Counted vs theoretical · tolerance bands', managerOnly: true, todo: 'VARIANCE SCREEN IS BAR-086' },
   { label: 'REPORTS', sub: 'Excise return · stock settlement · sales per hour', go: '/reports' },
   { label: 'COWORK', sub: 'Inventory assistant', todo: 'COWORK IS BAR-103' },
-  { label: 'SETTINGS', sub: 'Device · sync · printed fallback sheets', todo: 'SETTINGS' },
+  // BAR-092. The fallback pack is the concrete settings action needed before
+  // load-in; keeping it behind a toast made the already-built print route
+  // unreachable from the product shell.
+  { label: 'SETTINGS', sub: 'Device · sync · printed fallback sheets', go: '/print' },
 ]
 
 const FAILED_ACTION: Record<string, string> = {

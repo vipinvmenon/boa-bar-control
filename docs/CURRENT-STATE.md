@@ -564,6 +564,26 @@ Recommended next: BAR-nnn
 
 ### Session — 31 August 2026 · codex
 
+**Completed: BAR-092 entry point — SETTINGS opens the print fallback pack.**
+
+The `/print` route and repository-backed sheets already existed, but the visible
+SETTINGS row only flashed a placeholder. It now navigates to the printable count
+and docket pack. Typecheck, lint, and 139 unit tests pass.
+
+**Not verified:** physical A4 output, page breaks, and printer rendering still
+require a print preview or real printer.
+
+**Files changed:** `src/screens/more/MoreScreen.tsx`, `docs/CURRENT-STATE.md`
+
+**Architecture changes:** none.
+
+**Known issues:** offline cold start and live custody acceptance remain to be
+verified; the visual harness remains stale.
+
+**Recommended next:** BAR-068 offline cold-start verification.
+
+### Session — 31 August 2026 · codex
+
 **Completed: BAR-146 follow-through — home docket alerts open the custody list.**
 
 The home screen's awaiting-docket alert previously still flashed the retired
