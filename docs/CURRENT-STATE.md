@@ -195,7 +195,7 @@ States are defined once in the **Status key** above.
 | BAR-025 | Tolerance bands in the database | `[ ]` | They exist only in TypeScript (`domain/inventory.ts` `toleranceFor`) |
 | BAR-026 | `excise_category` NOT NULL | `[~]` | Still nullable free text, so the constraint half of the task is undone. But it is no longer NULL for every SKU: the bootstrap populates a **provisional** vocabulary (`beer`, `spirit`, NULL for mixers) so the excise view has a shape to be built against. The vocabulary will change once BAR-158 lands |
 | BAR-027 | Missing spec §13 columns | `[~]` | BAR-124 added display names. `abv`, `supplier_vendor_id`, `is_licenced`, `is_blind`, `witnessed_by`, `counted_at`, empties and delivery-note remain absent |
-| BAR-028 | Non-negative position guard | `[ ]` | Nothing prevents issuing more than is held. The per-column `>= 0` checks are on docket and count lines, not on the position |
+| BAR-028 | Non-negative position guard | `[~]` | `202608310004_non_negative_position.sql` adds a trigger on the sole balance-projection writer, rejecting any resulting negative containers or millilitres. Migration written and `check:sql` passes; live application and behavioral proof are parked with the test work |
 | BAR-029 | Index `movement_line.movement_id` | `[ ]` | The two indexes are `(venue_id, business_date, occurred_at)` and `(location_id, sku_id)`. `movement_id` is still an unindexed FK, evaluated per row by the read policy — and the live repository queries it by `movement_id` on every ledger read |
 | BAR-030 | Behavioural pgTAP suite | `[~]` | **134 assertions pass against the live database, 0 failed** (31 Aug). `movement_guards` adds six behavioural checks for BAR-017/018/022; `location_scope` has 11; `privileges` has 64; `recount` has 9 immutability checks. `ledger.test.sql` (11) remains existence-only and is the last file to replace |
 | BAR-031 | Execute migrations | `[x]` | **All migrations through `202608310003_comp_two_leg` applied and present in remote migration history, 31 Aug.** PostgreSQL 17.6. `test:db` reports 128 assertions, 0 failed; `db-state.mjs` reports 1 venue, 9 locations, 11 SKUs, 2 memberships, 4 movements, 2 count sessions, and 3 auth users |
@@ -561,6 +561,29 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 31 August 2026 · codex
+
+**Completed: BAR-028 implementation — non-negative position guard.**
+
+Added migration `202608310004_non_negative_position.sql` with a trigger on the
+private balance projection, the sole writer-side position boundary. Any movement
+that would leave containers or millilitres below zero is rejected. `check:sql`,
+typecheck, lint, and 143 unit tests pass.
+
+**Not verified:** the migration has not been pushed to the hosted database and
+the rejection behavior is not yet covered by the parked DB test run.
+
+**Files changed:** `supabase/migrations/202608310004_non_negative_position.sql`,
+`docs/CURRENT-STATE.md`
+
+**Architecture changes:** none.
+
+**Known issues:** live migration application, offline/device checks, and print
+output remain parked.
+
+**Recommended next:** continue implementation on the next open integrity item;
+run the database suite after the implementation pass.
 
 ### Session — 31 August 2026 · codex
 
