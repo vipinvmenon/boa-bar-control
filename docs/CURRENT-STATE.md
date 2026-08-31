@@ -185,7 +185,7 @@ States are defined once in the **Status key** above.
 | BAR-015 | Reconciliation view and test | `[ ]` | Same. Nothing compares the projection against a ledger sum |
 | BAR-016 | Protect the balance projection | `[~]` | `private.boa_bar_balance` now has exactly one writer, `private.boa_bar_post_movement`, instead of the insert being duplicated per entry point. Still no trigger and no scheduled reconciliation — `pnpm bootstrap` compares the projection against a ledger sum once, at bootstrap, which is not the same as protecting it |
 | BAR-017 | Fix `comp` to a two-leg move | `[!]` | `202608220001:256` still forces `comp` to net negative, so hospitality separation is unrecordable |
-| BAR-018 | Restrict `sale` to the POS path | `[!]` | `boa_bar_submit_movement` accepts `kind = 'sale'` from `crew`, `warehouse` and `bar_lead`. Violates non-negotiable 8 |
+| BAR-018 | Restrict `sale` to the POS path | `[~]` | `202608310001_restrict_sale.sql` adds an append-only trigger rejecting hand-keyed sales unless `source = 'pos'`. Migration written and `check:sql` passes; live database application and pgTAP proof still need the user's database credentials |
 | BAR-019 | Receipt movement path | `[x]` | `boa_bar_record_receipt` is the receipt path, with the delivery note the spec requires and a duplicate guard. Previously a toast message |
 | BAR-020 | Return and transfer paths | `[~]` | Transfer legs exist inside the docket RPCs. No standalone return path |
 | BAR-021 | Adjustment path with role and reason | `[ ]` | No adjustment RPC; `reverses_movement_id` is not unique, so one movement can be reversed twice |
@@ -561,6 +561,26 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 31 August 2026 · codex
+
+**Completed: BAR-018 (implementation) — reject hand-keyed sale movements.**
+
+Added `202608310001_restrict_sale.sql`, an append-only trigger that permits sale
+rows only when their source is `pos`; all PWA/general movement writes are refused.
+
+**Verified:** `check:sql`, typecheck, lint, 139 unit tests, and build pass.
+
+**Files changed:** `supabase/migrations/202608310001_restrict_sale.sql`,
+`docs/CURRENT-STATE.md`.
+
+**Architecture changes:** none.
+
+**Known issues / not verified:** migration has not been applied or tested against
+the live database because the database password is user-only.
+
+**Recommended next:** BAR-022, then apply and prove the pending migrations with the
+user's database credentials.
 
 ### Session — 31 August 2026 · codex
 
