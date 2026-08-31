@@ -184,7 +184,7 @@ States are defined once in the **Status key** above.
 | BAR-014 | `v_position` sums the ledger | `[ ]` | **No view of any kind exists in any migration** (grep `create .*view` → 0 hits). `boa_bar_inventory_snapshot` reads the projection exclusively |
 | BAR-015 | Reconciliation view and test | `[ ]` | Same. Nothing compares the projection against a ledger sum |
 | BAR-016 | Protect the balance projection | `[~]` | `private.boa_bar_balance` now has exactly one writer, `private.boa_bar_post_movement`, instead of the insert being duplicated per entry point. Still no trigger and no scheduled reconciliation — `pnpm bootstrap` compares the projection against a ledger sum once, at bootstrap, which is not the same as protecting it |
-| BAR-017 | Fix `comp` to a two-leg move | `[!]` | `202608220001:256` still forces `comp` to net negative, so hospitality separation is unrecordable |
+| BAR-017 | Fix `comp` to a two-leg move | `[~]` | `202608310003_comp_two_leg.sql` changes comp validation to balanced two-leg custody and requires a hospitality destination. Migration written and gates pass; live application and behavioural proof still need the user's database credentials |
 | BAR-018 | Restrict `sale` to the POS path | `[~]` | `202608310001_restrict_sale.sql` adds an append-only trigger rejecting hand-keyed sales unless `source = 'pos'`. Migration written and `check:sql` passes; live database application and pgTAP proof still need the user's database credentials |
 | BAR-019 | Receipt movement path | `[x]` | `boa_bar_record_receipt` is the receipt path, with the delivery note the spec requires and a duplicate guard. Previously a toast message |
 | BAR-020 | Return and transfer paths | `[~]` | Transfer legs exist inside the docket RPCs. No standalone return path |
@@ -561,6 +561,27 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 31 August 2026 · codex
+
+**Completed: BAR-017 (implementation) — balanced hospitality comps.**
+
+Added `202608310003_comp_two_leg.sql`. The shared movement poster now accepts
+balanced `comp` lines, and a deferred trigger requires the movement to include a
+hospitality destination. The ledger remains append-only.
+
+**Verified:** `check:sql`, typecheck, lint, 139 unit tests, and build pass.
+
+**Files changed:** `supabase/migrations/202608310003_comp_two_leg.sql`,
+`docs/CURRENT-STATE.md`.
+
+**Architecture changes:** none.
+
+**Known issues / not verified:** migration has not been applied or behaviourally
+tested against the live database because the database password is user-only.
+
+**Recommended next:** apply and prove the pending migrations, then continue with
+the next release blocker.
 
 ### Session — 31 August 2026 · codex
 
