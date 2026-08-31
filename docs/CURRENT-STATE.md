@@ -193,7 +193,7 @@ States are defined once in the **Status key** above.
 | BAR-023 | Server-validate the timestamps | `[~]` | `business_date` is now derived server-side and a timestamp more than an hour in the future is refused. Still unvalidated: nothing checks `occurred_at` against the venue event window, and POS timestamps are unvalidated because POS is cut |
 | BAR-024 | Location-scoped authorisation | `[~]` | Waste and count command RPCs now enforce the boundary: scoped roles may write only their membership location; manager/admin may explicitly select a venue location. Proven by 11 live pgTAP behaviours. Read policies and the remaining command RPCs remain open |
 | BAR-025 | Tolerance bands in the database | `[~]` | `202608310009_tolerance_bands.sql` adds four versioned categories matching the documented 1/3, 8/15, 3/8, and 2/5 percent bands. Migration written and `check:sql` passes; hosted application and consumer wiring are parked |
-| BAR-026 | `excise_category` NOT NULL | `[~]` | Still nullable free text, so the constraint half of the task is undone. But it is no longer NULL for every SKU: the bootstrap populates a **provisional** vocabulary (`beer`, `spirit`, NULL for mixers) so the excise view has a shape to be built against. The vocabulary will change once BAR-158 lands |
+| BAR-026 | `excise_category` NOT NULL | `[~]` | `202608310010_excise_categories.sql` adds dynamic reference data seeded with beer, IMFL, mixer, water, and other; normalizes provisional bootstrap values; and makes every SKU category non-null with a foreign key. Final categories can be extended when the Chandan/Salman stock sheet arrives; hosted application remains pending |
 | BAR-027 | Missing spec §13 columns | `[~]` | BAR-124 added display names. `abv`, `supplier_vendor_id`, `is_licenced`, `is_blind`, `witnessed_by`, `counted_at`, empties and delivery-note remain absent |
 | BAR-028 | Non-negative position guard | `[~]` | `202608310004_non_negative_position.sql` adds a trigger on the sole balance-projection writer, rejecting any resulting negative containers or millilitres. Migration written and `check:sql` passes; live application and behavioral proof are parked with the test work |
 | BAR-029 | Index `movement_line.movement_id` | `[~]` | `202608310008_movement_line_index.sql` adds the missing movement-id join index used by ledger detail/audit reads. Migration written and `check:sql` passes; hosted application is parked |
@@ -561,6 +561,29 @@ Architecture changes: <none, or ADR-nnn>
 Known issues: <what is now broken or half-done>
 Recommended next: BAR-nnn
 ```
+
+### Session — 31 August 2026 · codex
+
+**Completed: BAR-026 implementation — dynamic excise categories.**
+
+Added `boa_bar_excise_category` as controlled reference data, seeded only with
+beer, IMFL, mixer, water, and other. Existing provisional SKU values are
+normalized, then `excise_category` is made required with a foreign key. Future
+categories can be added as data when the original Chandan/Salman stock sheet is
+available. `check:sql`, typecheck, lint, and 143 unit tests pass.
+
+**Not verified:** hosted migration application and live SKU data remain parked.
+
+**Files changed:** `supabase/migrations/202608310010_excise_categories.sql`,
+`docs/CURRENT-STATE.md`
+
+**Architecture changes:** none.
+
+**Known issues:** final category values still need confirmation against the
+original stock list; DB/device/print verification remains pending.
+
+**Recommended next:** continue implementation, then load the confirmed stock
+vocabulary before release sign-off.
 
 ### Session — 31 August 2026 · codex
 
