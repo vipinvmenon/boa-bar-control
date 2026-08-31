@@ -12,26 +12,74 @@
  * products and splitting one note across several receipts would break the
  * reconciliation the note exists for.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { ChevronLeft, Minus, Plus, Trash2 } from 'lucide-react'
 import { useRepositoryMutation, useRepositoryQuery } from '../../data/RepositoryProvider'
 import { recordReceipt } from '../../services/receipt'
+import { clearDraft, readDraft, writeDraft } from '../../lib/offline-db'
 
 type Line = { skuId: string; containers: number }
+type ReceiptDraft = {
+  supplier: string
+  deliveryNote: string
+  skuId: string | null
+  containers: number
+  lines: Line[]
+  actionId: string
+}
 
 export function ReceiptScreen() {
   const navigate = useNavigate()
   const options = useRepositoryQuery(['receiptOptions'], (r) => r.receiptOptions())
+  const data = options.data
 
   const [supplier, setSupplier] = useState('')
   const [deliveryNote, setDeliveryNote] = useState('')
   const [skuId, setSkuId] = useState<string | null>(null)
   const [containers, setContainers] = useState(24)
   const [lines, setLines] = useState<Line[]>([])
-  const [actionId] = useState(() => crypto.randomUUID())
+  const [actionId, setActionId] = useState<string>(() => crypto.randomUUID())
+  const [draftReady, setDraftReady] = useState(false)
 
-  const data = options.data
+  const draftKey = data ? `receipt:draft:${data.locationId}` : null
+
+  // BAR-072. A delivery note can be entered over several minutes in a noisy
+  // warehouse; losing its lines on reload is a lost operational record. Restore
+  // only the known draft shape, and keep the action id so retries remain one
+  // idempotent receipt.
+  useEffect(() => {
+    if (!draftKey) return
+    let active = true
+    setDraftReady(false)
+    void readDraft(draftKey).then((value) => {
+      if (!active) return
+      const draft = value as Partial<ReceiptDraft> | undefined
+      if (
+        draft && typeof draft.supplier === 'string' && typeof draft.deliveryNote === 'string'
+        && Array.isArray(draft.lines) && typeof draft.actionId === 'string'
+      ) {
+        setSupplier(draft.supplier)
+        setDeliveryNote(draft.deliveryNote)
+        setSkuId(typeof draft.skuId === 'string' ? draft.skuId : null)
+        setContainers(typeof draft.containers === 'number' && draft.containers >= 1 ? draft.containers : 24)
+        setLines(draft.lines.filter((line): line is Line =>
+          typeof line?.skuId === 'string' && Number.isInteger(line.containers) && line.containers >= 1,
+        ))
+        setActionId(draft.actionId)
+      }
+      setDraftReady(true)
+    }).catch(() => {
+      if (active) setDraftReady(true)
+    })
+    return () => { active = false }
+  }, [draftKey])
+
+  useEffect(() => {
+    if (!draftKey || !draftReady) return
+    void writeDraft(draftKey, { supplier, deliveryNote, skuId, containers, lines, actionId } satisfies ReceiptDraft)
+  }, [actionId, containers, deliveryNote, draftKey, draftReady, lines, skuId, supplier])
+
   const product = data?.products.find((p) => p.skuId === skuId)
     ?? data?.products.find((p) => p.skuId === data.defaultProductId)
     ?? data?.products[0]
@@ -79,7 +127,7 @@ export function ReceiptScreen() {
   const nameFor = (id: string) => data.products.find((p) => p.skuId === id)?.name ?? id
   const unitFor = (id: string) => data.products.find((p) => p.skuId === id)?.containerUnitPlural ?? ''
   const canRecord =
-    supplier.trim() !== '' && deliveryNote.trim() !== '' && lines.length > 0 && !submit.isPending
+    draftReady && supplier.trim() !== '' && deliveryNote.trim() !== '' && lines.length > 0 && !submit.isPending
 
   return (
     <div className="flow-screen">
@@ -181,7 +229,10 @@ export function ReceiptScreen() {
         )}
         <button className="flow-cta" disabled={!canRecord} onClick={() => submit.mutate(
           { lines },
-          { onSuccess: () => void navigate({ to: '/warehouse' }) },
+          { onSuccess: () => {
+            if (draftKey) void clearDraft(draftKey)
+            void navigate({ to: '/warehouse' })
+          } },
         )}>
           {submit.isPending ? 'Recording…' : `Record delivery · ${lines.length} line${lines.length === 1 ? '' : 's'}`}
         </button>

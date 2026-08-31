@@ -564,6 +564,29 @@ Recommended next: BAR-nnn
 
 ### Session — 31 August 2026 · codex
 
+**Completed: BAR-072 receipt draft persistence.**
+
+Receipt supplier, delivery note, selected product, quantities, line list, and the
+idempotency action id now persist in the existing Dexie draft store and restore
+after reload. A successful receipt clears the draft. Typecheck, lint, and 143 unit
+tests pass.
+
+**Not verified:** the reload flow still needs a browser run; physical print and
+offline device checks remain parked as requested.
+
+**Files changed:** `src/screens/receipt/ReceiptScreen.tsx`,
+`docs/CURRENT-STATE.md`
+
+**Architecture changes:** none.
+
+**Known issues:** the visual harness remains stale; live acceptance and physical
+print output are still unverified.
+
+**Recommended next:** continue implementation on the remaining Release 1 gaps;
+return to browser/database verification afterward.
+
+### Session — 31 August 2026 · codex
+
 **Completed: BAR-068 guard coverage — offline membership eligibility.**
 
 Extracted the offline-session eligibility check into a pure helper and added four
