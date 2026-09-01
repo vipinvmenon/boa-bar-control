@@ -28,7 +28,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { ChevronLeft, EyeOff, Minus, Plus } from 'lucide-react'
 import { useRepository, useRepositoryMutation, useRepositoryQuery } from '../../data/RepositoryProvider'
-import { submitCount } from '../../services/count'
+import { partialMlFromWeight, submitCount } from '../../services/count'
 import type { CountLineCommand } from '../../data/repository'
 import { partialToMl } from '../../domain/units'
 import { useDraft } from '../../data/useDraft'
@@ -67,6 +67,8 @@ export function CountScreen() {
 
   const [full, setFull] = useState(0)
   const [partial, setPartial] = useState(0)
+  const [grossWeightG, setGrossWeightG] = useState<number | null>(null)
+  const [measurementError, setMeasurementError] = useState<string | null>(null)
 
   /**
    * BAR-082 + BAR-072. The counted lines and the position in the sheet, kept in
@@ -146,6 +148,20 @@ export function CountScreen() {
   const isLast = done >= s.totalLines - 1
   const pct = Math.round((done / s.totalLines) * 100)
 
+  let weighedPartialMl = 0
+  let weightError: string | null = null
+  if (line.partial === 'ml' && grossWeightG !== null) {
+    if (line.tareWeightG === null) {
+      weightError = 'This product has no tare weight. Do not record a weighed partial.'
+    } else {
+      try {
+        weighedPartialMl = partialMlFromWeight(grossWeightG, line.tareWeightG)
+      } catch (error) {
+        weightError = error instanceof Error ? error.message : 'The scale reading is not valid'
+      }
+    }
+  }
+
   /**
    * Record this line, then either advance or submit.
    *
@@ -155,13 +171,21 @@ export function CountScreen() {
    * re-creatable — the stock has moved by the time anybody notices.
    */
   const saveNext = () => {
+    if (weightError) {
+      setMeasurementError(weightError)
+      return
+    }
+
+    const isWeighedPartial = line.partial === 'ml' && grossWeightG !== null
     const next: Record<string, CountLineCommand> = {
       ...counted,
       [line.skuId]: {
         skuId: line.skuId,
         fullContainers: full,
-        // A keg is metered in litres on screen; the ledger holds millilitres.
-        partialMl: partialToMl(partial, line.partial),
+        // Kegs are metered in litres. Spirits are weighed and converted against
+        // the SKU tare; the gross reading is retained as audit evidence.
+        partialMl: isWeighedPartial ? weighedPartialMl : partialToMl(partial, line.partial),
+        ...(isWeighedPartial ? { grossWeightG } : {}),
       },
     }
 
@@ -172,6 +196,8 @@ export function CountScreen() {
       // Reset per line. A carried-over value is a silent miscount.
       setFull(0)
       setPartial(0)
+      setGrossWeightG(null)
+      setMeasurementError(null)
       return
     }
 
@@ -271,19 +297,68 @@ export function CountScreen() {
             </div>
             <div className="count-partial-row">
               <button
-                onClick={() => setPartial((n) => Math.max(0, n - line.partialStep))}
+                onClick={() => {
+                  setMeasurementError(null)
+                  if (line.partial === 'ml') {
+                    setGrossWeightG((n) => n === null ? null : Math.max(0, n - line.partialStep))
+                  } else {
+                    setPartial((n) => Math.max(0, n - line.partialStep))
+                  }
+                }}
                 aria-label="Less partial"
               >
                 <Minus size={20} strokeWidth={2.2} aria-hidden="true" />
               </button>
               <div className="count-partial-value">
-                <p>{partial}</p>
-                <span>{line.partialUnit}</span>
+                {line.partial === 'ml' ? (
+                  <>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min="0"
+                      step="1"
+                      value={grossWeightG ?? ''}
+                      placeholder="0"
+                      aria-label={`Gross weight in grams for ${line.name}`}
+                      aria-invalid={weightError ? 'true' : undefined}
+                      onChange={(event) => {
+                        setMeasurementError(null)
+                        const value = event.target.value
+                        setGrossWeightG(value === '' ? null : Number(value))
+                      }}
+                    />
+                    <span>
+                      GROSS G · {weighedPartialMl} {line.partialUnit}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <p>{partial}</p>
+                    <span>{line.partialUnit}</span>
+                  </>
+                )}
               </div>
-              <button onClick={() => setPartial((n) => n + line.partialStep)} aria-label="More partial">
+              <button
+                onClick={() => {
+                  setMeasurementError(null)
+                  if (line.partial === 'ml') {
+                    setGrossWeightG((n) => n === null
+                      ? (line.tareWeightG ?? 0) + line.partialStep
+                      : n + line.partialStep)
+                  } else {
+                    setPartial((n) => n + line.partialStep)
+                  }
+                }}
+                aria-label="More partial"
+              >
                 <Plus size={20} strokeWidth={2.2} aria-hidden="true" />
               </button>
             </div>
+            {(measurementError || weightError) && (
+              <p className="count-measurement-error" role="alert">
+                {measurementError || weightError}
+              </p>
+            )}
           </section>
         ) : null}
 
@@ -313,7 +388,7 @@ export function CountScreen() {
         {submit.isError && (
           <p className="flow-error" role="alert">NOT SUBMITTED · {submit.error.message}</p>
         )}
-        <button className="flow-cta" onClick={saveNext} disabled={submit.isPending}>
+        <button className="flow-cta" onClick={saveNext} disabled={submit.isPending || !!weightError}>
           {submit.isPending ? 'Recording…' : isLast ? 'Submit count' : 'Save & next'}
         </button>
       </footer>

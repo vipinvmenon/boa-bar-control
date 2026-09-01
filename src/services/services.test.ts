@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { CreateDocketCommand, AcceptDocketCommand, Repository } from '../data/repository'
 import { issueStock } from './issue'
 import { acceptDocket } from './accept'
-import { submitCount } from './count'
+import { partialMlFromWeight, submitCount } from './count'
 
 const ACTION = '3f1c9a52-8d4e-4b21-9f77-1c2b6d5a0e33'
 
@@ -218,6 +218,21 @@ describe('submitCount', () => {
     )
   })
 
+  it('retains the gross scale reading as evidence for a weighed partial', async () => {
+    const repository = countStub()
+    await submitCount({
+      repository,
+      ...valid,
+      lines: [{ skuId: 'monk', fullContainers: 2, partialMl: 550, grossWeightG: 1_030 }],
+      expectedLineCount: 1,
+    })
+    expect(repository.submitCount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lines: [{ skuId: 'monk', fullContainers: 2, partialMl: 550, grossWeightG: 1_030 }],
+      }),
+    )
+  })
+
   it('REFUSES a partial count, because a missing line records as zero', async () => {
     // The most damaging wrong number this system can produce: 12 of 18 lines
     // submitted reports six SKUs as zero, and zero reads as "all of it is
@@ -278,6 +293,16 @@ describe('submitCount', () => {
       expectedLineCount: 1,
     })
     expect(repository.submitCount).toHaveBeenCalled()
+  })
+})
+
+describe('partialMlFromWeight', () => {
+  it('derives millilitres from the scale reading and SKU tare', () => {
+    expect(partialMlFromWeight(1_030, 480)).toBe(550)
+  })
+
+  it('rejects a reading below tare instead of clamping it to zero', () => {
+    expect(() => partialMlFromWeight(300, 480)).toThrow(/below the 480 g tare/)
   })
 })
 

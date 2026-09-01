@@ -410,9 +410,9 @@ export const COUNT_SESSION: CountSession = {
   witnessedBy: 'CHANDAN',
   sealedAt: '19:52',
   lines: [
-    { skuId: 'kf',   name: 'Kingfisher Premium', spec: 'Beer · 650 ml bottle',              partial: 'none',   partialStep: 1,  partialUnit: 'OPEN BOTTLES',      partialHint: '' },
-    { skuId: 'monk', name: 'Old Monk',           spec: 'Spirit · 750 ml bottle · tare 480 g', partial: 'ml',     partialStep: 50, partialUnit: 'ML BY WEIGHT',      partialHint: 'WEIGH · TARE 480 G' },
-    { skuId: 'stok', name: 'STOK Draught',       spec: 'Beer · 30 L keg · line 2',          partial: 'litres', partialStep: 1,  partialUnit: 'LITRES REMAINING',  partialHint: 'FLOW METER · LINE 2' },
+    { skuId: 'kf',   name: 'Kingfisher Premium', spec: 'Beer · 650 ml bottle',                partial: 'none',   tareWeightG: null, partialStep: 1,  partialUnit: 'OPEN BOTTLES',      partialHint: '' },
+    { skuId: 'monk', name: 'Old Monk',           spec: 'Spirit · 750 ml bottle · tare 480 g', partial: 'ml',     tareWeightG: 480,  partialStep: 50, partialUnit: 'ML BY WEIGHT',      partialHint: 'WEIGH · TARE 480 G' },
+    { skuId: 'stok', name: 'STOK Draught',       spec: 'Beer · 30 L keg · line 2',            partial: 'litres', tareWeightG: null, partialStep: 1,  partialUnit: 'LITRES REMAINING',  partialHint: 'FLOW METER · LINE 2' },
   ],
 }
 

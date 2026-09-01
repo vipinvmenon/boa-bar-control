@@ -300,6 +300,8 @@ export type CountLine = {
   name: string
   spec: string
   partial: PartialMode
+  /** Bottle weight with no liquid, used to convert a scale reading to millilitres. */
+  tareWeightG: number | null
   /** Increment for the partial stepper — 50 ml for spirits, 1 L for kegs. */
   partialStep: number
   /** Unit caption under the partial figure, e.g. 'ML BY WEIGHT'. */

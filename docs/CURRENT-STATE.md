@@ -291,7 +291,7 @@ States are defined once in the **Status key** above.
 | --- | --- | --- | --- |
 | BAR-079 | `count` sequential and blind | `[x]` | `36ffc4f` — inputs start at zero, stepper resets per line, no expected figure in the read model. Verified by driving the browser |
 | BAR-080 | Partial-container capture | `[x]` | `36ffc4f` — all three modes (`none` / `ml` / `litres`) verified in the browser |
-| BAR-081 | Tare weighing | `[~]` | `partialMlFromWeight` in `services/count.ts` wraps the domain function, and `partialToMl` converts a keg reading from litres. The count screen still asks for millilitres directly rather than taking a gross weight and a tare — the conversion exists but the input does not use it |
+| BAR-081 | Tare weighing | `[x]` | Spirit partials now take the gross scale reading, derive `partial_ml = gross − SKU tare` through the domain/service helper, and retain `gross_weight_g` as evidence. A non-zero reading below tare is rejected rather than clamped to zero. Verified at 390×844 with the fixture repository: 530 g against 480 g showed 50 ml; 300 g showed an error and disabled Save; 1,030 g showed 550 ml and re-enabled Save |
 | BAR-082 | Count persistence | `[x]` | `202608280005` plus `202608290002` — `boa_bar_submit_count`, a service, and `CountScreen` accumulate blind lines and submit through the outbox. Live 29 Aug: Bar 2 submitted a mid-event count with 11 lines; the subsequent location-scoped variance route loaded. pgTAP: 128 assertions, 0 failed |
 | BAR-083 | Blind enforcement in the database | `[x]` | Same work as BAR-161, proven the same way. `private.boa_bar_is_blinded` is the single definition and gates both the snapshot and the `movement_line` read policy, so the position cannot be re-summed from the ledger |
 | BAR-084 | Seal the theoretical position at submit | `[x]` | `private.boa_bar_count_seal`, summed from the ledger at the instant counted, not from the balance projection which only holds "now". No grant to anybody — it IS the expected figure a counter must never see. Append-only. Live post-submission variance showed expected/count values only after the blind count submitted; raw seal rows were not directly inspected |
@@ -2142,3 +2142,11 @@ Files changed: `supabase/migrations/202608310011_invite_admin_allowlist.sql`, `s
 Architecture changes: none
 Known issues: The new migration has not been pushed to or behavior-tested against the hosted database; live auth identities must use the supplied email addresses.
 Recommended next: Apply the migration, then continue the remaining Release 1 implementation work.
+
+### Session — 1 September 2026 · codex
+
+Completed: BAR-081 — spirit partials now accept a gross scale reading, derive millilitres from the SKU tare through the existing domain/service boundary, retain `gross_weight_g` as evidence, and reject readings below tare rather than silently clamping them to zero. Verified in the fixture-backed browser at 390×844: 530 g against a 480 g tare produced 50 ml; 300 g displayed an error and disabled Save; 1,030 g produced 550 ml and re-enabled Save. Typecheck, lint, 146 unit tests, and production build pass.
+Files changed: `src/data/repository.ts`, `src/data/live/live-repository.ts`, `src/data/fixture/design-data.ts`, `src/domain/inventory.ts`, `src/domain/inventory.test.ts`, `src/services/services.test.ts`, `src/screens/count/CountScreen.tsx`, `src/styles.css`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: `test:visual` still reports the pre-existing fixture-harness failure (14 screens identical between fixture variants, including every data-backed route), so no green visual-gate claim is made. The live database write was not exercised; BAR-081 changes the already-existing count payload fields and requires no schema change.
+Recommended next: complete the live two-account docket acceptance under BAR-053.

@@ -529,7 +529,11 @@ h1 { font: 400 31px/1 'Anton', sans-serif; letter-spacing: .035em; text-transfor
 .count-partial-row button { width: 52px; height: 52px; flex: none; display: grid; place-items: center; border: 1px solid rgba(166,201,180,.24); border-radius: 16px; background: rgba(27,27,36,.72); color: var(--bone); }
 .count-partial-value { flex: 1; text-align: center; }
 .count-partial-value p { color: var(--bone); font: 600 26px/1 'Oswald', sans-serif; }
+.count-partial-value input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--bone); font: 600 26px/1 'Oswald', sans-serif; text-align: center; appearance: textfield; }
+.count-partial-value input::-webkit-inner-spin-button,
+.count-partial-value input::-webkit-outer-spin-button { margin: 0; appearance: none; }
 .count-partial-value span { display: block; margin-top: 4px; color: rgba(166,201,180,.55); font: 500 9px/1 'Oswald', sans-serif; letter-spacing: .14em; }
+.count-measurement-error { margin-top: 10px; color: var(--red); font: 400 11px/1.4 'Archivo', sans-serif; text-align: center; }
 
 /* BAR-085 — count submitted */
 .countdone-body { padding: 40px 16px 20px; gap: 18px; }

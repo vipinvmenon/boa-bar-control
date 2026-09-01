@@ -234,7 +234,16 @@ export function varianceBand(category: string, percentage: number | null): Varia
 }
 
 export function mlFromGrossWeight(grossWeightG: number, tareWeightG: number): number {
-  return Math.max(0, Math.round(grossWeightG - tareWeightG))
+  if (!Number.isFinite(grossWeightG) || !Number.isFinite(tareWeightG)) {
+    throw new Error('Gross and tare weights must be finite numbers')
+  }
+  if (grossWeightG < 0 || tareWeightG < 0) {
+    throw new Error('Gross and tare weights cannot be negative')
+  }
+  if (grossWeightG < tareWeightG) {
+    throw new Error(`Gross weight cannot be below the ${tareWeightG} g tare`)
+  }
+  return Math.round(grossWeightG - tareWeightG)
 }
 
 export function weightedAverageCost(input: {

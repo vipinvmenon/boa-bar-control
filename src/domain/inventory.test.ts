@@ -144,9 +144,9 @@ describe('audit calculations', () => {
     expect(varianceBand('bottled_beer', null)).toBe('amber')
   })
 
-  it('converts gross minus tare to ml and never produces negative stock', () => {
+  it('converts gross minus tare to ml and refuses an impossible weight', () => {
     expect(mlFromGrossWeight(1_030, 480)).toBe(550)
-    expect(mlFromGrossWeight(300, 480)).toBe(0)
+    expect(() => mlFromGrossWeight(300, 480)).toThrow(/below the 480 g tare/)
   })
 
   it('calculates weighted average cost in minor units', () => {

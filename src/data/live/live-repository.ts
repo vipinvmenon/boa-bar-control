@@ -1386,6 +1386,7 @@ export function createLiveRepository(context: LiveContext): Repository {
           name: sku.name,
           spec: specLabel(shape),
           partial: mode,
+          tareWeightG: shape.tareWeightG,
           partialStep: partialStepFor(mode),
           partialUnit: partialUnitFor(mode),
           partialHint: partialHintFor(shape, mode),
