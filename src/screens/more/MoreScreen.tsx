@@ -101,8 +101,6 @@ export function MoreScreen() {
   // BAR-074. An expired JWT stops replay without consuming an attempt. Give the
   // person a direct recovery path; resolving the row would otherwise discard the
   // queued write's chance to post after they authenticate again.
-  const needsReauthentication = store.failed > 0 && /auth|authori[sz]|permission|jwt|401|403/i.test(store.lastFailure ?? '')
-
   const reauthenticate = async () => {
     setSigningOut(true)
     setSignOutError(undefined)
@@ -149,8 +147,10 @@ export function MoreScreen() {
         <section className="sync-card">
           <div className="sync-card-top">
             <span className="sync-card-eyebrow">SYNC STATE</span>
-            <span className={`sync-card-badge ${store.failed > 0 ? 'failed' : offline ? 'offline' : ''}`}>
-              {store.failed > 0
+            <span className={`sync-card-badge ${store.authStopped || store.failed > 0 ? 'failed' : offline ? 'offline' : ''}`}>
+              {store.authStopped
+                ? '! SIGN IN AGAIN'
+                : store.failed > 0
                 ? `! ${store.failed} NOT SENT`
                 : offline
                   ? '○ OFFLINE'
@@ -158,7 +158,9 @@ export function MoreScreen() {
             </span>
           </div>
           <p className="sync-card-copy">
-            {store.failed > 0
+            {store.authStopped
+              ? `${store.pending} action${store.pending === 1 ? '' : 's'} retained on this device because your session needs to be renewed. Sign in again to retry them. Nothing is posted until the server confirms it.`
+              : store.failed > 0
               ? `${store.failed} action${store.failed === 1 ? '' : 's'} needs attention. ${store.lastFailureKind ? `${FAILED_ACTION[store.lastFailureKind] ?? 'Write'}: ` : ''}${store.lastFailure ?? 'The server refused the write.'} It is retained on this device; later writes wait until it is resolved.`
               : offline
               ? `${store.pending} action${store.pending === 1 ? '' : 's'} queued on this device. They are recorded locally and will post in order when the network returns. Nothing is lost.`
@@ -177,7 +179,7 @@ export function MoreScreen() {
           {store.failed > 0 ? <button className="flow-cta-ghost sync-resolve" onClick={() => void resolveFailure()} disabled={resolvingFailure}>
             {resolvingFailure ? 'Resolving…' : 'Resolve failed action'}
           </button> : null}
-          {needsReauthentication ? <button className="flow-cta-ghost sync-resolve" onClick={() => void reauthenticate()} disabled={signingOut}>
+          {store.authStopped ? <button className="flow-cta-ghost sync-resolve" onClick={() => void reauthenticate()} disabled={signingOut}>
             {signingOut ? 'Signing out…' : 'Sign in again to retry'}
           </button> : null}
         </section>

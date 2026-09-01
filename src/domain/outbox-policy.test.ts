@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest'
 import {
   classifyFailure,
   failureMessage,
+  hasAuthStoppedEntry,
   isTerminal,
   MAX_ATTEMPTS,
   nextAttemptDelayMs,
@@ -214,6 +215,18 @@ describe('failureMessage', () => {
   it('falls back only when no usable message exists', () => {
     expect(failureMessage(new Error('network unavailable'))).toBe('network unavailable')
     expect(failureMessage({ code: 'XX000' })).toBe('Unknown sync failure')
+  })
+})
+
+describe('auth stop state', () => {
+  it('detects retained auth failures without treating ordinary pending work as stopped', () => {
+    expect(hasAuthStoppedEntry([
+      { status: 'pending', lastError: 'JWT expired' },
+    ])).toBe(true)
+    expect(hasAuthStoppedEntry([
+      { status: 'pending', lastError: 'fetch failed' },
+      { status: 'done', lastError: 'authentication required' },
+    ])).toBe(false)
   })
 })
 

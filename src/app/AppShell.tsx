@@ -95,6 +95,8 @@ export function AppShell() {
             <small>
               {isDemo
                 ? 'NOT LIVE'
+                : store.authStopped
+                  ? 'SIGN IN AGAIN TO SYNC'
                 : store.failed > 0
                   ? `${store.failed} NOT SENT · NEEDS ATTENTION`
                   : store.activeVenueName}

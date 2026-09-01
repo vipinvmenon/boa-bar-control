@@ -30,6 +30,8 @@ export type FailureKind = 'auth' | 'duplicate' | 'invalid' | 'transient'
 /** The shape both a thrown Error and a PostgrestError satisfy. */
 export type FailureLike = { message?: unknown; code?: unknown } | string | null | undefined
 
+export type OutboxFailureState = Pick<OutboxEntryState, 'status'> & { lastError?: string }
+
 /** Preserve the server's explanation even when PostgREST throws a plain object. */
 export function failureMessage(error: unknown): string {
   if (error instanceof Error) return error.message
@@ -121,6 +123,11 @@ export function classifyFailure(error: FailureLike): FailureKind {
   }
 
   return 'transient'
+}
+
+/** True when a retained pending row is the reason the drain is auth-stopped. */
+export function hasAuthStoppedEntry(entries: OutboxFailureState[]): boolean {
+  return entries.some((entry) => entry.status === 'pending' && classifyFailure({ message: entry.lastError }) === 'auth')
 }
 
 /**

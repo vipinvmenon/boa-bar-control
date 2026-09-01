@@ -54,6 +54,11 @@ type AppStore = {
   /** Writes sitting in the outbox, and writes that have given up. */
   pending: number
   failed: number
+  /** The drain is paused on an auth failure; the pending row is retained. */
+  authStopped: boolean
+  authFailureId?: string
+  authFailureKind?: string
+  authFailure?: string
   lastFailureId?: string
   lastFailureKind?: string
   /** Exact server refusal for the newest retained dead letter (BAR-135). */
@@ -71,12 +76,17 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
   const [queue, setQueue] = useState<{
     pending: number
     failed: number
+    authStopped: boolean
+    authFailureId?: string
+    authFailureKind?: string
+    authFailure?: string
     lastFailureId?: string
     lastFailureKind?: string
     lastFailure?: string
   }>({
     pending: 0,
     failed: 0,
+    authStopped: false,
     lastFailureId: undefined,
   })
 
@@ -135,13 +145,17 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       offline,
       pending: queue.pending,
       failed: queue.failed,
+      authStopped: queue.authStopped,
+      authFailureId: queue.authFailureId,
+      authFailureKind: queue.authFailureKind,
+      authFailure: queue.authFailure,
       lastFailureId: queue.lastFailureId,
       lastFailureKind: queue.lastFailureKind,
       lastFailure: queue.lastFailure,
       toast,
       flash,
     }),
-    [venueRole, auth.activeMembership?.venueName, offline, queue.pending, queue.failed, queue.lastFailureId, queue.lastFailureKind, queue.lastFailure, toast, flash],
+    [venueRole, auth.activeMembership?.venueName, offline, queue.pending, queue.failed, queue.authStopped, queue.authFailureId, queue.authFailureKind, queue.authFailure, queue.lastFailureId, queue.lastFailureKind, queue.lastFailure, toast, flash],
   )
 
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>

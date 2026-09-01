@@ -32,6 +32,7 @@ import Dexie, { type EntityTable } from 'dexie'
 import {
   classifyFailure,
   failureMessage,
+  hasAuthStoppedEntry,
   isTerminal,
   nextAttemptDelayMs,
   selectDrainBatch,
@@ -259,18 +260,25 @@ export async function clearUserCache(): Promise<void> {
 }
 
 export async function getQueueSummary() {
-  const [pending, syncing, failedRows] = await Promise.all([
-    offlineDb.outbox.where('status').equals('pending').count(),
+  const [pendingRows, syncing, failedRows] = await Promise.all([
+    offlineDb.outbox.where('status').equals('pending').toArray(),
     offlineDb.outbox.where('status').equals('syncing').count(),
     offlineDb.outbox.where('status').equals('failed').toArray(),
   ])
   const newestFailure = [...failedRows].sort((a, b) => b.createdAt - a.createdAt)[0]
+  const authStoppedRow = [...pendingRows]
+    .filter((row) => hasAuthStoppedEntry([row]))
+    .sort((a, b) => b.createdAt - a.createdAt)[0]
   return {
-    pending: pending + syncing,
+    pending: pendingRows.length + syncing,
     failed: failedRows.length,
     lastFailureId: newestFailure?.id,
     lastFailureKind: newestFailure?.kind,
     lastFailure: newestFailure?.lastError,
+    authStopped: Boolean(authStoppedRow),
+    authFailureId: authStoppedRow?.id,
+    authFailureKind: authStoppedRow?.kind,
+    authFailure: authStoppedRow?.lastError,
   }
 }
 

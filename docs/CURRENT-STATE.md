@@ -2346,6 +2346,15 @@ Recommended next: regenerate database types when the hosted schema snapshot is a
 
 ### Session — 1 September 2026 · codex
 
+Completed: BAR-074 and BAR-076 — the outbox now surfaces an authentication-stopped state and More/AppShell direct staff to sign in again while retaining queued commands; the service worker caches only same-origin navigation/static assets plus Supabase SKU/location reference reads, excludes snapshots/RPCs/writes, and removes legacy broad data caches on activation.
+Files changed: `src/domain/outbox-policy.ts`, `src/domain/outbox-policy.test.ts`, `src/lib/offline-db.ts`, `src/lib/app-store.tsx`, `src/screens/more/MoreScreen.tsx`, `src/app/AppShell.tsx`, `src/sw.ts`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: The browser/device offline cold-start, service-worker activation, and cache behavior require real-device verification. The two-account docket acceptance and physical A4 print checks remain unverified. `corepack pnpm test:db` was not run because the database password is unavailable; no hosted database mutation was needed for these tasks.
+Verified: `corepack pnpm typecheck`, `corepack pnpm lint`, 151 unit tests, `corepack pnpm build`, and `corepack pnpm check:sql` pass. Focused auth-stop tests pass.
+Recommended next: perform the user-owned second-account acceptance and A4 print checks, then reconcile the stale task-status table against the session evidence.
+
+### Session — 1 September 2026 · codex
+
 Completed: BAR-033 and BAR-138 — aligned `src/types/database.ts` with the hosted top-up request table, enum, relationships, and RPC signatures; removed the two remaining top-up RPC `as never` casts; added repository CSP/HSTS headers and exposed `VITE_RELEASE` with a `dev` fallback in More.
 Files changed: `src/types/database.ts`, `src/lib/supabase.ts`, `vercel.json`, `src/screens/more/MoreScreen.tsx`, `docs/CURRENT-STATE.md`
 Architecture changes: none
