@@ -2346,6 +2346,15 @@ Recommended next: regenerate database types when the hosted schema snapshot is a
 
 ### Session — 1 September 2026 · codex
 
+Completed: BAR-068, BAR-131, and BAR-030 — parallelized three isolated tasks. Auth now restores user-scoped cached memberships for a still-valid JWT during an offline or failed-network cold start while refusing explicit auth failures; the fabricated AppShell status-bar reference is removed; and ledger tests now prove append-only headers/lines plus position derivation from ledger sums.
+Files changed: `src/lib/auth.tsx`, `src/app/AppShell.tsx`, `supabase/tests/ledger.test.sql`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Real browser/device offline cold-start behavior remains unverified. The new ledger test was executed through Supabase MCP in a rollback transaction and passed its final `ok 11` assertion; the password-dependent `corepack pnpm test:db` wrapper was not run. `test:visual` was not run because no dev server was started.
+Verified: Separate commits `27b9925` (BAR-131), `4683bf9` (BAR-068), and `dd0b40a` (BAR-030). `corepack pnpm typecheck`, lint, 150 unit tests, build, and `check:sql` pass. Hosted Supabase MCP execution completed the BAR-030 transaction without error.
+Recommended next: review the remaining SECURITY DEFINER privilege advisories, then complete the live two-account docket acceptance and receipt write-path checks.
+
+### Session — 1 September 2026 · codex
+
 Completed: BAR-013 security follow-through — enabled RLS on the four tables previously flagged as RLS-disabled and added explicit deny-by-default policies without granting client table access. Hosted Supabase security inspection now reports zero `rls_disabled` and zero `rls_enabled_no_policy` lints.
 Files changed: `supabase/migrations/202609010005_enable_internal_rls.sql`, `supabase/migrations/202609010006_internal_deny_policies.sql`, `docs/CURRENT-STATE.md`
 Architecture changes: none
