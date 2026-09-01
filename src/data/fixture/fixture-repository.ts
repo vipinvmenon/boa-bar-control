@@ -63,7 +63,9 @@ export function createFixtureRepository(which: FixtureVariant = 'a'): Repository
     },
 
     async alerts(): Promise<Alert[]> {
-      return ALERTS
+      // BAR-165. Was unconditional, so the never-counted alert branch had no
+      // second fixture state and the gate could not see it.
+      return v?.alerts ?? ALERTS
     },
 
     async listBars(): Promise<BarSummary[]> {

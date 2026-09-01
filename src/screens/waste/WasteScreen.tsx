@@ -85,10 +85,10 @@ export function WasteScreen() {
             >
               <ChevronLeft size={18} strokeWidth={2} aria-hidden="true" />
             </button>
-            <span className="count-title">RECORD WASTE</span>
+            <span className="count-head-title">RECORD WASTE</span>
           </div>
           {/* The recording location, stated — and it is what the command posts to. */}
-          <span className="count-scope">{data.locationName}</span>
+          <span className="section-head-asof">{data.locationName}</span>
         </div>
       </header>
 
@@ -149,6 +149,13 @@ export function WasteScreen() {
         {submit.isError && (
           <p className="flow-error" role="alert">NOT RECORDED · {submit.error.message}</p>
         )}
+        {/*
+          BAR-165. The button read "Record 1 as waste" and did nothing until a
+          reason was chosen, with nothing on screen saying so. The reason is not
+          a formality — it is what separates accounted depletion from a variance
+          nobody can explain (spec §8).
+        */}
+        {reason === null ? <p className="flow-hint">Choose a reason. It is what makes this accounted depletion rather than an unexplained loss.</p> : null}
         <button
           className="flow-cta is-short"
           disabled={reason === null || submit.isPending}

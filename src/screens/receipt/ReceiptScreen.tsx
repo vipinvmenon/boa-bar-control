@@ -42,6 +42,7 @@ export function ReceiptScreen() {
   const [lines, setLines] = useState<Line[]>([])
   const [actionId, setActionId] = useState<string>(() => crypto.randomUUID())
   const [draftReady, setDraftReady] = useState(false)
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
 
   const draftKey = data ? `receipt:draft:${data.locationId}` : null
 
@@ -130,6 +131,37 @@ export function ReceiptScreen() {
   const canRecord =
     draftReady && supplier.trim() !== '' && deliveryNote.trim() !== '' && lines.length > 0 && !submit.isPending
 
+  /**
+   * BAR-165. What is still missing, in the order the screen asks for it.
+   *
+   * The button was simply dead: with two products added and the supplier left
+   * blank it said "Record delivery · 2 lines" and did nothing, and there was no
+   * way to find out why. Spec §4 requires both the supplier and the note — this
+   * says so rather than leaving somebody tapping.
+   */
+  const blocker = !draftReady
+    ? null
+    : supplier.trim() === ''
+      ? 'Name the supplier this delivery came from.'
+      : deliveryNote.trim() === ''
+        ? 'Enter the delivery note or invoice number. The excise return and the settlement reconcile to it.'
+        : lines.length === 0
+          ? 'Add at least one product to the delivery.'
+          : null
+
+  /** Anything worth losing — used to decide whether discarding needs confirming. */
+  const hasDraft = supplier.trim() !== '' || deliveryNote.trim() !== '' || lines.length > 0
+
+  const discard = () => {
+    if (draftKey) void clearDraft(draftKey)
+    setSupplier('')
+    setDeliveryNote('')
+    setLines([])
+    setContainers(24)
+    setActionId(crypto.randomUUID())
+    setConfirmDiscard(false)
+  }
+
   return (
     <div className="flow-screen">
       <header className="count-head">
@@ -138,9 +170,9 @@ export function ReceiptScreen() {
             <button className="flow-back" onClick={() => void navigate({ to: '/warehouse' })} aria-label="Back">
               <ChevronLeft size={18} strokeWidth={2} aria-hidden="true" />
             </button>
-            <span className="count-title">RECORD DELIVERY</span>
+            <span className="count-head-title">RECORD DELIVERY</span>
           </div>
-          <span className="count-scope">{data.locationName}</span>
+          <span className="section-head-asof">{data.locationName}</span>
         </div>
       </header>
 
@@ -208,6 +240,14 @@ export function ReceiptScreen() {
           <p className="section-empty">Nothing added yet. A delivery needs at least one product.</p>
         ) : null}
 
+        {/*
+          BAR-165. A delivery survives a reload by design (BAR-072), which also
+          means a half-entered one survives being handed to the next person on a
+          shared device — with a supplier, a note and lines already filled in, and
+          no way to clear them but removing each line by hand. The action id is
+          re-minted with it, so the discarded attempt and a later real delivery
+          are never the same idempotent write.
+        */}
         {lines.map((line) => (
           <div className="receipt-line" key={line.skuId}>
             <span>
@@ -228,6 +268,16 @@ export function ReceiptScreen() {
         {submit.isError && (
           <p className="flow-error" role="alert">NOT RECORDED · {submit.error.message}</p>
         )}
+        {confirmDiscard ? (
+          <div className="leave-guard" role="alert">
+            <p>Clear the supplier, the delivery note and {lines.length} line{lines.length === 1 ? '' : 's'}? Nothing has been recorded, so nothing is lost from the ledger.</p>
+            <div className="leave-guard-actions">
+              <button className="flow-cta-ghost" onClick={() => setConfirmDiscard(false)}>Keep it</button>
+              <button className="flow-cta-ghost is-active" onClick={discard}>Discard delivery</button>
+            </div>
+          </div>
+        ) : null}
+        {blocker && !confirmDiscard ? <p className="flow-hint">{blocker}</p> : null}
         <button className="flow-cta" disabled={!canRecord} onClick={() => submit.mutate(
           { lines },
           { onSuccess: () => {
@@ -237,6 +287,9 @@ export function ReceiptScreen() {
         )}>
           {submit.isPending ? 'Recording…' : `Record delivery · ${lines.length} line${lines.length === 1 ? '' : 's'}`}
         </button>
+        {hasDraft && !confirmDiscard ? (
+          <button className="flow-cta-ghost" onClick={() => setConfirmDiscard(true)}>Discard delivery</button>
+        ) : null}
       </footer>
     </div>
   )

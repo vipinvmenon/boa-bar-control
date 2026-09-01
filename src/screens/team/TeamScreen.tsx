@@ -89,6 +89,14 @@ export function TeamScreen() {
                 {data.locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
             </label>
+            {/*
+              BAR-165. The invite carries the person's name into every movement
+              they will post (BAR-124), so it is required — which the dead button
+              did not say.
+            */}
+            {name.trim() === '' ? (
+              <p className="flow-hint">Enter their name. It is what every movement they post will be signed with.</p>
+            ) : null}
             <button
               className="ritual-button wide"
               disabled={name.trim() === '' || invite.isPending}

@@ -65,7 +65,7 @@ export const ALERTS: Alert[] = [
     id: 'kingfisher-low', level: 'CRITICAL', ageLabel: 'RUN-OUT ~20:10',
     title: 'Bar 3 · Kingfisher low', subtitle: 'Depleting 38 bottles/hr',
     metric: '12', metricUnit: 'LEFT', meterPct: 14, meterNote: '26 MIN OF COVER',
-    actionLabel: 'ISSUE', tone: 'red', target: 'issue',
+    actionLabel: 'ISSUE', tone: 'red', target: 'issue', locationId: 'bar-3',
   },
   {
     id: 'dockets-open', level: 'WARNING', ageLabel: 'OLDEST 18 MIN',
@@ -77,7 +77,7 @@ export const ALERTS: Alert[] = [
     id: 'bar2-count', level: 'WARNING', ageLabel: 'DUE 19:30',
     title: 'Bar 2 mid-count overdue', subtitle: 'Last counted 15:10 · Gabe',
     metric: '22', metricUnit: 'MIN LATE', meterPct: 73, meterNote: 'COUNT WINDOW CLOSES 20:30',
-    actionLabel: 'COUNT', tone: 'gold', target: 'count',
+    actionLabel: 'COUNT', tone: 'gold', target: 'count', locationId: 'bar-3',
   },
 ]
 
@@ -489,8 +489,31 @@ export function variant() {
     }
   }
 
+  /**
+   * BAR-165. `alerts()` returned the same array under both fixture sets, so the
+   * never-counted branch — the one that used to render an em-dash in a numeral
+   * slot — had no fixture state at all and the gate could not see it. Home
+   * passed only because the hero and the bar grid differ.
+   */
+  const alerts: Alert[] = [
+    {
+      id: 'bar5-never-counted', level: 'WARNING', ageLabel: 'FIRST COUNT DUE',
+      title: 'Bar 5 count overdue', subtitle: 'No count has been submitted for this bar',
+      metric: 'NEVER', metricUnit: 'COUNTED', metricIsWord: true,
+      meterPct: 100, meterNote: 'COUNT DUE EVERY 120 MIN',
+      actionLabel: 'COUNT', tone: 'red', target: 'count', locationId: 'bar-3',
+    },
+    {
+      id: 'dockets-open-v2', level: 'WARNING', ageLabel: 'OLDEST 9 MIN',
+      title: 'Docket awaiting acceptance', subtitle: 'D-0231 Warehouse → Bar 1',
+      metric: '1', metricUnit: 'OPEN', meterPct: 30, meterNote: '30 MIN SLA',
+      actionLabel: 'OPEN', tone: 'gold', target: 'accept',
+    },
+  ]
+
   return {
     asOf: { label: '21:07', at: '2026-10-10T21:07:00+05:30' },
+    alerts,
     barDetail,
     bars,
     stockPosition: {

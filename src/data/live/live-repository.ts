@@ -555,18 +555,26 @@ export function createLiveRepository(context: LiveContext): Repository {
           alerts.push({
             id: `count-due-${bar.code}`,
             level: 'WARNING',
-            ageLabel: last ? `LAST ${clock.time(last.submitted_at)}` : 'NEVER COUNTED',
+            ageLabel: last ? `LAST ${clock.time(last.submitted_at)}` : 'FIRST COUNT DUE',
             title: `${bar.name} count overdue`,
             subtitle: last
               ? `Last counted ${clock.time(last.submitted_at)} · ${who(ref, last.assigned_to)}`
               : 'No count has been submitted for this bar',
-            metric: late === null ? '—' : String(late),
-            metricUnit: late === null ? 'NO COUNT' : 'MIN LATE',
+            /**
+             * BAR-165. This was `'—'` with the unit `'NO COUNT'`, set in the
+             * 30px Anton face the design reserves for figures — an em-dash in a
+             * numeral slot, beside an age label already reading NEVER COUNTED.
+             * Say the thing once, in words, in a face meant for words.
+             */
+            metric: late === null ? 'NEVER' : String(late),
+            metricUnit: late === null ? 'COUNTED' : 'MIN LATE',
+            metricIsWord: late === null,
             meterPct: late === null ? 100 : Math.min(100, Math.round((late / COUNT_DUE_AFTER_MINUTES) * 100)),
             meterNote: `COUNT DUE EVERY ${COUNT_DUE_AFTER_MINUTES} MIN`,
             actionLabel: 'COUNT',
             tone: late === null ? 'red' : 'gold',
             target: 'count',
+            locationId: bar.id,
           })
         }
       }

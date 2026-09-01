@@ -40,6 +40,16 @@ export function HomeScreen() {
   const bars = useRepositoryQuery(['bars'], (r) => r.listBars())
 
   const openAlert = (alert: Alert) => {
+    /**
+     * BAR-165. The count CTA used to go to the unscoped `/count`, which resolves
+     * a location from the membership. A manager or admin holds none, so the one
+     * alert naming the overdue bar landed on a sheet reading NO LOCATION that
+     * could not be opened. Carry the bar in the route when the alert names one.
+     */
+    if (alert.target === 'count' && alert.locationId) {
+      void navigate({ to: '/bars/$barId/count', params: { barId: alert.locationId } })
+      return
+    }
     const route = TARGET_ROUTES[alert.target]
     if (route) {
       void navigate({ to: route })
@@ -59,10 +69,14 @@ export function HomeScreen() {
               <small>CONTAINERS</small>
             </p>
           </div>
+          {/*
+            BAR-165. Every figure on this screen is a snapshot, and this is the
+            only thing that says how old it is. It was a 10px footnote at half
+            opacity in the corner. The label stays quiet; the time is data.
+          */}
           <time>
             AS OF
-            <br />
-            {position.data?.asOf.label ?? '—'}
+            <b>{position.data?.asOf.label ?? '—'}</b>
           </time>
         </div>
         <div className="hero-breakdown">
@@ -75,9 +89,18 @@ export function HomeScreen() {
         </div>
       </section>
 
+      {/*
+        BAR-165. The count was a 10px red numeral against the right edge of a
+        390px screen, as far from the words it counts as the layout allows. It is
+        the one number on this screen meant to pull the eye, so it now sits
+        against the label as a pill, using the same tinted-pill recipe as the
+        alert cards' own level badges. Absent at zero, where a bare `0` used to
+        render. A deliberate, approved deviation from the design — see
+        docs/DECISIONS.md.
+      */}
       <div className="home-section-label">
         <span>NEEDS ATTENTION</span>
-        <em>{alerts.data?.length ?? 0}</em>
+        {alerts.data && alerts.data.length > 0 ? <em>{alerts.data.length}</em> : null}
       </div>
 
       <div className="alert-stack">
@@ -95,7 +118,7 @@ export function HomeScreen() {
                 <strong>{alert.title}</strong>
                 <span>{alert.subtitle}</span>
               </div>
-              <em className="alert-metric">
+              <em className={`alert-metric ${alert.metricIsWord ? 'is-word' : ''}`}>
                 {alert.metric}
                 <small>{alert.metricUnit}</small>
               </em>

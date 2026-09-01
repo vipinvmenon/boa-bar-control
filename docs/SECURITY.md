@@ -134,7 +134,10 @@ The audit report read first the next morning.
 
 ## Sessions and devices
 
-- Invited-staff email authentication. No self-registration.
+- Invited-staff email authentication, on whatever address the person already
+  has — there is no staff mail domain and most of the crew are temporary. What is
+  invited is the *person*, by a manager, against a named membership; the address
+  is only how the code reaches them. No self-registration.
 - Sessions are long enough to survive a shift without re-authentication, and
   short enough that a lost phone is not a permanent credential.
 - A token expiring mid-shift must **hold** the outbox, not drain it into failures.

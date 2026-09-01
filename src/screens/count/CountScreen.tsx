@@ -107,6 +107,7 @@ export function CountScreen() {
   const repository = useRepository()
   const opened = useRef(false)
   const [openError, setOpenError] = useState<string | null>(null)
+  const [confirmLeave, setConfirmLeave] = useState(false)
   const locationId = session.data?.locationId
   const countKind = session.data?.countKind
 
@@ -241,11 +242,28 @@ export function CountScreen() {
       <header className="count-head">
         <div className="count-head-row">
           <div className="count-head-left">
+            {/*
+              BAR-165. Leaving a count in progress used to be silent, and it is
+              not a neutral act: the session stays open, which is what keeps this
+              device blind to the location (BAR-161), and the sheet is kept in
+              Dexie. Somebody who taps back at line five has no way to know their
+              work is safe, or that the bar's position will stay hidden from them
+              until they come back and finish.
+
+              So it is stated, once, when there is something to lose. With no
+              lines counted there is nothing to say and the tap is immediate.
+            */}
             <button
               className="flow-back"
-              onClick={() => void (barId
-                ? navigate({ to: '/bars/$barId', params: { barId } })
-                : navigate({ to: '/bars' }))}
+              onClick={() => {
+                if (Object.keys(counted).length > 0 && !confirmLeave) {
+                  setConfirmLeave(true)
+                  return
+                }
+                void (barId
+                  ? navigate({ to: '/bars/$barId', params: { barId } })
+                  : navigate({ to: '/bars' }))
+              }}
               aria-label="Back"
             >
               <ChevronLeft size={18} strokeWidth={2} aria-hidden="true" />
@@ -381,15 +399,47 @@ export function CountScreen() {
             RESUMED · {Object.keys(counted).length} line{Object.keys(counted).length === 1 ? '' : 's'} already counted on this device
           </p>
         )}
+        {/*
+          BAR-165. This told the counter not to use the sheet and then left the
+          button live under the warning. A count opened without the blind taking
+          effect is a count nobody can defend, so the sheet refuses it rather than
+          relying on somebody reading a red line at 01:00.
+        */}
+        {confirmLeave && (
+          <div className="leave-guard" role="alert">
+            <p>
+              This count stays open and your {Object.keys(counted).length} counted{' '}
+              line{Object.keys(counted).length === 1 ? '' : 's'} {Object.keys(counted).length === 1 ? 'is' : 'are'} kept
+              on this device. Until you come back and submit it, this device will not show{' '}
+              {s.locationName}'s stock — that is what keeps the count blind.
+            </p>
+            <div className="leave-guard-actions">
+              <button className="flow-cta-ghost" onClick={() => setConfirmLeave(false)}>Keep counting</button>
+              <button
+                className="flow-cta-ghost is-active"
+                onClick={() => void (barId
+                  ? navigate({ to: '/bars/$barId', params: { barId } })
+                  : navigate({ to: '/bars' }))}
+              >
+                Leave for now
+              </button>
+            </div>
+          </div>
+        )}
         {openError && (
           <p className="flow-error" role="alert">
-            COUNT NOT OPENED · {openError} · Do not count from this sheet
+            COUNT NOT OPENED · {openError} · This sheet cannot be submitted. Go back and start the
+            count again.
           </p>
         )}
         {submit.isError && (
           <p className="flow-error" role="alert">NOT SUBMITTED · {submit.error.message}</p>
         )}
-        <button className="flow-cta" onClick={saveNext} disabled={submit.isPending || !!weightError}>
+        <button
+          className="flow-cta"
+          onClick={saveNext}
+          disabled={submit.isPending || !!weightError || !!openError}
+        >
           {submit.isPending ? 'Recording…' : isLast ? 'Submit count' : 'Save & next'}
         </button>
       </footer>

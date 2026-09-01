@@ -69,11 +69,20 @@ export function DocketScreen() {
       </div>
 
       <FlowFooter>
-        <button className="flow-cta" onClick={() => void navigate({ to: acceptPath })}>
-          Open receiving view
-        </button>
-        <button className="flow-cta-ghost" onClick={() => void navigate({ to: '/warehouse' })}>
+        {/*
+          BAR-165. These two were the other way round, so the issuer's primary
+          action on their own docket was to open the receiving view — which is
+          exactly the self-acceptance `boa_bar_accept_docket` refuses (BAR-147).
+          Leading with an action the database will reject teaches staff the app is
+          unreliable. Acceptance belongs on the receiver's device, from the QR
+          above or from their own bar workspace; the receiving view stays
+          reachable for the case where one person legitimately does both.
+        */}
+        <button className="flow-cta" onClick={() => void navigate({ to: '/warehouse' })}>
           Done
+        </button>
+        <button className="flow-cta-ghost" onClick={() => void navigate({ to: acceptPath })}>
+          Open receiving view
         </button>
       </FlowFooter>
     </div>

@@ -109,8 +109,8 @@ The design is now recovered to `references/design-source/`. See
 | `mv` | MOVEMENT | `[ ]` | Missing. Activity rows are not tappable |
 | `control` | CONTROL | `[ ]` | Missing entirely — the show-day board |
 | `cowork` | COWORK | `[ ]` | Missing. Entry point silently redirects to More |
-| `more` | MORE | `[x]` | rebuilt — 6 destinations, green role badge, SYNC STATE card with device and signed-in, build stamp. Demo switches removed |
-| `reports` | REPORTS | `[R]` | Route repurposed into an invented variance page with fabricated `−2.1%`, `₹18.4K`, `94%` |
+| `more` | MORE | `[x]` | rebuilt to the design, then **restructured 1 Sep (BAR-165, ADR-015)**: only rows that navigate somewhere real for the signed-in role, the person and device at the top, and the sync card and sign-out moved to a new `/settings` screen. Four of the design's six destinations do not exist in V1 and the screen used to render them anyway |
+| `reports` | REPORTS | `[~]` | The fabricated figures went with BAR-152. An honest empty state carrying no figure, **recomposed 1 Sep** into the same section header/body every other screen uses; it was the last route built from the retired legacy vocabulary. The designed screen needs BAR-105/106/111 |
 | `rep` | REPORT | `[ ]` | Missing |
 
 **Started as 11 missing · 11 to rewrite · 0 acceptable.**
@@ -120,8 +120,14 @@ prose, which is what drifts:
 
 ```
 22 in the design · 22 reference captures · 16 implemented routes
-15 reading the data layer · 1 legitimately static · 0 hardcoded · 6 missing
+ 5 routes off the design (BAR-165 — previously uncovered)
+19 reading the data layer · 2 legitimately static · 0 hardcoded · 0 errored · 6 missing
 ```
+
+Three consecutive runs agree exactly, 1 September. The five routes off the design
+are `receipt`, `dockets`, `team`, `print` and `settings`; until BAR-165 they had
+**no visual coverage at all**, which is how two class names that exist nowhere in
+the stylesheet reached two built screens.
 
 **Zero hardcoded screens.** Every implemented screen reads the repository, so the
 defect that let `home` and `warehouse` pass design QA while displaying literals
@@ -164,7 +170,7 @@ States are defined once in the **Status key** above.
 | BAR-005 | Archive contradicted documents | `[x]` | `docs/archive/` holds five superseded documents; `artifact-reconciliation.md` moved in |
 | BAR-006 | CI pipeline | `[?]` | `.github/workflows/ci.yml` exists with the database job advisory (`344c72d`). **No CI run has ever been observed.** A pipeline nobody has watched pass is not a gate |
 | BAR-007 | Reference captures | `[x]` | `f4cbae8` — 22 screens at 390×844@2x, each verified against the design's own stage caption |
-| BAR-008 | Two-fixture-state harness | `[x]` | **Fixed and made deterministic 28 Aug.** The root cause of the intermittent false positive: `.status-dot` pulses at 2.4s forever and `bar` and `docket` are the only screens rendering it, so their captures could never produce three identical consecutive frames — and `shoot()` then **returned the moving frame anyway with no signal it had given up**, so two moving frames sometimes compared equal. Now the gate captures with `reducedMotion: reduce` (the stylesheet already stops the animation under it) and a capture that does not settle is an ERROR, not a verdict. Three consecutive runs now agree exactly |
+| BAR-008 | Two-fixture-state harness | `[x]` | **Coverage gap closed 1 Sep (BAR-165):** the gate covered only the 22 design screens, so `receipt`, `dockets`, `team` and `print` had none at all — which is why three defects lived on them unseen, including two class names that exist nowhere in the stylesheet. Those four plus the new `settings` are now in the gate; three consecutive runs agree. **Fixed and made deterministic 28 Aug.** The root cause of the intermittent false positive: `.status-dot` pulses at 2.4s forever and `bar` and `docket` are the only screens rendering it, so their captures could never produce three identical consecutive frames — and `shoot()` then **returned the moving frame anyway with no signal it had given up**, so two moving frames sometimes compared equal. Now the gate captures with `reducedMotion: reduce` (the stylesheet already stops the animation under it) and a capture that does not settle is an ERROR, not a verdict. Three consecutive runs now agree exactly |
 | BAR-153 | `CHECKSUMS.txt` over the design source | `[ ]` | No `CHECKSUMS.txt` anywhere in the tree. The UI contract can be edited without trace |
 | BAR-154 | Lint rule banning literals in screen files | `[x]` | Added 28 Aug. `no-restricted-syntax` over `src/screens/**` and `src/components/**` bans location ids and names, docket numbers and catalogue SKU names. **Verified by probe**: all six planted literals errored and two legitimate strings passed. Deliberately narrow — a general literal ban gets disabled, and a disabled rule catches nothing |
 | BAR-009 | `sw.ts` in typecheck and lint | `[ ]` | Still excluded: `eslint.config.js:8` ignores it, `tsconfig.app.json:23` excludes it |
@@ -273,7 +279,7 @@ States are defined once in the **Status key** above.
 | BAR-075 | Real "as of" stamps | `[~]` | The live repository derives every stamp from the server's clock in the venue's timezone. The fabricated AppShell status-bar clock was removed under BAR-131 |
 | BAR-076 | Service worker for a festival network | `[~]` | `11ad16d` and `1b9b604` — shell/static assets and only same-origin Supabase SKU/location reference reads are cached; snapshots, memberships, people, dockets, counts, ledger reads, RPCs, and writes remain network-only, and legacy broad caches are removed on activation. Browser/device service-worker activation and cache behavior remain unverified |
 | BAR-077 | Remove demo switches from the UI | `[~]` | The offline toggle and the role switch are gone: role is derived from the signed-in membership and connectivity from the browser. `?fixture=b` remains, and is deliberately disabled in production builds |
-| BAR-078 | Tap targets and focus | `[ ]` | Not measured since the rebuild. Needs a pass |
+| BAR-078 | Tap targets and focus | `[x]` | **Measured, 1 Sep (BAR-165).** Every interactive element on all 22 routes re-measured with the script that found the failures. Previously under 44 px: the CASE/BOTTLE unit tabs at **30 px**, activity chips 36, the bar back button 36, warehouse chips and the receipt remove button 38, four flow back buttons and three preset rows at 40. All ≥44 px now; the unit tabs keep the design's 30 px painted pill and extend the *target* with a transparent overlay rather than growing the pill. A global `:focus-visible` ring was added — there was no focus rule anywhere in `styles.css`. The one remaining sub-44 measurement is the warehouse search `<input>` at 42 px inside its 44 px `<label>`, which is the tap target |
 | BAR-133 | Waste and accept post to the right location | `[x]` | Closed. The three screen literals went on 28 Aug; bar workspaces now carry their selected location into waste, and `boa_bar_record_waste` enforces membership location scope in the database. The legacy `demo-store` path that hardcoded `bar_3` is deleted |
 | BAR-134 | Idempotent acceptance | `[x]` | The accept RPC rejects a second acceptance and replays idempotently on the client key |
 | BAR-135 | Dead-letter for invalid outbox entries | `[x]` | Completed 30 Aug. Permanent failures stop on the first refusal and the existing SYNC STATE card shows the failed action and retained server message. A queued acceptance stays on RECEIVE STOCK; only a posted acceptance opens RECEIVED, using the docket number that `custody()` resolves. Proven against live D-0002: its self-acceptance moved from `1 PENDING` to `1 NOT SENT` while stock and docket status remained unchanged |
@@ -323,7 +329,7 @@ States are defined once in the **Status key** above.
 | BAR-149 | Alerts that actually reach someone | `[ ]` | Every alert is passive — it exists only while someone holds the phone on the home screen |
 | BAR-102 | `home` from real data | `[x]` | `c4728ad` + `a72c48d` — hero card, breakdown and alerts all derived; hero corrected against the design |
 | BAR-103 | `cowork` screen | `[ ]` | Screen missing |
-| BAR-104 | `more` screen | `[x]` | `798feb2` — six rows, role badge, sync card, build stamp; demo toggles removed from the screen |
+| BAR-104 | `more` screen | `[x]` | `798feb2` built it to the design. **Rebuilt 1 Sep (BAR-165)** because four of the design's six destinations do not exist in V1 and the screen rendered them anyway: `CONTROL` swallowed its tap in silence, `REPORTS` dead-ended non-managers, `VARIANCE` and `TEAM` answered them with a toast. A row is now rendered only if it navigates somewhere real for that role; the signed-in person, role and device head the screen; the sync card and sign-out moved to `/settings`. Approved deviation, recorded as ADR-015 |
 
 ### M7 — Reports and settlement
 
@@ -331,7 +337,7 @@ States are defined once in the **Status key** above.
 | --- | --- | --- | --- |
 | BAR-105 | `boa_bar_v_excise` | `[ ]` | No views exist in any migration |
 | BAR-106 | `boa_bar_v_settlement` | `[ ]` | Same |
-| BAR-107 | `reports` screen | `[~]` | An honest empty state served from `src/features/screens.tsx:139`. The gate classes it legitimately static |
+| BAR-107 | `reports` screen | `[~]` | An honest empty state, still carrying no figure. **Recomposed 1 Sep (BAR-165)**: this was the last screen built from the retired legacy vocabulary (`.screen` + `.eyebrow` + an Anton `h1`), with no header bar and no back, and it carried a client-side manager gate that dead-ended crew who deep-linked to it — there is nothing to protect while there is nothing to show, and settlement figures are protected in the database (non-negotiable 7). The designed screen still needs BAR-105/106/111 |
 | BAR-108 | `rep` screen | `[ ]` | Screen missing |
 | BAR-109 | Excise return export | `[ ]` | Blocked on BAR-158 — the template |
 | BAR-110 | STOK settlement export | `[ ]` | `is_supplied` is stored and never read |
@@ -352,6 +358,8 @@ States are defined once in the **Status key** above.
 | BAR-117 | Shift handover and manager-absent path | `[ ]` | — |
 | BAR-143 | Onboarding that works at load-in | `[~]` | The **membership half** is done and works with any sign-in method: `boa_bar_claim_invite` binds an already signed-in user to a named membership, and the name comes from the invite so custody carries a real name from the first movement. **The sign-in method itself is undecided** — ADR-014 is PROPOSED and needs the user. Until then load-in still depends on magic links |
 | BAR-144 | In-app membership and role management | `[x]` | `202608280011` plus `/team`. A manager invites by name and role and reads out a six-character code; roles can be changed on site. **Escalation is refused in the database**: only an admin may mint or grant manager/admin, so a manager cannot promote themselves via a second account. The last admin cannot be removed or demoted — that would be unrecoverable from inside the app. Verified in a browser: a manager is offered CREW/WAREHOUSE/BAR LEAD/AUDITOR only, and their own row has no selector. **Applied and proven 29 Aug** — 10 behavioural assertions, including that escalation is refused and an invite code is single-use |
+| BAR-165 | V1 UX/UI readiness sweep | `[x]` | **1 Sep.** Every route walked at 390×844 and every `className` diffed against the stylesheet. Four class names were used and defined nowhere — the receipt and waste headers, and both top-up panels — which CSS reports by silently inheriting; `pnpm lint` now fails on that, and the check was proved by planting a bad name before it was trusted. Empty collections no longer render as bordered hairlines. Every visible control either navigates or says why it cannot. Tap targets and focus are BAR-078. The three approved design deviations are ADR-015 |
+| BAR-166 | Close or abandon an open count | `[ ]` | **Raised 1 Sep by the BAR-165 sweep.** Opening a count blinds that device to the location, and nothing closes a session but submitting it. A count opened on the wrong bar leaves that device unable to see the bar's stock for the rest of the night. BAR-165 made the state legible; it cannot make it escapable without a new RPC |
 | BAR-118 | Backup and restore verified | `[ ]` | — |
 | BAR-119 | Observability | `[ ]` | — |
 | BAR-120 | Staging deploy and acceptance | `[ ]` | — |
@@ -363,13 +371,13 @@ Computed from the rows above, not asserted.
 
 | | Count |
 | --- | --- |
-| `[x]` done | 66 |
+| `[x]` done | 68 |
 | `[~]` partial | 38 |
 | `[R]` rewrite | 2 |
 | `[!]` defect actively present | 7 |
 | `[ ]` not started | 49 |
 | `[?]` unverifiable today | 2 |
-| **Total** | **164** |
+| **Total** | **166** |
 
 Read the middle three rows as the real position: **47 tasks are neither done nor
 untouched**, and 7 of them are defects sitting in the code right now.
@@ -2433,3 +2441,658 @@ Architecture changes: none
 Known issues: `corepack pnpm test:db` was not run because it requires the database password; hosted Supabase MCP rollback probes passed for blind opening, location hiding, persisted submission, idempotent replay, sealed ledger position, and count/seal immutability. `test:visual` was not run because this is a database/service change and the dev server was not started.
 Verified: hosted privilege check reports `PUBLIC=false`, `anon=false`, `authenticated=true`; `corepack pnpm typecheck`, lint, 150 unit tests, build, and `check:sql` pass.
 Recommended next: regenerate database types when the hosted schema snapshot is available, then continue BAR-143 onboarding.
+
+### Session — 1 September 2026 · claude
+
+Completed: **BAR-165 — V1 UX/UI readiness sweep.** The user reported five defects
+from live use; every route was then walked at 390×844 and every `className` in
+`src/**/*.tsx` diffed against `src/styles.css`, which found the root causes plus
+about twenty-five more of the same kind. Also closes **BAR-078** and rewrites
+**BAR-107**'s placeholder into the section composition.
+
+The root cause of the three worst reported defects was mechanical: **four class
+names were used by screens and defined nowhere in the stylesheet**, which CSS
+reports by silently inheriting.
+
+- `count-title` / `count-scope` — `ReceiptScreen` and `WasteScreen` headers. Both
+  rendered in the root Archivo face at 16px while every other flow header is
+  Oswald 700/15/.14em. This was the "fonts look inconsistent" report. Fixed by
+  using the existing `count-head-title` and `section-head-asof`, not by adding a
+  second set of rules.
+- `top-up-panel` — the bar's request form. `.panel` deliberately carries no
+  padding (every other user supplies its own), so the form rendered edge-to-edge
+  with a zero row gap: the section title sat on top of the first field label and
+  the CTA row ran off the sheet behind the navigation. This was the "top up page
+  is broken" report.
+- `top-up-queue` — the same defect on the warehouse screen.
+
+They shipped because `test:visual` covered only the 22 **design** screens, and
+three of the four were on routes the design does not have. `receipt`, `dockets`,
+`team` and `print` had **no visual coverage at all**.
+
+Second systemic cause: **empty collections rendered as hairline artefacts.** An
+empty `.bar-head-grid` measured 2px, and so did an empty `.bar-inv-list` — the
+container carries the border and the rows carry the fill. That is the stray line
+the user marked on the Bar 3 screenshot.
+
+Third: **silent dead taps.** `CONTROL` on More was `available: false`, which drew
+a row at full label brightness with `· NOT IN V1` appended into its description
+and swallowed the tap in silence. `REPORTS` navigated non-managers to a dead
+"Restricted" page. `VARIANCE`, `TEAM` and countDone's variance CTA answered a
+non-manager with a toast.
+
+Also fixed, found while walking:
+
+- The count-overdue alert for a never-counted bar rendered `—` with the unit
+  `NO COUNT` in the 30px Anton slot cut for numerals, beside an age label already
+  reading `NEVER COUNTED`. Now `FIRST COUNT DUE` / `NEVER` / `COUNTED`, in a face
+  meant for words.
+- **That alert's CTA went to the unscoped `/count`**, which resolves a location
+  from the membership — so for a manager or admin, who hold none, the one alert
+  naming the overdue bar landed on a sheet reading `NO LOCATION` that could not
+  be opened. `Alert` now carries `locationId` and the CTA routes to that bar.
+- The bar workspace's `LIVE` pill was hardcoded: it said LIVE in demo mode and
+  while offline. Now DEMO / OFFLINE / LIVE from the same sources as the shell.
+- `/print`'s entire sheet typography lived only inside `@media print`, so the
+  on-screen preview — the thing somebody checks before load-in — rendered with
+  browser defaults: a 31px Anton `h1`, and the count-type and time-started lines
+  colliding on one row. Structure moved to the base `.pw-*` rules; `@media print`
+  keeps only `@page`, pt/mm, ink, and page breaks.
+- `/dockets/$id` offered `OPEN RECEIVING VIEW` as the issuer's primary CTA, which
+  is the self-acceptance `boa_bar_accept_docket` refuses (BAR-147). Demoted.
+- `.section-label` had a 1px top margin, so `AWAITING ACCEPTANCE` and `ON THIS
+  VENUE` sat flush against the card above them, and `space-between` threw their
+  counts to the right edge.
+- The activity filter row clipped `ADJUSTMENTS` with no scroll affordance.
+
+Files changed: `src/styles.css`, `src/app/AppShell.tsx`, `src/app/router.tsx`,
+`src/screens/settings/SettingsScreen.tsx` (new), `src/screens/more/MoreScreen.tsx`,
+`src/screens/bar/BarScreen.tsx`, `src/screens/home/HomeScreen.tsx`,
+`src/screens/reports/ReportsScreen.tsx`, `src/screens/receipt/ReceiptScreen.tsx`,
+`src/screens/waste/WasteScreen.tsx`, `src/screens/warehouse/WarehouseScreen.tsx`,
+`src/screens/count/CountDoneScreen.tsx`, `src/screens/custody/DocketScreen.tsx`,
+`src/components/ScreenSkeleton.tsx`, `src/data/repository.ts`,
+`src/data/live/live-repository.ts`, `src/data/fixture/design-data.ts`,
+`src/data/fixture/fixture-repository.ts`, `scripts/check-classes.mjs` (new),
+`scripts/visual-check.mjs`, `package.json`, `docs/DECISIONS.md`,
+`docs/ROADMAP.md`, `docs/CURRENT-STATE.md`
+
+Architecture changes: none to the data or domain layers. One new non-design route,
+`/settings`, declared alongside `/team` and `/print`. `Alert` gains two optional
+fields (`locationId`, `metricIsWord`). **Three approved deviations from
+`references/design-source/` are recorded as ADR-015** — the attention badge, the
+removal of the venue name, and the More/Settings restructure. Without that record
+the next agent would correctly read them as non-negotiable 5 violations.
+
+Known issues:
+
+- **The live path is unverified.** Everything below ran against the fixture
+  repository. `Alert.locationId` and the never-counted copy are live-repository
+  changes that need one signed-in pass against the hosted database before they may
+  be called proven. They are **not** proven.
+- **The printed output has still never been seen.** BAR-092 already records this.
+  The `@media print` rules were verified intact through the CSSOM — `@page size:
+  a4`, `.pw-sheet` at 210mm/297mm, `break-after`, black on white — but no print
+  preview was available, so paper fit and page breaks remain unverified, and this
+  session moved those rules.
+- The two empty-state branches on the bar workspace were verified by temporarily
+  emptying `BAR_DETAIL['bar-3']`, looking at the result, and reverting; no fixture
+  produces a bar with zero category totals, so the gate does not cover them.
+- The warehouse search `<input>` measures 42px, not 44. Its `<label>` is the tap
+  target and is 44px; the inner box is 2px shorter because of the field border.
+  Every button, chip and stepper is ≥44px.
+- `/team` still renders the invite form to whoever `team().canInvite` allows,
+  which the repository decides; the fixture returns `true` for a crew role, so the
+  screen looks over-permissive under fixtures. The database refuses the writes, so
+  this was left alone rather than adding a client-side role check that would
+  duplicate an authority that lives in the database (non-negotiable 7).
+- 116 dead CSS rules were removed — the retired legacy screens' vocabulary
+  (`.menu-list`, `.timeline`, `.warehouse-*`, `.select-list`, `.quantity-panel`
+  and the rest). Each was confirmed to appear in no `.tsx` file before removal.
+
+Verified:
+
+- `corepack pnpm typecheck && lint && test && build` all pass. 151 unit tests.
+- `node scripts/check-classes.mjs` reports 306 class names used, all defined —
+  and **was proved to fail first**: a planted `bar-165-probe` class exited 1 and
+  named the file, then was removed. It now runs as part of `pnpm lint`.
+- `test:visual` against a fixture-mode dev server: 0 hardcoded, 0 errored, and
+  the five routes off the design now captured. **Three consecutive runs agree
+  exactly** (19 reading the data layer, 2 static, 0 hardcoded, 0 errored).
+- Every route driven in a browser at 390×844 and looked at: `/` `/warehouse`
+  `/bars` `/bars/bar-3` `/activity` `/more` `/settings` `/issue` `/issue/review`
+  `/dockets` `/dockets/D-0184` `/dockets/D-0184/accept` `.../received` `/waste`
+  `/receipt` `/count` `/count/submitted` `/variance` `/reports` `/team` `/print`
+  `/nope`.
+- Tap targets re-measured across all 22 routes with the script that found them:
+  the list came back empty apart from the search input noted above. Previously
+  under 44px: the CASE/BOTTLE unit tabs at **30px**, activity chips 36, the bar
+  back button 36, warehouse chips and the receipt remove button 38, four flow
+  back buttons and three preset rows at 40.
+- The top-up panel's scroll-into-view was verified empirically after two failed
+  attempts, both of which are recorded in the code comment because both fail
+  silently: `behavior: 'smooth'` is a no-op in at least one engine, and
+  `requestAnimationFrame` does not fire at all while the tab is not being
+  painted. It is a `setTimeout` and explicit arithmetic. Measured: container
+  scrollTop 258, both buttons above the navigation.
+
+Recommended next: one signed-in pass against the hosted database to prove
+`Alert.locationId` and the never-counted alert copy, and a print preview of
+`/print`. Neither needs new code. After that, BAR-050 and BAR-090 are the two
+screens whose absence still makes warehouse and activity rows non-navigable.
+
+### Session — 1 September 2026 · claude
+
+Completed: **BAR-165, second pass.** Four review items from the user on the first
+pass.
+
+**1. Dropdowns.** The three `<select>` elements (`/team` ×2, the bar top-up panel)
+read `500 11px Oswald` with `.1em` tracking, sitting directly beside `.field
+input` at `400 14px Archivo` — so a form's two field types did not match. They
+now share one rule: same 44 px height, same padding, same border and fill, same
+`--r-sm` radius, same 14 px Archivo.
+
+The option list is drawn by the operating system and **no stylesheet can style
+it** — which is why it was opening as a white popup over a black app. The one
+property that reaches it is `color-scheme: dark`, now set on `:root`; that also
+darkens scrollbars and number spinners. `option { background; color }` is set as
+well for Chromium and Firefox, which honour it; Safari takes only `color-scheme`.
+The native arrow is replaced with the app's own chevron (`appearance: none` plus
+an inline SVG data URI in `--sage`), because the OS arrow is a different glyph,
+size and colour on each platform — three dropdowns that could never have matched
+each other otherwise.
+
+The role selector on a team row keeps the same shape and chevron but is set in the
+row's own 12 px Oswald, because its content is an uppercase role code in a list
+row rather than free text in a form field.
+
+**2. Auth screen height.** Sign-in, verification and no-access were a short card
+floating on flat black: no ambient field, a 14 px radius against the app's 44, and
+a height set by their own content — so on an 844 px viewport the first screen of
+the product was a small box in the middle of nothing, and it did not look like the
+app behind it. They now use `.app-stage`'s gradient and `.app-shell`'s frame
+**verbatim**, so the two cannot drift, with the same `max-width: 520px`
+full-bleed breakpoint. `AuthFrame` gained one wrapper, `.auth-content`, so the
+logo holds the top of the frame like a header and the content is centred in what
+is left — pinning the form to the foot was tried first and left a 700 px void.
+
+Three smaller inconsistencies went with it: the paragraph had inherited the
+frame's green (its rule was a direct-child selector the new wrapper broke), the
+`RESEND CODE` and `Sign out` ghost buttons were not full width beside the
+full-width primary above them, and `.ritual-button.ghost` drew a white outline
+where the rest of the app's ghost buttons use the sage border of
+`.flow-cta-ghost`.
+
+**3. Radius ladder.** BAR-036 established 999 / 12 / 14 / 15 / 18 and recorded
+that "nothing below 11 px remains"; fourteen distinct radii had since drifted in,
+including 4, 7, 8, 9, 11, 13 and 16. Mapped to the five: 4/7/8/9/11 → 12,
+13 → 14, 16 → 15. All ninety occurrences now reference one of five tokens
+(`--r-pill`, `--r-sm`, `--r-md`, `--r-lg`, `--r-xl`); the only literals left are
+44 px for the phone frame, 50% for a dot, and 0 in the print block.
+
+**4. `BOA 2026` removed from the home header.** The first pass restored it as the
+design's own eyebrow; the user removed it on review. The venue and the year are
+fixed for the whole event and identical on every device, so they were occupying
+the one header line that can tell a bar lead whether their work has been sent.
+
+Also removed: the dead `.difference` rules, confirmed used by no screen — the
+accept screen's difference panel is `.diff-*`. They were reachable only because
+the previous pass's purge skipped rules containing a live modifier class.
+
+Files changed: `src/styles.css`, `src/app/AppShell.tsx`,
+`src/features/AuthGate.tsx`, `docs/DECISIONS.md`, `docs/CURRENT-STATE.md`
+
+Architecture changes: none. ADR-015 extended to cover the radius ladder, the auth
+composition, and the removal of the eyebrow as well as the venue name.
+
+Known issues:
+
+- **The verification and no-access auth states were seen through a probe, not
+  reached.** Both need a live Supabase backend; they were rendered by temporarily
+  forcing `sent = true` and the no-membership branch, looked at, and reverted. The
+  no-access frame in particular was only inferred from the shared `AuthFrame`
+  composition — the probe fell through to sign-in because the `!auth.user` branch
+  returns first. Neither state is proven against a real session.
+- Safari draws the `<select>` option list itself and honours only `color-scheme`,
+  so the option rows there will be the system dark list rather than
+  `--charcoal`. That is the platform limit, not a defect to chase.
+- Three exports in `src/components/ui.tsx` — `SectionLabel`, `Chip`, `Stepper` —
+  are imported by nothing, so `.chip`, `.stepper`, `.presets`, `.select-list` and
+  `.count-row` are dead CSS kept alive only by those unused components. Not
+  removed here; it is a separate, mechanical deletion.
+
+Verified:
+
+- `corepack pnpm typecheck && lint && test && build` pass. 151 unit tests.
+- `check:css` reports 307 class names used, all defined.
+- `test:visual`, **three consecutive runs identical**: 19 reading the data layer,
+  0 hardcoded, 0 errored.
+- Radius ladder verified by sweeping the **computed** `border-top-left-radius` of
+  every element on nineteen routes: exactly `12px`, `14px`, `15px`, `18px`,
+  `999px`, `50%` and nothing else.
+- Dropdown parity measured in the DOM rather than eyeballed: the top-up select and
+  the number input beside it both report height 44, `14px Archivo`, radius 12,
+  and the document reports `color-scheme: dark`.
+- Sign-in and the verification state looked at in a browser at 390×844.
+
+Recommended next: unchanged from the previous session — one signed-in pass to
+prove `Alert.locationId` and the never-counted alert copy, a print preview of
+`/print`, and the two auth states against a real backend.
+
+### Session — 1 September 2026 · claude
+
+Completed: **BAR-165, third pass.** Six review items from the user.
+
+**1. The toast overlapped content.** It was pinned at `top: 118px` — the height
+of the home header, which is the only screen that has one. Everywhere else it
+landed on the first card; on Settings it covered the SIGNED IN row it was
+reporting about. It is now anchored to the foot of the shell, clear of the
+navigation, with a taller offset on a flow screen where the footer CTA lives
+instead of the nav. Also made opaque: it was `rgba(--green, .1)` green-on-dark,
+which is a whisper for the one surface that confirms a write.
+
+**2. MORE → COUNTS went to `/bars`.** The user is right that this was pointless —
+BARS is in the navigation two inches below it. The row existed because `/count`
+resolves its location from the membership and a manager holds none, so the
+previous pass redirected it rather than fixing it. It is now offered **only to a
+membership that carries a location**, where it opens that person's own count
+sheet directly and is a real shortcut; managers reach a count through BARS → bar
+→ COUNT, which is the only path that can name which bar. `activeLocationId` was
+added to `app-store` for this.
+
+**3. `AS OF` on home was not evident.** It is the only thing on that screen saying
+how old every figure on it is, and it was 10 px Oswald at half opacity in the far
+corner. The label stays quiet; the time is now bone, 15 px, 600 — it reads as
+data, because it is.
+
+**4. The auth screens were left-aligned.** Logo, icon, heading, copy, field
+labels and buttons are now centred on one axis, and the logo is part of the
+centred block rather than held at the top of the frame — which is what made it
+read as "a mark alone on one line, a heading alone below it". The verification
+notice and the loading skeleton are centred too. Inputs are centred and 15 px.
+
+**5. Blank space on Bars.** The screen was four cards and then half a phone of
+nothing, and it carried no figure a manager could act on: the one place listing
+every bar could not say how much stock was across them, how much had left the
+warehouse and not arrived, or how many bars needed attention. A three-cell strip
+now sits under the header in the same `.wh-total` vocabulary the warehouse uses.
+**Every figure is derived from read models that already existed** — containers
+summed from the same `listBars()` the cards render, in transit from
+`custodyOverview()`, attention counted from the cards' own tone. Nothing new is
+fetched and nothing is estimated. IN TRANSIT is tappable, to `/dockets`.
+
+**6. MORE revamp.** It had drifted into a menu of two rows. It is now: the
+signed-in identity (tappable, → Settings), then only destinations the bottom
+navigation cannot reach — IN CUSTODY, COUNTS (location-scoped, per item 2),
+VARIANCE and TEAM (manager), SETTINGS — then the sync badge.
+
+**IN CUSTODY is the substantive addition.** `/dockets` was reachable only from a
+home alert, and that alert exists only while a docket is awaiting acceptance. Stock
+that has left the warehouse and not arrived is exactly what specification §5
+exists to resolve, and it had no permanent way in.
+
+Files changed: `src/styles.css`, `src/app/AppShell.tsx`,
+`src/features/AuthGate.tsx`, `src/lib/app-store.tsx`,
+`src/screens/more/MoreScreen.tsx`, `src/screens/bars/BarsScreen.tsx`,
+`src/screens/home/HomeScreen.tsx`, `docs/CURRENT-STATE.md`
+
+Architecture changes: none. `AppStore` gains `activeLocationId`, read from the
+membership the database issued — not a new authority, the same one `role` already
+comes from.
+
+Known issues:
+
+- **The location-scoped COUNTS row is unproven.** The fixture repository serves no
+  membership, so `activeLocationId` is always undefined and the row never renders
+  under fixtures. Its condition is a one-line filter, but nobody has seen a bar
+  lead's More screen.
+- The verification state was again seen through a probe (`sent = true`, looked at,
+  reverted), not reached — it needs a live backend. The no-access state still has
+  not been seen at all: the `!auth.user` branch returns before it.
+- Bars still has empty space below four cards. That is four cards on an 844 px
+  screen and the approved design has the same gap; the totals strip fills the top
+  rather than padding the bottom with anything invented.
+
+Verified:
+
+- `corepack pnpm typecheck && lint && test && build` pass. 151 unit tests.
+- `check:css`: 310 class names used, all defined.
+- `test:visual`, **three consecutive runs identical**: 19 reading the data layer,
+  0 hardcoded, 0 errored.
+- Toast position measured rather than eyeballed: raised on the bar workspace it
+  reports top 777 / bottom 818 against a navigation top of 823 — clear, where it
+  previously sat at 118 over the header.
+- Sign-in and the verification state looked at in a browser at 390×844; home,
+  bars and more looked at under fixtures.
+
+Recommended next: unchanged — one signed-in pass to prove `Alert.locationId`, the
+never-counted alert copy and the new COUNTS condition; a print preview of
+`/print`; and the two remaining auth states against a real backend.
+
+### Session — 1 September 2026 · claude
+
+Completed: **BAR-165, fourth pass.** Three review items on the email-code step,
+plus the defect underneath them.
+
+The three items were symptoms of one thing: **sign-in is two steps and rendered
+as one.** The address step's heading and its explanation — "Use the email address
+invited to the BOA 2026 operations team" — stayed on screen after the code was
+sent, above a panel repeating that a code had been sent. So the step that asks for
+eight digits carried two headings, two explanations and a card. That is the "looks
+like a lot of info".
+
+It is now two components, `SignIn`'s two branches, each with one heading, one
+sentence and one field:
+
+- **Address step** — key icon, `STAFF SIGN IN`, the invited-address line, the
+  field, `EMAIL ME A CODE`.
+- **Code step** — mail icon, `CHECK YOUR EMAIL`, `We sent an 8-digit code to
+  <address>`, the field, `VERIFY CODE`, resend, and a way back.
+
+Item by item:
+
+1. **`RESEND CODE IN 36S`.** `.ritual-button` uppercases its label, which turned
+   the unit into an initial. The seconds are now excluded from the transform.
+2. **The placeholder was `12345678`**, which reads as a value rather than a
+   prompt. It is `8-digit code`.
+3. **The stale explanation is gone** — it belonged to the step before.
+
+**And the defect none of the three named: there was no way back.** A mistyped
+address left the person waiting for a code that would never arrive, with a page
+reload as the only exit — at load-in, on congested cellular, with a queue behind
+them. `Use a different email` returns to the address step and clears the code,
+the countdown and any error.
+
+While splitting it, `AuthGate` stopped being one 400-column expression. The sign-in
+branch was a single unreadable ternary; it is now two readable blocks.
+
+Files changed: `src/features/AuthGate.tsx`, `src/styles.css`,
+`docs/CURRENT-STATE.md`
+
+Architecture changes: none. No change to `auth.signInWithEmail`,
+`auth.verifyEmailOtp` or the session flow — this is composition and copy.
+
+Known issues:
+
+- **Still probe-verified, not reached.** The code step was rendered by
+  temporarily seeding `sent`, `email` and `resendIn`, looked at, and reverted; it
+  needs a live backend to reach honestly. The no-access state has still never been
+  seen — the `!auth.user` branch returns before it.
+- `Use a different email` is a client-side reset. It does not invalidate the code
+  already sent to the first address, which remains valid for its lifetime. That is
+  Supabase's behaviour and correct — the code is bound to the address, not to the
+  screen — but it is worth knowing before somebody reads the button as "cancel".
+
+Verified:
+
+- `corepack pnpm typecheck && lint && test && build` pass. 151 unit tests.
+- `check:css`: 312 class names used, all defined.
+- `test:visual`, three consecutive runs identical: 19 reading the data layer,
+  0 hardcoded, 0 errored.
+- Both sign-in steps looked at in a browser at 390×844.
+
+Recommended next: unchanged — a signed-in pass against the hosted database to
+prove `Alert.locationId`, the never-counted alert copy, the location-scoped
+COUNTS row and both remaining auth states; and a print preview of `/print`.
+
+### Session — 1 September 2026 · claude
+
+Completed: **BAR-165, fifth pass.** Two review items: the staff-email assumption,
+and a systematic sweep for the class of defect the "no way back from the code
+step" fix belonged to.
+
+**1. There is no staff mail domain.** The sign-in screen asked for a "Staff email"
+and placeheld `name@bangaloreopenair.com`, telling ~20 temporary crew to use an
+address most of them do not have. What is invited is the *person*, by a manager,
+against a named membership — the address is only how the code reaches them.
+
+- Label `Staff email` → `Your email`; placeholder → `Enter your email`.
+- Copy → "Use the email address your manager invited. A personal address is fine."
+- `docs/SECURITY.md`'s "Invited-staff email authentication" line now says what is
+  invited and what is not required. No other user-facing copy assumed a domain;
+  the roadmap and ADR-014 already described the crew as mostly without work email.
+
+**2. The dead-end sweep.** Every screen's exits were mapped, every `disabled`
+control was traced to its condition, and every persisted draft to its escape.
+Six of the same shape, all now fixed.
+
+- **The count sheet contradicted itself.** When `openCount` failed, the screen
+  said "COUNT NOT OPENED · Do not count from this sheet" and left Submit live
+  under the warning. A count opened without the blind taking effect is a count
+  nobody can defend, so the sheet now refuses it and says to start again — rather
+  than relying on somebody reading a red line at 01:00.
+- **Leaving a count in progress was silent.** It is not a neutral act: the
+  session stays open, which is what keeps that device blind to the location
+  (BAR-161), and the sheet is held in Dexie. Somebody tapping back at line five
+  had no way to know their work was safe or why the bar's stock had vanished from
+  their own screens. A guard now states both, with `Keep counting` /
+  `Leave for now`. Nothing is shown when no line has been counted.
+- **The delivery screen's button was dead with no reason.** With two products
+  added and the supplier blank it read "Record delivery · 2 lines" and did
+  nothing. It now names the missing field, in the order the screen asks for it.
+- **A half-entered delivery could not be discarded.** It survives a reload by
+  design (BAR-072) — which also means it survives being handed to the next person
+  on a shared device, with a supplier, a note and lines already filled in. There
+  is now a `Discard delivery` action behind a confirm; it clears the persisted
+  draft and re-mints the action id, so a discarded attempt and a later real
+  delivery are never the same idempotent write.
+- **Waste refused to record until a reason was chosen**, with nothing saying so.
+  The reason is what separates accounted depletion from an unexplained variance
+  (spec §8), and it now says that.
+- **A short acceptance refused without a reason**, silently. The database refuses
+  it too (BAR-058); the screen now says which of the two it is waiting for.
+- **The team invite refused without a name**, silently. The name is what every
+  movement that person posts will be signed with (BAR-124).
+
+Also checked and found sound, so not changed: every flow screen has a back
+(`FlowHeader` supplies it to the four custody screens); `/dockets`, `/print`,
+`/activity` and `/reports` keep the bottom navigation; the not-found and error
+screens both offer a way home; a queued issue and a queued acceptance both say
+where the write went; the issue stepper cannot exceed the warehouse position, so
+its CTA cannot dead-end.
+
+Files changed: `src/features/AuthGate.tsx`, `src/screens/count/CountScreen.tsx`,
+`src/screens/receipt/ReceiptScreen.tsx`, `src/screens/waste/WasteScreen.tsx`,
+`src/screens/custody/AcceptScreen.tsx`, `src/screens/team/TeamScreen.tsx`,
+`src/styles.css`, `docs/SECURITY.md`, `docs/CURRENT-STATE.md`
+
+Architecture changes: none.
+
+Known issues:
+
+- **There is still no way to abandon a count.** The guard explains that leaving
+  keeps the session open, which is honest and matches how the blind works — but a
+  count opened by mistake stays open, and that device stays blind to the location,
+  until it is submitted or superseded. Closing one needs an RPC that does not
+  exist. **This is a gap, not a fix**, and it should be a task of its own before
+  10 October: on the night somebody will tap COUNT on the wrong bar.
+- The `openCount` failure path was reasoned about, not reproduced — forcing the
+  RPC to fail needs a live backend.
+- The email copy is right for the flow, but ADR-014 is still PROPOSED: whether
+  crew sign in by email code at all is undecided, and the anonymous-plus-invite
+  option would remove this screen entirely.
+
+Verified:
+
+- `corepack pnpm typecheck && lint && test && build` pass. 151 unit tests.
+- `check:css`: 315 class names used, all defined.
+- `test:visual`, three consecutive runs identical: 19 reading the data layer,
+  0 hardcoded, 0 errored.
+- Driven in a browser at 390×844: the waste and delivery hints render and clear as
+  their conditions are met; `Discard delivery` clears the fields, the lines and
+  the **persisted** draft (confirmed by reloading afterwards and finding it
+  empty); the count guard appears only after a line is counted, `Keep counting`
+  dismisses it and `Leave for now` navigates to the bar.
+
+Recommended next: a task to close an open count session, then the signed-in pass
+that is now carrying five unproven items — `Alert.locationId`, the never-counted
+alert copy, the location-scoped COUNTS row, the `openCount` failure path, and
+both remaining auth states.
+
+### Session — 1 September 2026 · claude
+
+Completed: **BAR-165, sixth pass.** A regression the fifth pass introduced, and
+the copy above the sign-in field.
+
+**The regression: requesting a code sent you back to the address step.**
+
+`signInWithEmail` in `lib/auth.tsx` wrapped its request in
+`setLoading(true) … setLoading(false)`. `loading` means "we do not yet know who
+you are", and `AuthGate` renders a skeleton in its place — so the flag **unmounted
+the sign-in screen and remounted it fresh**, discarding the `sent` flag that had
+just been set. The moment the code was sent, the person was returned to the form
+to send it again.
+
+It did not exist before the fifth pass because `sent` lived in `AuthGate` itself,
+which stays mounted across the swap. Splitting sign-in into its own component —
+right in every other respect — moved that state somewhere the skeleton could
+destroy it. The bug was in `auth.tsx`, not in the split: **requesting a code does
+not change who you are, so it has no business touching that flag.** It is removed,
+and the request's in-flight state is now the button's own (`Sending…`).
+
+`verifyEmailOtp` keeps its `setLoading`, and should: it does produce a session,
+and the skeleton covers the gap before the membership load starts.
+
+**Cause and fix both proved by probe**, not reasoned about. With `signInWithEmail`
+stubbed to succeed the screen advances to the code step and stays; with
+`setLoading` put back around the same stub it returns to `Staff sign in` with the
+email field, which is the reported behaviour exactly. The probe was reverted.
+
+**The copy above the field.** `Use the email address your manager invited. A
+personal address is fine.` plus a `YOUR EMAIL` label above a field placeheld
+`Enter your email` said the same thing three times. The heading says what the
+screen is and the placeholder says what to type; both are gone. The labels
+survive as `aria-label` on the email and code inputs, so nothing is lost to a
+screen reader.
+
+Files changed: `src/lib/auth.tsx`, `src/features/AuthGate.tsx`,
+`docs/CURRENT-STATE.md`
+
+Architecture changes: none. One behavioural change in the auth provider —
+`signInWithEmail` no longer raises the global loading flag — documented at the
+call site with the reason.
+
+Known issues:
+
+- **This class of bug has no test.** A component test would have caught it in a
+  second, and BAR-114 records that no jsdom environment is configured, so no
+  component test can run. Everything in this file has been verified by driving a
+  browser, which is slower and only catches what somebody thought to check.
+- The success path is still only reachable with a stub; the real one needs a
+  backend that will send mail.
+
+Verified:
+
+- `corepack pnpm typecheck && lint && test && build` pass. 151 unit tests.
+- `check:css`: 315 class names used, all defined.
+- `test:visual`, three consecutive runs identical: 19 reading the data layer,
+  0 hardcoded, 0 errored.
+- Both sign-in steps looked at in a browser at 390×844, and the regression
+  reproduced and re-fixed as above.
+
+Recommended next: **BAR-114 — a jsdom environment and component tests.** Two
+regressions in this file in two passes, both found by a person looking at a
+screen. After that, the signed-in pass carrying the six unproven items.
+
+### Session — 1 September 2026 · claude
+
+Completed: **BAR-165, seventh pass.** Three review items, one of them a real
+defect in the auth provider that predates this task.
+
+**1. "No venue access" flashed during sign-in.**
+
+`AuthGate` decided "this person has no venue" from `memberships.length === 0`
+while gating only on `loading` — and `loading` is not a safe proxy for "we know
+what this person can reach". It is lowered by whoever established the session
+(`getSession` on a cold start, `verifyEmailOtp` after a code), and the membership
+effect only raises it again on the **next** render. In that frame a signed-in
+user has an empty membership list and nothing is loading, so the gate fell
+through and showed the rejection screen to somebody who had just signed in
+correctly. It happened on every cold start with a session, not only after a code.
+
+The provider now tracks `membershipsFor` — the user id whose memberships have
+been resolved, whether from the cache, from the server, or by failing — and
+exposes `membershipsReady`. An id rather than a boolean, so a session change
+invalidates it on its own instead of needing to be reset in the right order. The
+failure path sets it too: a load that failed is resolved, and the person must see
+the rejection with its reason rather than a skeleton that never ends.
+
+**Both directions proved by probe.** With the membership effect's `setLoading(true)`
+delayed to widen the exact gap, the fixed gate renders the skeleton and the old
+gate (`if (auth.loading)`) renders `No venue access` — the reported behaviour,
+reproduced deliberately. Both probes reverted.
+
+**2. Bars left half a phone empty.** There are four bars and there will be four
+bars, but the fix is not a height picked for four: the cards take
+`flex: 1 1 auto` with a 96 px floor, so they grow into whatever space the list
+has and fall back to their natural size if the venue ever has more. The venue's
+shape is not baked into the stylesheet.
+
+**3. `MANAGER` appeared three times across two screens.** The More header badge,
+the identity row underneath it, and again on the Settings card that row opens.
+The role is now shown once per screen: the header badge on More (which is the
+design's own), and the SIGNED IN card on Settings. More's identity row carries
+the venue instead.
+
+Files changed: `src/lib/auth.tsx`, `src/features/AuthGate.tsx`,
+`src/screens/more/MoreScreen.tsx`, `src/styles.css`, `docs/CURRENT-STATE.md`
+
+Architecture changes: `AuthState` gains `membershipsReady`. No change to what
+grants access — only to when the app is willing to say access is absent.
+
+Known issues:
+
+- **Still no component test.** This is the third defect in the auth flow found by
+  a person looking at a screen. BAR-114 is the fix and it is not done; the
+  browser probes here are careful but they only catch what somebody thought to
+  check.
+- The `membershipsFor` invalidation is verified for the cold-start and
+  verify-code paths. A **user switch on a shared device** — sign out, sign in as
+  somebody else — takes the same path (session changes, effect re-runs, id no
+  longer matches) but has not been exercised.
+
+Verified:
+
+- `corepack pnpm typecheck && lint && test && build` pass. 151 unit tests.
+- `check:css`: 315 class names used, all defined.
+- `test:visual`, three consecutive runs identical: 19 reading the data layer,
+  0 hardcoded, 0 errored.
+- The flash reproduced and fixed as above; bars and More looked at in a browser
+  at 390×844.
+
+Recommended next: BAR-114, then the signed-in pass carrying seven unproven items.
+
+### Session — 1 September 2026 · claude
+
+Completed: **BAR-165, eighth pass.** More had two rows opening the same screen.
+
+`SIGNED IN` and `SYNC STATE` both navigated to `/settings`. Two rows, one
+destination — and the identity sat at the top, above a menu it is not part of.
+
+It is now **one row at the foot of the screen**, where an account belongs, with
+the queue's state riding on it as a badge: `✓ SYNCED`, `○ OFFLINE · n QUEUED`,
+`! n NOT SENT`, `! SIGN IN AGAIN`. The badge is not a control. Specification §10
+requires the app to say whether work has been saved and a bar lead has to be able
+to read that without opening anything — so the row was removed, not the
+information. `margin-top: auto` holds the row at the bottom however few menu rows
+the signed-in role can see, which for crew is two.
+
+Files changed: `src/screens/more/MoreScreen.tsx`, `src/styles.css`,
+`docs/CURRENT-STATE.md`
+
+Architecture changes: none.
+
+Known issues: none new. The manager view of this screen — five menu rows above
+the account row — has not been seen under fixtures, which serve a crew role; only
+the two-row crew view was looked at.
+
+Verified:
+
+- `corepack pnpm typecheck && lint && test && build` pass. 151 unit tests.
+- `check:css`: 315 class names used, all defined. **It earned its keep this
+  pass**: the new `.more-identity-right` was used before it was defined and the
+  check failed the build immediately, which is the failure mode that put four
+  broken screens into the app before BAR-165.
+- `test:visual`, three consecutive runs identical: 19 reading the data layer,
+  0 hardcoded, 0 errored.
+- More looked at in a browser at 390×844.

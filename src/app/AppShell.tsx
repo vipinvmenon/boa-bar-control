@@ -64,6 +64,13 @@ export function AppShell() {
             <div className="brand-lockup">
               <img src="/assets/boa-logo-2026.png" alt="Bangalore Open Air" />
               <i />
+              {/*
+                BAR-165. No eyebrow under the lockup. The design has `BOA 2026`
+                here and BAR-165 first restored it, but the user removed it on
+                review: the logo already says which festival this is, and the
+                header's job on a working screen is stock and queue state, not
+                branding. Recorded in ADR-015.
+              */}
               <div>
                 <strong>BAR CONTROL</strong>
               </div>
@@ -99,7 +106,13 @@ export function AppShell() {
                   ? 'SIGN IN AGAIN TO SYNC'
                 : store.failed > 0
                   ? `${store.failed} NOT SENT · NEEDS ATTENTION`
-                  : store.activeVenueName}
+                  /*
+                    BAR-165. Was the venue name, which is fixed for the whole
+                    event and told nobody anything they did not already know,
+                    while occupying the one slot that reports queue health. Empty
+                    when there is nothing to report.
+                  */
+                  : ''}
             </small>
           </div>
         </header>}
@@ -114,7 +127,14 @@ export function AppShell() {
             NEW VERSION READY · TAP TO UPDATE
           </button>
         )}
-        {store.toast && <div className="toast" role="status">{store.toast}</div>}
+        {/*
+          BAR-165. The toast was pinned at `top: 118px`, which is the height of
+          the home header — the only screen with one. Everywhere else it landed
+          on top of the first card: on Settings it covered the SIGNED IN row it
+          was reporting about. It now sits at the foot, clear of the navigation,
+          and clear of the taller footer on a flow screen.
+        */}
+        {store.toast && <div className={`toast ${fullFlow ? 'is-flow' : ''}`} role="status">{store.toast}</div>}
       </div>
       <div className="stage-caption" aria-hidden="true">BOA BAR INVENTORY / 390 × 844 / {caption}</div>
     </div>

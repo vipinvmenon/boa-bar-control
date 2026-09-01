@@ -49,6 +49,15 @@ type AppStore = {
   /** The real membership role, for anything that needs more than the two tiers. */
   venueRole: string | null
   activeVenueName?: string
+  /**
+   * BAR-165. The membership's fixed location, when it has one.
+   *
+   * A bar lead or a warehouse hand is posted to a location and every write they
+   * make belongs to it. A manager, admin or auditor is not, and their writes need
+   * a location chosen in the route — so a destination that resolves its location
+   * from the membership is only offered to somebody who has one.
+   */
+  activeLocationId?: string
   /** True when the browser says there is no connection. Not a toggle. */
   offline: boolean
   /** Writes sitting in the outbox, and writes that have given up. */
@@ -142,6 +151,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       role: venueRole === 'manager' || venueRole === 'admin' || venueRole === 'auditor' ? 'Manager' : 'Crew',
       venueRole,
       activeVenueName: auth.activeMembership?.venueName,
+      activeLocationId: auth.activeMembership?.locationId,
       offline,
       pending: queue.pending,
       failed: queue.failed,
@@ -155,7 +165,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       toast,
       flash,
     }),
-    [venueRole, auth.activeMembership?.venueName, offline, queue.pending, queue.failed, queue.authStopped, queue.authFailureId, queue.authFailureKind, queue.authFailure, queue.lastFailureId, queue.lastFailureKind, queue.lastFailure, toast, flash],
+    [venueRole, auth.activeMembership?.venueName, auth.activeMembership?.locationId, offline, queue.pending, queue.failed, queue.authStopped, queue.authFailureId, queue.authFailureKind, queue.authFailure, queue.lastFailureId, queue.lastFailureKind, queue.lastFailure, toast, flash],
   )
 
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>

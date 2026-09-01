@@ -100,14 +100,50 @@ export function WarehouseScreen() {
       </header>
 
       <div className="wh-body">
-        {topUps.data && topUps.data.length > 0 ? <section className="panel top-up-queue">
-          <div className="section-label">TOP-UP REQUESTS <span>{topUps.data.length}</span></div>
-          {topUps.data.map((request) => <div className="team-row" key={request.id}>
-            <span><strong>{request.productName} · {request.requestedContainers}</strong><small>{request.locationName} · {request.status.toUpperCase()} · {request.urgency.toUpperCase()}</small></span>
-            <span className="wh-actions"><button onClick={() => void navigate({ to: '/issue', search: { topUpRequestId: request.id, skuId: request.skuId, toLocationId: request.locationId, containers: request.requestedContainers, unit: 'container' } })}>Issue</button><button disabled={updateTopUp.isPending} onClick={() => cancelRequest(request.id)}>Cancel</button></span>
-            {request.note ? <small>{request.note}</small> : null}
-          </div>)}
-        </section> : null}
+        {/*
+          BAR-165. Reformatted and given its own styling. This block reused
+          `.wh-actions` for the row buttons — a warehouse-header rule carrying its
+          own `margin-top` and sizing — inside a list row, and `.top-up-queue` had
+          no rule in the stylesheet at all.
+        */}
+        {topUps.data && topUps.data.length > 0 ? (
+          <section className="panel top-up-queue">
+            <div className="section-label">
+              TOP-UP REQUESTS
+              <span>{topUps.data.length}</span>
+            </div>
+            {topUps.data.map((request) => (
+              <div className="team-row" key={request.id}>
+                <span>
+                  <strong>{request.productName} · {request.requestedContainers}</strong>
+                  <small>
+                    {request.locationName} · {request.status.toUpperCase()} · {request.urgency.toUpperCase()}
+                  </small>
+                  {request.note ? <small>{request.note}</small> : null}
+                </span>
+                <span className="top-up-actions">
+                  <button
+                    onClick={() => void navigate({
+                      to: '/issue',
+                      search: {
+                        topUpRequestId: request.id,
+                        skuId: request.skuId,
+                        toLocationId: request.locationId,
+                        containers: request.requestedContainers,
+                        unit: 'container',
+                      },
+                    })}
+                  >
+                    Issue
+                  </button>
+                  <button disabled={updateTopUp.isPending} onClick={() => cancelRequest(request.id)}>
+                    Cancel
+                  </button>
+                </span>
+              </div>
+            ))}
+          </section>
+        ) : null}
         <div className="wh-tools">
           <label className="wh-search">
             <Search size={14} strokeWidth={2} aria-hidden="true" />

@@ -68,20 +68,22 @@ export function CountDoneScreen() {
       </div>
 
       <FlowFooter>
-        <button
-          className="flow-cta-gold"
-          onClick={() => {
-            if (!isManager) {
-              store.flash('MANAGER ACCESS REQUIRED')
-              return
-            }
-            void (barId
+        {/*
+          BAR-165. This rendered for everybody and answered a non-manager's tap
+          with a toast. The counter has just sealed a blind count — the correct
+          thing to show them is that it is sealed, not a button that refuses.
+          The advisory above already says where variance is released.
+        */}
+        {isManager ? (
+          <button
+            className="flow-cta-gold"
+            onClick={() => void (barId
               ? navigate({ to: '/bars/$barId/variance', params: { barId } })
-              : navigate({ to: '/variance' }))
-          }}
-        >
-          {isManager ? 'Open variance' : 'Variance · manager only'}
-        </button>
+              : navigate({ to: '/variance' }))}
+          >
+            Open variance
+          </button>
+        ) : null}
         <button
           className="flow-cta-ghost"
           onClick={() => void navigate({ to: '/bars/$barId', params: { barId: s.locationId } })}

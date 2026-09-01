@@ -19,6 +19,7 @@
  * No literal in this file. Bar names, quantities, leads and flags all come from
  * the repository (ADR-010).
  */
+import { useMemo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
 import { ScreenSkeleton } from '../../components/ScreenSkeleton'
@@ -55,6 +56,28 @@ export function BarsScreen() {
   const navigate = useNavigate()
   const bars = useRepositoryQuery(['bars'], (r) => r.listBars())
   const asOf = useRepositoryQuery(['asOf'], (r) => r.asOf())
+  const custody = useRepositoryQuery(['custodyOverview'], (r) => r.custodyOverview())
+
+  /**
+   * BAR-165. The screen was four cards and then half a phone of nothing, and it
+   * carried no figure a manager could act on — the one place in the app that
+   * lists every bar could not say how much stock was across them, how much had
+   * left the warehouse and not arrived, or how many bars were overdue a count.
+   *
+   * Every figure here is derived from read models that already existed. Nothing
+   * new is fetched and nothing is estimated: the containers are summed from the
+   * same `listBars()` the cards render, in transit is the custody overview's own
+   * total, and counts due is a count of the cards already flagged.
+   */
+  const totals = useMemo(() => {
+    const rows = bars.data
+    if (!rows) return null
+    return {
+      containers: rows.reduce((sum, bar) => sum + bar.containers, 0),
+      inTransit: custody.data?.inTransitContainers ?? 0,
+      countsDue: rows.filter((bar) => bar.tone !== 'green').length,
+    }
+  }, [bars.data, custody.data])
 
   /**
    * BAR-133. The design opens the bar workspace from any card, and so does this.
@@ -76,6 +99,23 @@ export function BarsScreen() {
         <h1 className="section-head-title">Bars</h1>
         <span className="section-head-asof">AS OF {asOf.data?.label ?? '—'}</span>
       </header>
+
+      {totals ? (
+        <div className="bars-totals">
+          <div className="wh-total">
+            <span>IN BARS</span>
+            <strong>{totals.containers.toLocaleString('en-IN')}</strong>
+          </div>
+          <button className="wh-total is-tappable" onClick={() => void navigate({ to: '/dockets' })}>
+            <span>IN TRANSIT</span>
+            <strong className={totals.inTransit > 0 ? 'tone-gold' : undefined}>{totals.inTransit}</strong>
+          </button>
+          <div className="wh-total">
+            <span>NEEDS ATTENTION</span>
+            <strong className={totals.countsDue > 0 ? 'tone-gold' : undefined}>{totals.countsDue}</strong>
+          </div>
+        </div>
+      ) : null}
 
       <div className="section-body bars-body">
         {bars.isPending ? <ScreenSkeleton variant="bars" /> : null}

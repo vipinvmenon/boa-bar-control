@@ -224,6 +224,14 @@ export function AcceptScreen() {
             ACCEPTANCE QUEUED ON THIS DEVICE · IT WILL POST AFTER SYNC.
           </Advisory>
         ) : null}
+        {/*
+          BAR-165. A shortfall without a reason leaves the button dead. The
+          database refuses an unexplained shortfall (BAR-058) and so does this —
+          but it now says which of the two it is waiting for.
+        */}
+        {isShort && reason === null ? (
+          <p className="flow-hint">Choose a reason for the shortfall. An unexplained short acceptance is refused.</p>
+        ) : null}
         <button
           className={`flow-cta ${isShort ? 'is-short' : ''}`}
           onClick={accept}

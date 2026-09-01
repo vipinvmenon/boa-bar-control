@@ -473,3 +473,135 @@ security posture change and it is the user's call, not an agent's.
 
 Load-in falls back to magic links, and the realistic outcome is shared logins,
 which destroys the named-person guarantee that §4 and §5 exist to provide.
+
+---
+
+## ADR-015 — Approved deviations from the approved design, for V1 UX
+
+**Status: ACCEPTED.** Requested and approved by the user, 1 September 2026, during
+BAR-165. Recorded here because non-negotiable 5 says "no visual deviation from
+`references/design-source/`" — so without this record the next agent will
+correctly read these as defects and revert them.
+
+### Why an ADR at all
+
+Non-negotiable 5 exists because the design was reconstructed once already after
+agents wrote an architecture on assumptions. It is deliberately absolute: an agent
+may not decide a screen looks better a different way. The user can, and the
+28 August note in `CLAUDE.md` makes the user the approval gate. These three are
+the user's decisions, not an agent's judgement.
+
+### 1. The NEEDS ATTENTION count is a badge beside the label
+
+The design (`design-markup.html`, `references/ui/home.png`) puts the count as a
+10px red numeral at the far right edge of the section label. On a 390px screen
+that is as far from the words it counts as the layout allows, and at 10px it is
+the least prominent element on a card stack built entirely to be noticed.
+
+**Now:** a tinted pill immediately after the label text, using the same
+`rgba(--red, .16)` fill recipe as the alert cards' own `.alert-level` badges, so
+it reads as the same system. Rendered only when the count is non-zero — the
+design has no zero state and the previous implementation rendered a bare `0`.
+
+The same treatment was applied to `.section-label`'s counts on `/dockets`,
+`/team` and `/receipt` in the neutral sage tint, because leaving three of four
+section counts at the right edge would have been a worse inconsistency than the
+deviation.
+
+### 2. No venue name and no eyebrow in the shell header
+
+The design's home header carries `BOA 2026` under `BAR CONTROL`, with the
+right-hand line reporting sync state. The implementation had dropped the eyebrow
+and put the full venue name — `Bangalore Open Air 2026` — in the sync line's
+secondary slot.
+
+BAR-165 first removed the venue name and restored the design's `BOA 2026` eyebrow
+(the CSS for it, `.brand-lockup span`, had been in the stylesheet since BAR-039
+with nothing rendering it). **On review the user removed the eyebrow as well.**
+
+**Now:** the lockup is the logo and `BAR CONTROL`, nothing else. The right slot
+carries only queue state — pending count, `N NOT SENT`, `SIGN IN AGAIN TO SYNC`,
+or nothing.
+
+The reasoning is the same for both removals: the venue and the year are fixed for
+the whole event and identical on every device, so they consume the one line in the
+header that could be telling a bar lead whether their work has been sent. The logo
+already says which festival this is.
+
+### 3. MORE is navigation only; SETTINGS is a real screen
+
+The design's More has six rows and no sign-out. Four of the six destinations do
+not exist in V1 (`control`, `cowork`, `reports`, `rep`), and the design could not
+have known that. The implementation rendered them anyway: `CONTROL` at full label
+brightness with `· NOT IN V1` appended into its description and a tap that
+returned in silence; `REPORTS` navigating non-managers to a dead "Restricted"
+page; `VARIANCE` and `TEAM` answering a non-manager's tap with a toast.
+
+**Now:**
+
+- A row is rendered only if it navigates somewhere real **for the person holding
+  the phone**. Unbuilt destinations are absent, not disabled. Manager-only rows
+  are hidden from non-managers rather than shown and refused.
+- The signed-in person, role and device appear at the top of More. This is a
+  shared-device app; "who is this phone signed in as" was previously answerable
+  only from a two-column grid at the foot of a status card.
+- `SETTINGS` opens `/settings`, a new non-design screen, instead of `/print`. The
+  row promised "Device · sync · printed fallback sheets" and delivered only the
+  third. Settings holds all three, plus sign-out with a confirmation step.
+- The `SYNC STATE` card moved to Settings; More keeps the badge, so queue health
+  is still legible without a tap.
+
+`CONTROL`, `COWORK` and `REPORTS` return to the list when BAR-100, BAR-103 and
+BAR-107 land. That is the condition, and it is the only thing that should bring
+them back.
+
+### 4. One radius ladder, and the auth screens use the app's shell
+
+Added on review, 1 September, after the user asked for a consistent radius and
+flagged the sign-in screen's height.
+
+**Radius.** BAR-036 established the design's vocabulary as 999 / 12 / 14 / 15 /
+18 px and recorded that "nothing below 11 px remains". Fourteen distinct radii had
+since drifted in — 4, 7, 8, 9, 11, 13 and 16 among them. They are now five tokens
+(`--r-pill`, `--r-sm`, `--r-md`, `--r-lg`, `--r-xl`) plus 44 px for the phone
+frame and 50% for a dot, and every rule in the stylesheet uses a token. Verified
+by sweeping the computed style of every element on nineteen routes: six values,
+no others.
+
+**Auth.** The sign-in, verification and no-access screens were a short card on
+flat black — no ambient field, a 14 px radius against the app's 44, and a height
+set by their own content, so the first screen of the product looked like a
+different product. They now use `.app-stage`'s gradient and `.app-shell`'s frame
+verbatim, with the logo held at the top and the content centred beneath it. This
+is not a deviation from the design — the design has no auth screen at all — but it
+is recorded here because it is the same judgement call.
+
+**Dropdowns.** The three `<select>` elements read 11 px Oswald beside 14 px
+Archivo inputs, and opened a white system popup over a black app. They now match
+`.field input` exactly and carry the app's own chevron; `color-scheme: dark` on
+`:root` is what reaches the option list, which no stylesheet can style.
+
+### 5. MORE is a menu of what the navigation cannot reach
+
+Added on review, 1 September. The design's six rows assume six destinations. With
+four of them absent in V1 the screen had shrunk to two rows, one of which
+(`COUNTS`) redirected to `/bars` — the BARS tab in the navigation two inches
+below it.
+
+**Now:** the identity, then only routes the bottom navigation cannot reach —
+`IN CUSTODY`, `COUNTS` (only for a membership posted to a location, where it
+opens that person's own sheet), `VARIANCE` and `TEAM` for a manager, `SETTINGS` —
+then the sync badge.
+
+`IN CUSTODY` is not in the design at all. `/dockets` was reachable only from a
+home alert that exists only while a docket is awaiting acceptance, and stock that
+has left the warehouse and not arrived is what specification §5 exists to resolve.
+It needs a permanent way in.
+
+### Consequence
+
+`references/ui/home.png` and `references/ui/more.png` no longer match the
+implementation in these respects, and the fidelity gate's `more` row is correctly
+`static-ok` rather than a pixel comparison. Anyone reading a difference between the
+reference captures and the app on these points should read this ADR before
+"fixing" it.

@@ -38,6 +38,11 @@ type AuthState = {
   session: Session | null
   memberships: VenueMembership[]
   activeMembership: VenueMembership | null
+  /**
+   * BAR-165. Whether we yet know what this user can reach. `loading` does not
+   * answer that — see `membershipsFor`.
+   */
+  membershipsReady: boolean
   error?: string
   signInWithEmail: (email: string) => Promise<void>
   verifyEmailOtp: (email: string, token: string) => Promise<void>
@@ -55,6 +60,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [activeVenueId, setActiveVenueId] = useState<string>()
   const [loading, setLoading] = useState(isSupabaseConfigured)
   const [error, setError] = useState<string>()
+  /**
+   * BAR-165. The user id whose memberships have been resolved — from the cache,
+   * from the server, or by failing.
+   *
+   * `loading` cannot answer "do we know what this person can reach yet". It is
+   * lowered by whoever established the session, and the membership load only
+   * raises it again on the next render, so there is a frame in between where a
+   * signed-in user has an empty membership list and nothing is loading. The gate
+   * read that frame as "no venue access" and flashed the rejection screen at
+   * somebody who had just signed in correctly — on every cold start with a
+   * session, and every time a code was verified.
+   *
+   * An id rather than a boolean, so a session change invalidates it on its own
+   * rather than needing to be reset in the right order.
+   */
+  const [membershipsFor, setMembershipsFor] = useState<string | null>(null)
 
   useEffect(() => {
     if (!supabase) return
@@ -80,8 +101,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const client = supabase
     if (!client || !session?.user) {
       setMemberships([])
+      setMembershipsFor(null)
       return
     }
+    const userId = session.user.id
     let active = true
     const load = async () => {
       setLoading(true)
@@ -91,6 +114,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setMemberships(cached)
         setActiveVenueId((current) => current && cached.some((item) => item.venueId === current) ? current : cached[0]?.venueId)
         setError(undefined)
+        setMembershipsFor(userId)
         setLoading(false)
         return true
       }
@@ -137,6 +161,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         await offlineDb.referenceCache.put({ key: cacheKey, value: next, refreshedAt: Date.now() })
         setActiveVenueId((current) => current && next.some((item) => item.venueId === current) ? current : next[0]?.venueId)
         setError(undefined)
+        setMembershipsFor(userId)
         setLoading(false)
       } catch (caught) {
         // `navigator.onLine` can be true on a phone that can reach its local
@@ -152,6 +177,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
     void load().catch((caught) => {
       if (!active) return
       setError(caught instanceof Error ? caught.message : 'Unable to load venue access')
+      // Resolved by failing. The gate must show the rejection with its reason
+      // rather than a skeleton that never ends.
+      setMembershipsFor(userId)
       setLoading(false)
     })
     return () => { active = false }
@@ -160,18 +188,26 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const value = useMemo<AuthState>(() => ({
     mode: isSupabaseConfigured ? 'live' : 'demo',
     loading,
+    /** False while a signed-in user's memberships have not been resolved yet. */
+    membershipsReady: !session?.user || membershipsFor === session.user.id,
     user: session?.user ?? null,
     session,
     memberships,
     activeMembership: memberships.find((item) => item.venueId === activeVenueId) ?? memberships[0] ?? null,
     error,
+    /**
+     * BAR-165. Deliberately does NOT touch `loading`.
+     *
+     * `loading` means "we do not yet know who you are", and it makes `AuthGate`
+     * render a skeleton in place of whatever was on screen. Requesting a code
+     * does not change who you are — but flipping the flag around the request
+     * unmounted the sign-in screen and remounted it fresh, so the moment the code
+     * was sent the person was thrown back to the address step to do it again.
+     * The request's in-flight state belongs to its own button.
+     */
     signInWithEmail: async (email) => {
       if (!supabase) return
-      setLoading(true)
-      const { error: signInError } = await supabase.auth.signInWithOtp({
-        email,
-      })
-      setLoading(false)
+      const { error: signInError } = await supabase.auth.signInWithOtp({ email })
       if (signInError) throw signInError
     },
     verifyEmailOtp: async (email, token) => {
@@ -204,7 +240,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return { name: result.display_name ?? '', role: result.role }
     },
     setActiveVenue: setActiveVenueId,
-  }), [activeVenueId, error, loading, memberships, session])
+  }), [activeVenueId, error, loading, memberships, membershipsFor, session])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

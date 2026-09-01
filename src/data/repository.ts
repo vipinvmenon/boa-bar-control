@@ -157,6 +157,11 @@ export type Alert = {
   subtitle: string
   metric: string
   metricUnit: string
+  /**
+   * BAR-165. True when `metric` is a word rather than a numeral, so the screen
+   * can stop setting it in the 30px Anton face reserved for figures.
+   */
+  metricIsWord?: boolean
   /** Meter fill, 0–100. */
   meterPct: number
   meterNote: string
@@ -164,6 +169,15 @@ export type Alert = {
   tone: Tone
   /** Screen key the CTA navigates to. */
   target: string
+  /**
+   * BAR-165. The location the CTA is about, when the alert is about one.
+   *
+   * Without it the count CTA routed every role to the unscoped `/count`, which
+   * for a manager or admin — who hold no membership location — resolves to
+   * `NO LOCATION` and fails to open a count at all. So the one alert telling a
+   * manager which bar was overdue could not take them to that bar's sheet.
+   */
+  locationId?: string
 }
 
 // ---------------------------------------------------------------------------

@@ -68,6 +68,38 @@ const SCREENS = [
 ]
 
 /**
+ * BAR-165. The routes the app has that the design does not.
+ *
+ * This gate covered only the 22 design screens, so `receipt`, `dockets`, `team`,
+ * `print` and now `settings` had **no visual coverage at all** — five built
+ * screens nobody was checking. Three separate defects lived there unseen: the
+ * receipt and waste headers named two class names that exist nowhere in the
+ * stylesheet and therefore rendered in the root Archivo face while every other
+ * flow header is Oswald, and the print sheet's entire typography was defined only
+ * inside `@media print`, so its on-screen preview had no styling.
+ *
+ * They are held to the same standard as the design screens — a route that renders
+ * identically under two fixture sets is not reading the data layer — because that
+ * is the property that matters and it has nothing to do with whether a designer
+ * drew the screen.
+ */
+const EXTRA_SCREENS = [
+  { key: 'receipt', label: 'RECORD DELIVERY', route: '/receipt' },
+  { key: 'dockets', label: 'IN CUSTODY', route: '/dockets' },
+  { key: 'team', label: 'TEAM', route: '/team' },
+  { key: 'print', label: 'PAPER FALLBACK', route: '/print' },
+  {
+    key: 'settings',
+    label: 'SETTINGS',
+    route: '/settings',
+    expectsData: false,
+    note: 'session, device and queue state, not fixture SKU data',
+  },
+]
+
+const ALL_SCREENS = [...SCREENS, ...EXTRA_SCREENS]
+
+/**
  * Capture a settled render.
  *
  * Screens now read asynchronously through React Query, so a fixed delay races
@@ -141,14 +173,14 @@ async function main() {
   // mid-compile — which showed up as one screen falsely reporting "hardcoded" on
   // the first run after a server restart, and clean on every run after. Touch
   // every route once before measuring anything.
-  for (const s of SCREENS) {
+  for (const s of ALL_SCREENS) {
     if (!s.route) continue
     await page.goto(`${BASE}${s.route}`, { waitUntil: 'networkidle' }).catch(() => {})
   }
   await page.waitForTimeout(400)
 
   const rows = []
-  for (const s of SCREENS) {
+  for (const s of ALL_SCREENS) {
     if (!s.route) {
       rows.push({ ...s, status: 'missing' })
       continue
@@ -183,6 +215,7 @@ async function main() {
   console.log(`  screens in design      ${SCREENS.length}`)
   console.log(`  reference captures     ${refs.size}`)
   console.log(`  implemented routes     ${SCREENS.filter((s) => s.route).length}`)
+  console.log(`  routes off the design  ${EXTRA_SCREENS.length}   (BAR-165 — previously uncovered)`)
   console.log(`  reading the data layer ${counts.derived ?? 0}`)
   console.log(`  legitimately static    ${counts['static-ok'] ?? 0}`)
   console.log(`  hardcoded              ${counts.hardcoded ?? 0}`)
