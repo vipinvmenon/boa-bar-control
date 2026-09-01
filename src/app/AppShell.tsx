@@ -70,8 +70,8 @@ export function AppShell() {
             </div>
           </div>
           {/*
-            BAR-139. This line previously read `SYNCED` in live mode and
-            `LIVE · 19:44 IST` in demo mode — exactly backwards. Demo is also the
+            BAR-139. This line previously reported a fixed live timestamp in demo
+            mode — exactly backwards. Demo is also the
             state a failed or unconfigured live load falls into, so a single
             missing environment variable presented fixture data as live.
             Demo must always announce itself as demo.
