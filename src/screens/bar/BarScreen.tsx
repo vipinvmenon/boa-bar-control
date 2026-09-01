@@ -16,16 +16,28 @@
  * Note the design's own label on the inventory list: "DERIVED FROM LEDGER". The
  * design states the core rule on the screen itself.
  */
+import { useState } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { ArrowUp, ChevronLeft, ClipboardList, Trash2 } from 'lucide-react'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
 import { useAppStore } from '../../lib/app-store'
+import { useRepositoryMutation } from '../../data/RepositoryProvider'
+import { requestTopUp, type RequestTopUpInput } from '../../services/top-up'
 
 export function BarScreen() {
   const { barId } = useParams({ from: '/bars/$barId' })
   const navigate = useNavigate()
   const store = useAppStore()
   const bar = useRepositoryQuery(['bar', barId], (r) => r.barDetail(barId))
+  const [topUpOpen, setTopUpOpen] = useState(false)
+  const [skuId, setSkuId] = useState('')
+  const [quantity, setQuantity] = useState(1)
+  const [urgency, setUrgency] = useState<'normal' | 'urgent'>('normal')
+  const [note, setNote] = useState('')
+  const [topUpActionId, setTopUpActionId] = useState(() => crypto.randomUUID())
+  const topUp = useRepositoryMutation((repository, input: Omit<RequestTopUpInput, 'repository'>) => (
+    requestTopUp({ repository, ...input })
+  ))
 
   if (bar.isPending) {
     return (
@@ -116,7 +128,11 @@ export function BarScreen() {
         ))}
 
         <div className="bar-actions">
-          <button onClick={() => store.flash('TOP-UP REQUEST IS BAR-064')}>
+          <button onClick={() => {
+            setSkuId(detail.inventory[0]?.skuId ?? '')
+            setTopUpActionId(crypto.randomUUID())
+            setTopUpOpen(true)
+          }}>
             <ArrowUp size={18} strokeWidth={1.8} aria-hidden="true" />
             <span>TOP-UP</span>
           </button>
@@ -135,6 +151,16 @@ export function BarScreen() {
             <span>COUNT</span>
           </button>
         </div>
+
+        {topUpOpen ? <section className="panel top-up-panel">
+          <span className="issue-label">REQUEST TOP-UP</span>
+          <label className="field"><span className="issue-label">PRODUCT</span><select value={skuId} onChange={(e) => setSkuId(e.target.value)}>{detail.inventory.map((line) => <option key={line.skuId} value={line.skuId}>{line.name}</option>)}</select></label>
+          <label className="field"><span className="issue-label">CONTAINERS</span><input type="number" min="1" step="1" value={quantity} onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))} /></label>
+          <div className="team-roles"><button className={urgency === 'normal' ? 'active' : ''} onClick={() => setUrgency('normal')}>NORMAL</button><button className={urgency === 'urgent' ? 'active' : ''} onClick={() => setUrgency('urgent')}>URGENT</button></div>
+          <label className="field"><span className="issue-label">NOTE</span><input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional note" /></label>
+          <div className="wh-actions"><button onClick={() => setTopUpOpen(false)}>Cancel</button><button className="primary" disabled={!skuId || topUp.isPending} onClick={() => topUp.mutate({ actionId: topUpActionId, locationId: barId, skuId, requestedContainers: quantity, urgency, note: note.trim() || undefined }, { onSuccess: (result) => { setTopUpOpen(false); store.flash(result.status === 'queued' ? 'TOP-UP QUEUED' : 'TOP-UP REQUESTED') } })}>Request stock</button></div>
+          {topUp.isError ? <p className="flow-error" role="alert">NOT REQUESTED · {topUp.error.message}</p> : null}
+        </section> : null}
 
         <div className="bar-inv-head">
           <span className="bar-inv-title">BAR INVENTORY</span>

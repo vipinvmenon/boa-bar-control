@@ -209,5 +209,12 @@ export function createFixtureRepository(which: FixtureVariant = 'a'): Repository
       const custody = v?.custody ?? CUSTODY
       return { status: 'posted', docketId: command.docketId || custody.docketId, docketNo: custody.docketNo }
     },
+
+    async requestTopUp(): Promise<{ status: 'posted'; requestId: string }> {
+      // Fixture mode never records anything; this id only keeps the walkthrough deterministic.
+      return { status: 'posted', requestId: 'TOP-UP-DEMO' }
+    },
+    async topUpRequests() { return [] },
+    async updateTopUp(command: { requestId: string }) { return { status: 'posted' as const, requestId: command.requestId } },
   }
 }

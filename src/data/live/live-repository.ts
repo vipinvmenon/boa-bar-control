@@ -107,6 +107,9 @@ import type {
   VenueRole,
   RecordReceiptCommand,
   RecordWasteCommand,
+  RequestTopUpCommand,
+  TopUpWriteOutcome,
+  UpdateTopUpCommand,
   Tone,
   VarianceReport,
   WasteOptions,
@@ -775,6 +778,22 @@ export function createLiveRepository(context: LiveContext): Repository {
       }).filter((g) => g.items.length > 0)
     },
 
+    async topUpRequests(): Promise<import('../repository').TopUpRequest[]> {
+      const ref = await reference()
+      const data = await rpc('boa_bar_list_top_up_requests', { p_venue_id: venueId }) as unknown as Array<Record<string, unknown>>
+      return (data ?? []).map((row) => ({
+        id: String(row.id),
+        locationId: String(row.location_id),
+        locationName: ref.locationById.get(String(row.location_id))?.name ?? String(row.location_id),
+        skuId: String(row.sku_id),
+        productName: ref.skuById.get(String(row.sku_id))?.name ?? String(row.sku_id),
+        requestedContainers: Number(row.requested_containers),
+        urgency: row.urgency as 'normal' | 'urgent', note: row.note as string | null,
+        status: row.status as 'requested' | 'issued' | 'fulfilled' | 'cancelled',
+        requestedBy: who(ref, String(row.requested_by)), requestedAt: String(row.requested_at),
+      }))
+    },
+
     /**
      * BAR-146. Everything in custody right now: the dockets awaiting acceptance,
      * and the containers sitting in `in_transit`.
@@ -1043,7 +1062,7 @@ export function createLiveRepository(context: LiveContext): Repository {
         .from('boa_bar_movement')
         .select(MOVEMENT_COLUMNS)
         .eq('venue_id', venueId)
-        .in('kind', LEDGER_KINDS as unknown as string[])
+        .in('kind', LEDGER_KINDS)
         .order('occurred_at', { ascending: false })
         .limit(60)
         .then((r) => unwrap<MovementRow[]>('ledger movements', r))
@@ -1557,8 +1576,10 @@ export function createLiveRepository(context: LiveContext): Repository {
         idempotencyKey: command.idempotencyKey,
         payload: {
           venue_id: venueId,
+          actor_id: context.userId,
           from_location_id: command.fromLocationId,
           to_location_id: command.toLocationId,
+          top_up_request_id: command.topUpRequestId,
           idempotency_key: command.idempotencyKey,
           source: 'pwa',
           lines: command.lines.map((line) => {
@@ -1583,6 +1604,7 @@ export function createLiveRepository(context: LiveContext): Repository {
         kind: 'accept_docket',
         idempotencyKey: command.idempotencyKey,
         payload: {
+          actor_id: context.userId,
           idempotency_key: command.idempotencyKey,
           docket_id: command.docketId,
           difference_reason: command.differenceReason ?? null,
@@ -1608,6 +1630,7 @@ export function createLiveRepository(context: LiveContext): Repository {
         idempotencyKey: command.idempotencyKey,
         payload: {
           venue_id: venueId,
+          actor_id: context.userId,
           location_id: command.locationId,
           supplier: command.supplier,
           delivery_note: command.deliveryNote,
@@ -1638,6 +1661,7 @@ export function createLiveRepository(context: LiveContext): Repository {
         idempotencyKey: command.idempotencyKey,
         payload: {
           venue_id: venueId,
+          actor_id: context.userId,
           location_id: command.locationId,
           sku_id: command.skuId,
           containers: command.containers,
@@ -1652,6 +1676,44 @@ export function createLiveRepository(context: LiveContext): Repository {
           return { status: 'posted', countSessionId: result.movement_id, lines: 1 }
         }
         return { status: 'queued', outboxId }
+      } catch (error) {
+        if (error instanceof OutboxPendingError) return { status: 'queued', outboxId }
+        throw error
+      }
+    },
+
+    async requestTopUp(command: RequestTopUpCommand): Promise<TopUpWriteOutcome> {
+      const outboxId = await enqueueCommand({
+        kind: 'request_top_up',
+        idempotencyKey: command.idempotencyKey,
+        payload: {
+          venue_id: venueId,
+          location_id: command.locationId,
+          sku_id: command.skuId,
+          requested_containers: command.requestedContainers,
+          urgency: command.urgency,
+          note: command.note,
+          idempotency_key: command.idempotencyKey,
+        },
+      })
+      try {
+        const result = (await waitForCommand(outboxId)) as { request_id?: string } | null
+        if (result?.request_id) return { status: 'posted', requestId: result.request_id }
+        return { status: 'queued', outboxId }
+      } catch (error) {
+        if (error instanceof OutboxPendingError) return { status: 'queued', outboxId }
+        throw error
+      }
+    },
+
+    async updateTopUp(command: UpdateTopUpCommand): Promise<TopUpWriteOutcome> {
+      const outboxId = await enqueueCommand({
+        kind: 'update_top_up', idempotencyKey: command.idempotencyKey,
+        payload: { request_id: command.requestId, status: command.status },
+      })
+      try {
+        const result = await waitForCommand(outboxId) as { request_id?: string } | null
+        return result?.request_id ? { status: 'posted', requestId: result.request_id } : { status: 'queued', outboxId }
       } catch (error) {
         if (error instanceof OutboxPendingError) return { status: 'queued', outboxId }
         throw error
@@ -1688,6 +1750,7 @@ export function createLiveRepository(context: LiveContext): Repository {
         idempotencyKey: command.idempotencyKey,
         payload: {
           venue_id: venueId,
+          actor_id: context.userId,
           location_id: command.locationId,
           count_kind: command.countKind,
           idempotency_key: command.idempotencyKey,

@@ -47,6 +47,7 @@ export function ReviewScreen() {
     return issueStock({
       repository,
       actionId: search.actionId ?? fallbackActionId,
+      topUpRequestId: search.topUpRequestId,
       fromLocationId: options.fromLocationId,
       toLocationId: destination.id,
       lines: [{ skuId: product.skuId, containers }],

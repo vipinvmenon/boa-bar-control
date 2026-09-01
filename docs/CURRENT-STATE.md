@@ -280,7 +280,7 @@ States are defined once in the **Status key** above.
 | BAR-136 | QR scanner | `[~]` | No scanner. `/dockets` is the deliberate substitute — smaller, and it does not depend on a camera focusing in a dark tent. The scanner is still wanted as the fast path, and `vercel.json` already grants camera permission |
 | BAR-137 | Session longevity for shared devices | `[~]` | Sign-out/account handoff slice completed 30 Aug: More exposes SIGN OUT, clears user-scoped reference cache and drafts, clears in-memory query data, retains unsent outbox commands, and uses local-scope Supabase sign-out so it works without a network round-trip. Browser verified: active VIPIN session returned to Staff sign in. Full offline cold-start, JWT lifetime and refresh behaviour remain unverified |
 | BAR-138 | Security headers and build identity | `[x]` | `06968a4` — a waiting service worker can now actually be activated; previously it could never be replaced |
-| BAR-141 | Attribute movements to their real actor | `[ ]` | The RPC stamps `auth.uid()` at flush time, so a shift handover re-attributes the previous crew member's work |
+| BAR-141 | Attribute movements to their real actor | `[~]` | Queued payloads carry `actor_id`; migrations 012–013 validate both memberships and wrap all five command RPCs so their existing logic runs under the original actor. Hosted behavior is still unverified, including whether Supabase `auth.uid()` observes the transaction-local subject override |
 | BAR-142 | Outbox visibility and device loss | `[ ]` | — |
 | BAR-146 | Surface `in_transit` stock | `[x]` | `BarDetail.incoming` is a list, the bar screen renders all of them with working CTAs, and `/dockets` shows every awaiting docket plus the in-transit container total. Verified in a browser: two dockets listed, the second opens its own contents |
 | BAR-147 | Prevent self-acceptance | `[x]` | The accept RPC rejects acceptance by the issuing user. Enforced in the database, not the client |
@@ -2143,6 +2143,134 @@ Architecture changes: none
 Known issues: The new migration has not been pushed to or behavior-tested against the hosted database; live auth identities must use the supplied email addresses.
 Recommended next: Apply the migration, then continue the remaining Release 1 implementation work.
 
+### Session — 31 August 2026 · codex
+
+Completed: BAR-137 — added a 60-second OTP resend cooldown and clear local membership/draft caches on shared-device sign-out. Verified with typecheck, lint, and 143 unit tests.
+Files changed: `src/features/AuthGate.tsx`, `src/lib/auth.tsx`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Live shared-device behavior and Gmail delivery remain unverified; hosted database tests are parked.
+Recommended next: Continue Release 1 implementation or perform the live OTP test.
+
+### Session — 31 August 2026 · codex
+
+Completed: BAR-164 — moved the Release 1 reports placeholder out of the retired legacy screen module and removed `src/features/screens.tsx`; `/reports` remains an honest unavailable state until reporting is in scope.
+Files changed: `src/screens/reports/ReportsScreen.tsx`, `src/app/router.tsx`, removed `src/features/screens.tsx`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Reports remains intentionally unavailable; hosted verification and visual checks are parked.
+Recommended next: Continue with the next Release 1 implementation item.
+
+### Session — 31 August 2026 · codex
+
+Completed: BAR-153 — added `references/design-source/CHECKSUMS.txt` with SHA-256 hashes for every recovered design-source file. Verified with `shasum -a 256 -c` and `git diff --check`.
+Files changed: `references/design-source/CHECKSUMS.txt`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Hosted/device verification remains parked.
+Recommended next: BAR-009 or the next Release 1 implementation item.
+
+### Session — 31 August 2026 · codex
+
+Completed: BAR-009 — included `src/sw.ts` in TypeScript and ESLint coverage by removing the ignore/exclude entries. Verified with typecheck, lint, 143 unit tests, and production build.
+Files changed: `eslint.config.js`, `tsconfig.app.json`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Hosted/device verification remains parked.
+Recommended next: BAR-010 (repository quality gates) or the next Release 1 implementation item.
+
+### Session — 31 August 2026 · codex
+
+Completed: BAR-010 — added EditorConfig formatting conventions, ESLint-backed format scripts, an installable pre-commit hook, CODEOWNERS, and a pull-request template. Verified with format check, typecheck, lint, and 143 unit tests.
+Files changed: `.editorconfig`, `.githooks/pre-commit`, `scripts/install-hooks.mjs`, `.github/CODEOWNERS`, `.github/pull_request_template.md`, `package.json`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: The hook is available but each contributor must run `corepack pnpm hooks:install`; hosted/device verification remains parked.
+Recommended next: BAR-033 (generated database types) or the next Release 1 implementation item.
+
+### Session — 31 August 2026 · codex
+
+Completed: BAR-033 — verified the generated Supabase schema types at `src/types/database.ts` and typed the Supabase client; retained explicit repository row narrowing at the data boundary. Verified with typecheck, lint, 143 unit tests, and production build.
+Files changed: `src/types/database.ts`, `src/lib/supabase.ts`, `src/data/live/rows.ts`, `src/data/live/live-repository.ts`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Generated types reflect the linked database schema at generation time; hosted schema drift still requires regeneration after future migrations.
+Recommended next: BAR-141 (attribute queued movements to the original actor) or the next Release 1 implementation item.
+
+### Session — 31 August 2026 · codex
+
+Completed: BAR-143 — changed live sign-in from magic-link redirect to Supabase email OTP verification, ready for the selected Resend SMTP provider. Verified with typecheck, lint, unit tests (143 passed), and production build.
+Files changed: `src/lib/auth.tsx`, `src/features/AuthGate.tsx`
+Architecture changes: none
+Known issues: Resend SMTP/domain configuration and live OTP delivery have not been verified; Supabase project email templates must include the OTP token.
+Recommended next: Configure Resend SMTP and test one complete OTP sign-in with a live account.
+
+### Session — 31 August 2026 · codex
+
+Completed: BAR-141 (partial) — queued command payloads now preserve the creating user's `actor_id`; the generic movement RPC validates that both the replaying user and original actor remain active venue members before attribution. Dedicated docket, count, waste, and receipt RPCs still need equivalent server-side actor plumbing.
+Files changed: `src/data/live/live-repository.ts`, `supabase/migrations/202608310012_original_actor.sql`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: The migration has not been pushed or behavior-tested against the hosted database. Dedicated command RPCs still use `auth.uid()` for their direct actor columns and movement calls. Live queued replay remains unverified.
+Recommended next: Extend BAR-141's actor validation to the dedicated command RPCs, then push and run the hosted database behavior test.
+
+### Session — 31 August 2026 · codex
+
+Completed: BAR-141 server wiring — added transaction-local actor wrappers for docket creation/acceptance, count submission, waste, and receipt commands. Existing command implementations remain unchanged behind renamed internal functions; the wrappers validate the original actor and replaying user before dispatch.
+Files changed: `supabase/migrations/202608310013_queued_actor_commands.sql`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Migrations 012–013 have not been pushed or behavior-tested against the hosted database. The transaction-local `request.jwt.claim.sub` technique must be confirmed against Supabase's `auth.uid()` implementation before calling this live-verified.
+Recommended next: Push migrations 012–013 from the user's authenticated shell and run a two-account offline queue replay test.
+
+### Session — 31 August 2026 · codex
+
+Completed: Auth OTP input fix — accepted the 8-digit verification codes produced by the configured Supabase email template; the field, copy, placeholder, and submit guard now agree.
+Files changed: `src/features/AuthGate.tsx`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Live email delivery and OTP verification remain unverified.
+Recommended next: Retry sign-in with the latest 8-digit code.
+
+### Session — 31 August 2026 · codex
+
+Completed: Exposed the existing Team management route from More as a manager-only TEAM option, so authorized operators can reach staff invitations without typing `/team` manually.
+Files changed: `src/screens/more/MoreScreen.tsx`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Browser refresh/visual confirmation remains pending; the route itself already existed and local checks pass.
+Recommended next: Refresh More and open TEAM to manage invitations.
+
+### Session — 31 August 2026 · codex
+
+Completed: Updated the home navigation/header treatment with the supplied BOA poster as a restrained background, removed the BOA 2026 subtitle, removed COWORK from More, and kept BAR CONTROL vertically centered with the logo.
+Files changed: `src/app/AppShell.tsx`, `src/screens/more/MoreScreen.tsx`, `src/styles.css`, `public/assets/boa-poster.jpg`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Authenticated browser visual verification was unavailable after the local refresh returned to Staff sign in; typecheck, lint, and unit tests passed.
+Recommended next: Sign in again and inspect the home header and More list at the target mobile viewport.
+
+### Session — 31 August 2026 · codex
+
+Completed: Refined the home navigation header per feedback: increased its height and logo/title scale, removed the top-right shortcut, and reduced the poster texture opacity so it remains subtle.
+Files changed: `src/app/AppShell.tsx`, `src/styles.css`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Authenticated visual confirmation remains pending because the browser session returned to Staff sign in during refresh; local build, typecheck, lint, and tests pass.
+Recommended next: Refresh after signing in and review the enlarged header at the target viewport.
+
+### Session — 31 August 2026 · codex
+
+Completed: Increased the global bottom navigation height on every page, including its safe-area padding, while preserving the five-column layout and existing tap targets.
+Files changed: `src/styles.css`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Authenticated browser visual confirmation remains pending; local typecheck, lint, tests, and diff checks pass.
+Recommended next: Refresh any route and review the taller bottom navigation.
+
+### Session — 31 August 2026 · codex
+
+Completed: Corrected the navigation sizing target: restored the bottom navigation to its prior dimensions and increased the shared top title bar (`section-head`) height across section screens.
+Files changed: `src/styles.css`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Authenticated browser visual confirmation remains pending; local typecheck, lint, tests, and diff checks pass.
+Recommended next: Refresh More, Activity, or Warehouse to review the taller top title bar.
+
+### Session — 1 September 2026 · codex
+
+Completed: Increased the top title/header area consistently on section screens, including the warehouse and activity-specific headers that do not use `.section-head`; the bottom navigation remains at its original height.
+Files changed: `src/styles.css`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Authenticated browser visual confirmation remains pending; local typecheck, lint, tests, and diff checks pass.
+Recommended next: Refresh Warehouse and verify the taller title area against the supplied screenshot.
+
 ### Session — 1 September 2026 · codex
 
 Completed: BAR-081 — spirit partials now accept a gross scale reading, derive millilitres from the SKU tare through the existing domain/service boundary, retain `gross_weight_g` as evidence, and reject readings below tare rather than silently clamping them to zero. Verified in the fixture-backed browser at 390×844: 530 g against a 480 g tare produced 50 ml; 300 g displayed an error and disabled Save; 1,030 g produced 550 ml and re-enabled Save. Typecheck, lint, 146 unit tests, and production build pass.
@@ -2150,3 +2278,68 @@ Files changed: `src/data/repository.ts`, `src/data/live/live-repository.ts`, `sr
 Architecture changes: none
 Known issues: `test:visual` still reports the pre-existing fixture-harness failure (14 screens identical between fixture variants, including every data-backed route), so no green visual-gate claim is made. The live database write was not exercised; BAR-081 changes the already-existing count payload fields and requires no schema change.
 Recommended next: complete the live two-account docket acceptance under BAR-053.
+
+### Session — 1 September 2026 · codex
+
+Completed: Added a manual-assisted Playwright runner covering receipt, issue/docket creation, waste, blind count, and independent docket acceptance. It supports two saved storage states, mobile viewport checks, explicit write confirmation, and checkpoints before each live write; credentials and OTPs are never automated.
+Files changed: `scripts/live-write-check.mjs`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: The runner has not been executed against live writes because the independent receiver account is not currently signed in. Local syntax, typecheck, lint, unit tests (146), and production build pass.
+Recommended next: sign in the independent receiver account, then run the harness with `LIVE_WRITE_CONFIRM=I_UNDERSTAND_LIVE_WRITES`.
+
+### Session — 1 September 2026 · codex
+
+Completed: BAR-092 follow-through — made the paper fallback's print contract explicit for A4 output, with zero printer margins, 210×297 mm sheets, one sheet per page, and table-row break protection.
+Files changed: `src/styles.css`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: A real browser print preview/printer output was not available in this environment, so physical pagination remains unverified. Typecheck, lint, 146 unit tests, and production build pass.
+Recommended next: verify `/print` in a browser's A4 print preview, then continue with staff onboarding under BAR-143/BAR-144/BAR-137.
+
+### Session — 1 September 2026 · codex
+
+Completed: BAR-074 follow-through — auth-shaped outbox failures now expose a direct “Sign in again to retry” action in the Sync State card. The queued command remains retained; re-authentication does not resolve or delete it.
+Files changed: `src/screens/more/MoreScreen.tsx`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: The recovery path was statically verified only; an expired live JWT and subsequent replay were not exercised. Typecheck, lint, and 146 unit tests pass.
+Recommended next: verify re-authentication and queue replay with an expired session, then continue BAR-143 load-in onboarding.
+
+### Session — 1 September 2026 · codex
+
+Completed: BAR-064 foundation — added the durable top-up request table and command RPC with SKU, quantity, urgency, note, request status, actor, and idempotency; wired the typed outbox command and live/fixture repository write methods; added a bar-side request form.
+Files changed: `supabase/migrations/202609010001_top_up_requests.sql`, `src/data/repository.ts`, `src/lib/supabase.ts`, `src/lib/offline-db.ts`, `src/data/live/live-repository.ts`, `src/data/fixture/fixture-repository.ts`, `src/screens/bar/BarScreen.tsx`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Warehouse-side request listing/status transitions are not yet implemented, and the migration has not been applied or behavior-tested against the hosted database. Local typecheck, lint, SQL checks, and 146 unit tests pass.
+Recommended next: add the warehouse request queue and fulfil/cancel transitions for BAR-064.
+
+### Session — 1 September 2026 · codex
+
+Completed: BAR-064 lifecycle foundation — added the warehouse-authorized `boa_bar_update_top_up` RPC with requested → issued → fulfilled/cancelled transition guards and actor/timestamp capture.
+Files changed: `supabase/migrations/202609010001_top_up_requests.sql`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Warehouse request listing, UI transition controls, and the required issue-docket linkage are still open. The migration has not been applied or behavior-tested against the hosted database. SQL static checks and typecheck pass.
+Recommended next: expose pending top-up requests to warehouse staff and link fulfilment to docket creation.
+
+### Session — 1 September 2026 · codex
+
+Completed: BAR-064 queue read slice — added a warehouse-authorized list RPC, live/fixture repository read models, and a warehouse screen section showing pending top-up requests with location, product, quantity, urgency, note, and status.
+Files changed: `supabase/migrations/202609010001_top_up_requests.sql`, `src/data/repository.ts`, `src/data/live/live-repository.ts`, `src/data/fixture/fixture-repository.ts`, `src/screens/warehouse/WarehouseScreen.tsx`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Fulfil/cancel controls and automatic docket creation from an issued request are still open. The migration has not been applied or behavior-tested against the hosted database. Typecheck, lint, and SQL static checks pass.
+Recommended next: add warehouse fulfil/cancel controls and connect fulfilment to the existing issue/docket flow.
+
+### Session — 1 September 2026 · codex
+
+Completed: BAR-064 controls slice — warehouse requests now have queued status updates, a cancel action, and an Issue action that opens the existing issue/docket flow prefilled with the requested SKU, destination, and quantity.
+Files changed: `src/data/repository.ts`, `src/lib/supabase.ts`, `src/lib/offline-db.ts`, `src/data/live/live-repository.ts`, `src/data/fixture/fixture-repository.ts`, `src/screens/warehouse/WarehouseScreen.tsx`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: The request is marked issued manually before docket creation; automatic fulfilment after docket acceptance is still open. The migration remains unapplied and unverified against the hosted database. Typecheck, lint, and SQL static checks pass.
+Recommended next: connect accepted docket results to top-up fulfilment, then run the hosted BAR-064 behavior test.
+
+### Session — 1 September 2026 · codex
+
+Completed: BAR-064 end-to-end — applied the top-up request schema and lifecycle RPCs to the hosted Supabase project, linked warehouse issue/docket creation to requests, auto-fulfilled requests after full docket acceptance, and wired stable idempotency through the bar and warehouse client flows. The hosted rollback behavior test passed all 21 assertions: authorized create, persisted SKU/location/quantity/urgency/note, safe duplicate replay, conflicting-key rejection, unauthorized rejection, warehouse listing, valid and invalid transitions, linked issue, non-negative stock guard, and automatic fulfilment.
+Files changed: `supabase/migrations/202609010001_top_up_requests.sql`, `supabase/migrations/202609010002_non_negative_upsert.sql`, `supabase/migrations/202609010003_accept_status_cast.sql`, `supabase/tests/top_up.test.sql`, `src/data/repository.ts`, `src/data/live/live-repository.ts`, `src/services/top-up.ts`, `src/services/top-up.test.ts`, `src/services/issue.ts`, `src/services/services.test.ts`, `src/screens/bar/BarScreen.tsx`, `src/screens/warehouse/WarehouseScreen.tsx`, `src/screens/issue/IssueScreen.tsx`, `src/screens/custody/ReviewScreen.tsx`, `src/screens/issue/draft.ts`, `src/app/issue-draft.test.ts`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Supabase MCP recorded the applied migrations under generated versions `20260901055116` (`top_up_requests`), `20260901055631` (`non_negative_upsert`), and `20260901055809` (`accept_status_cast`); local filenames remain the source files. The MCP usage limit blocked further live inspection after the passing test. `corepack pnpm test:db` was not run because it requires the unavailable database password. The hosted advisory still reports RLS disabled on `private.boa_bar_balance`, `private.boa_bar_count_seal`, `public.boa_bar_tolerance_band`, and `public.boa_bar_excise_category`; no unrelated remediation was applied. Generated database TypeScript types were not regenerated.
+Verified: `corepack pnpm check:sql`, typecheck, lint, 150 unit tests, and production build pass.
+Recommended next: regenerate database types when the hosted schema snapshot is available, then continue BAR-143 onboarding.

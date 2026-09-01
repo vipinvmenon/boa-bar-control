@@ -15,11 +15,13 @@
  * MIXERS, even though a MIXERS group exists in the catalogue. That is the
  * design's choice, reproduced rather than "corrected".
  */
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { ChevronRight, Search } from 'lucide-react'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
+import { useRepositoryMutation } from '../../data/RepositoryProvider'
 import { useAppStore } from '../../lib/app-store'
+import { cancelTopUp, type CancelTopUpInput } from '../../services/top-up'
 
 /** design-script.jsx: `['ALL', 'BEER', 'SPIRITS']`. MIXERS is deliberately absent. */
 const FILTERS = ['ALL', 'BEER', 'SPIRITS'] as const
@@ -33,6 +35,21 @@ export function WarehouseScreen() {
 
   const catalogue = useRepositoryQuery(['catalogue'], (r) => r.catalogue())
   const asOf = useRepositoryQuery(['asOf'], (r) => r.asOf())
+  const topUps = useRepositoryQuery(['topUpRequests'], (r) => r.topUpRequests())
+  const cancelActionIds = useRef(new Map<string, string>())
+  const updateTopUp = useRepositoryMutation((repository, input: Omit<CancelTopUpInput, 'repository'>) => (
+    cancelTopUp({ repository, ...input })
+  ))
+
+  const cancelRequest = (requestId: string) => {
+    const actionId = cancelActionIds.current.get(requestId) ?? crypto.randomUUID()
+    cancelActionIds.current.set(requestId, actionId)
+    updateTopUp.mutate({ actionId, requestId }, {
+      onSuccess: (outcome) => {
+        if (outcome.status === 'posted') cancelActionIds.current.delete(requestId)
+      },
+    })
+  }
 
   const groups = useMemo(() => {
     const all = catalogue.data ?? []
@@ -84,6 +101,14 @@ export function WarehouseScreen() {
       </header>
 
       <div className="wh-body">
+        {topUps.data && topUps.data.length > 0 ? <section className="panel top-up-queue">
+          <div className="section-label">TOP-UP REQUESTS <span>{topUps.data.length}</span></div>
+          {topUps.data.map((request) => <div className="team-row" key={request.id}>
+            <span><strong>{request.productName} · {request.requestedContainers}</strong><small>{request.locationName} · {request.status.toUpperCase()} · {request.urgency.toUpperCase()}</small></span>
+            <span className="wh-actions"><button onClick={() => void navigate({ to: '/issue', search: { topUpRequestId: request.id, skuId: request.skuId, toLocationId: request.locationId, containers: request.requestedContainers, unit: 'container' } })}>Issue</button><button disabled={updateTopUp.isPending} onClick={() => cancelRequest(request.id)}>Cancel</button></span>
+            {request.note ? <small>{request.note}</small> : null}
+          </div>)}
+        </section> : null}
         <div className="wh-tools">
           <label className="wh-search">
             <Search size={14} strokeWidth={2} aria-hidden="true" />

@@ -50,6 +50,15 @@ describe('issueStock', () => {
     )
   })
 
+  it('passes a linked top-up request into atomic docket creation', async () => {
+    const repository = stubRepository()
+    const topUpRequestId = '4f1c9a52-8d4e-4b21-9f77-1c2b6d5a0e44'
+    await issueStock({ repository, ...valid, topUpRequestId })
+    expect(repository.createDocket).toHaveBeenCalledWith(
+      expect.objectContaining({ topUpRequestId }),
+    )
+  })
+
   it('rejects an empty docket without touching the repository', async () => {
     const repository = stubRepository()
     await expect(issueStock({ repository, ...valid, lines: [] })).rejects.toThrow(/at least one line/)

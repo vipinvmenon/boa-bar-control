@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import type { Database, Json } from '../types/database'
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined
@@ -22,7 +23,7 @@ export const configError: string | null = (() => {
 })()
 
 export const supabase = isSupabaseConfigured
-  ? createClient(url!, publishableKey!, {
+  ? createClient<Database>(url!, publishableKey!, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
@@ -43,14 +44,14 @@ export const supabase = isSupabaseConfigured
  */
 export async function createDocketRpc(payload: unknown) {
   if (!supabase) throw new Error('Supabase is not configured')
-  const { data, error } = await supabase.rpc('boa_bar_create_docket', { p_payload: payload })
+  const { data, error } = await supabase.rpc('boa_bar_create_docket', { p_payload: payload as Json })
   if (error) throw error
   return data
 }
 
 export async function acceptDocketRpc(payload: unknown) {
   if (!supabase) throw new Error('Supabase is not configured')
-  const { data, error } = await supabase.rpc('boa_bar_accept_docket', { p_payload: payload })
+  const { data, error } = await supabase.rpc('boa_bar_accept_docket', { p_payload: payload as Json })
   if (error) throw error
   return data
 }
@@ -62,21 +63,35 @@ export async function acceptDocketRpc(payload: unknown) {
  */
 export async function rpc(name: string, payload: unknown) {
   if (!supabase) throw new Error('Supabase is not configured')
-  const { data, error } = await supabase.rpc(name, payload as Record<string, unknown>)
+  const { data, error } = await supabase.rpc(name as keyof Database['public']['Functions'], payload as never)
   if (error) throw error
   return data
 }
 
 export async function recordReceiptRpc(payload: unknown) {
   if (!supabase) throw new Error('Supabase is not configured')
-  const { data, error } = await supabase.rpc('boa_bar_record_receipt', { p_payload: payload })
+  const { data, error } = await supabase.rpc('boa_bar_record_receipt', { p_payload: payload as Json })
   if (error) throw error
   return data
 }
 
 export async function recordWasteRpc(payload: unknown) {
   if (!supabase) throw new Error('Supabase is not configured')
-  const { data, error } = await supabase.rpc('boa_bar_record_waste', { p_payload: payload })
+  const { data, error } = await supabase.rpc('boa_bar_record_waste', { p_payload: payload as Json })
+  if (error) throw error
+  return data
+}
+
+export async function requestTopUpRpc(payload: unknown) {
+  if (!supabase) throw new Error('Supabase is not configured')
+  const { data, error } = await supabase.rpc('boa_bar_request_top_up' as never, { p_payload: payload } as never)
+  if (error) throw error
+  return data
+}
+
+export async function updateTopUpRpc(payload: unknown) {
+  if (!supabase) throw new Error('Supabase is not configured')
+  const { data, error } = await supabase.rpc('boa_bar_update_top_up' as never, { p_payload: payload } as never)
   if (error) throw error
   return data
 }
@@ -93,14 +108,14 @@ export async function recordWasteRpc(payload: unknown) {
  */
 export async function openCountRpc(payload: unknown) {
   if (!supabase) throw new Error('Supabase is not configured')
-  const { data, error } = await supabase.rpc('boa_bar_open_count', { p_payload: payload })
+  const { data, error } = await supabase.rpc('boa_bar_open_count', { p_payload: payload as Json })
   if (error) throw error
   return data
 }
 
 export async function submitCountRpc(payload: unknown) {
   if (!supabase) throw new Error('Supabase is not configured')
-  const { data, error } = await supabase.rpc('boa_bar_submit_count', { p_payload: payload })
+  const { data, error } = await supabase.rpc('boa_bar_submit_count', { p_payload: payload as Json })
   if (error) throw error
   return data
 }
@@ -108,7 +123,7 @@ export async function submitCountRpc(payload: unknown) {
 export async function submitMovement(payload: unknown) {
   if (!supabase) throw new Error('Supabase is not configured')
   const { data, error } = await supabase.rpc('boa_bar_submit_movement', {
-    p_payload: payload,
+    p_payload: payload as Json,
   })
   if (error) throw error
   return data

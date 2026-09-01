@@ -5,12 +5,18 @@ describe('issue draft search', () => {
   it('coerces a URL quantity and keeps valid draft ids', () => {
     expect(parseIssueDraftSearch({
       actionId: '3f1c9a52-8d4e-4b21-9f77-1c2b6d5a0e33',
+      topUpRequestId: '4f1c9a52-8d4e-4b21-9f77-1c2b6d5a0e44',
       fromLocationId: 'warehouse',
       toLocationId: 'bar-3',
       skuId: 'kf',
       containers: '48',
       unit: 'case',
-    })).toMatchObject({ containers: 48, skuId: 'kf', unit: 'case' })
+    })).toMatchObject({
+      containers: 48,
+      skuId: 'kf',
+      unit: 'case',
+      topUpRequestId: '4f1c9a52-8d4e-4b21-9f77-1c2b6d5a0e44',
+    })
   })
 
   it('drops a malformed draft instead of trusting URL input', () => {

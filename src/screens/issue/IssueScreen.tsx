@@ -202,6 +202,7 @@ export function IssueScreen() {
             to: '/issue/review',
             search: {
               actionId,
+              topUpRequestId: search.topUpRequestId,
               fromLocationId: options.fromLocationId,
               toLocationId: destination.id,
               skuId: product.skuId,

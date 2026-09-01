@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 const issueDraftSearchSchema = z.object({
   actionId: z.string().uuid().optional(),
+  topUpRequestId: z.string().uuid().optional(),
   fromLocationId: z.string().min(1).optional(),
   toLocationId: z.string().min(1).optional(),
   skuId: z.string().min(1).optional(),

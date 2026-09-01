@@ -435,6 +435,16 @@ export type RecordReceiptCommand = {
   lines: ReceiptLineCommand[]
 }
 
+export type TopUpUrgency = 'normal' | 'urgent'
+export type RequestTopUpCommand = {
+  idempotencyKey: string
+  locationId: string
+  skuId: string
+  requestedContainers: number
+  urgency: TopUpUrgency
+  note?: string
+}
+
 // ---------------------------------------------------------------------------
 // paper fallback (BAR-092)
 // ---------------------------------------------------------------------------
@@ -544,6 +554,8 @@ export type CreateDocketCommand = {
   idempotencyKey: string
   fromLocationId: string
   toLocationId: string
+  /** BAR-064. When present, docket creation atomically moves this request to issued. */
+  topUpRequestId?: string
   lines: DocketLineCommand[]
 }
 
@@ -570,6 +582,29 @@ export type AcceptDocketCommand = {
 export type WriteOutcome =
   | { status: 'posted'; docketId: string; docketNo: string; token?: string }
   | { status: 'queued'; outboxId: string }
+
+export type TopUpWriteOutcome =
+  | { status: 'posted'; requestId: string }
+  | { status: 'queued'; outboxId: string }
+
+export type TopUpRequest = {
+  id: string
+  locationId: string
+  locationName: string
+  skuId: string
+  productName: string
+  requestedContainers: number
+  urgency: TopUpUrgency
+  note: string | null
+  status: 'requested' | 'issued' | 'fulfilled' | 'cancelled'
+  requestedBy: string
+  requestedAt: string
+}
+export type UpdateTopUpCommand = {
+  idempotencyKey: string
+  requestId: string
+  status: 'cancelled'
+}
 
 export type RecordWasteCommand = {
   idempotencyKey: string
@@ -691,6 +726,11 @@ export interface Repository {
 
   /** Record a delivery against its delivery note (BAR-060). */
   recordReceipt(command: RecordReceiptCommand): Promise<CountWriteOutcome>
+
+  /** Request stock without mutating the ledger; warehouse fulfils it by issuing a docket. */
+  requestTopUp(command: RequestTopUpCommand): Promise<TopUpWriteOutcome>
+  topUpRequests(): Promise<TopUpRequest[]>
+  updateTopUp(command: UpdateTopUpCommand): Promise<TopUpWriteOutcome>
 
   /** Mint a single-use code that enrols somebody by name and role (BAR-143). */
   createInvite(command: CreateInviteCommand): Promise<{ code: string; name: string }>

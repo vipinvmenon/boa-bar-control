@@ -27,6 +27,7 @@ const issueSchema = z.object({
    * one attempt.
    */
   actionId: z.string().uuid('the action id must be a UUID'),
+  topUpRequestId: z.string().uuid('the top-up request id must be a UUID').optional(),
   fromLocationId: z.string().min(1, 'stock must be issued from somewhere'),
   toLocationId: z.string().min(1, 'stock must be issued to somewhere'),
   lines: z.array(lineSchema).min(1, 'a docket needs at least one line'),
@@ -64,6 +65,7 @@ export async function issueStock({ repository, ...input }: IssueStockInput): Pro
     idempotencyKey: parsed.actionId,
     fromLocationId: parsed.fromLocationId,
     toLocationId: parsed.toLocationId,
+    topUpRequestId: parsed.topUpRequestId,
     lines: parsed.lines,
   })
 }
