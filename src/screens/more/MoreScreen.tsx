@@ -68,6 +68,7 @@ export function MoreScreen() {
   const [signingOut, setSigningOut] = useState(false)
   const [signOutError, setSignOutError] = useState<string>()
   const [resolvingFailure, setResolvingFailure] = useState(false)
+  const buildId = import.meta.env.VITE_RELEASE || 'dev'
   const session = useRepositoryQuery(['session'], (r) => r.session())
   const asOf = useRepositoryQuery(['asOf'], (r) => r.asOf())
 
@@ -186,7 +187,7 @@ export function MoreScreen() {
           {signingOut ? 'Signing out…' : 'Sign out'}
         </button>
 
-        <p className="more-build">BOA BAR INVENTORY · BUILD 0.4 · BOA 2026</p>
+        <p className="more-build">BOA BAR INVENTORY · BUILD {buildId} · BOA 2026</p>
       </div>
     </div>
   )

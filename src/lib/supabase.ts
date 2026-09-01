@@ -84,14 +84,14 @@ export async function recordWasteRpc(payload: unknown) {
 
 export async function requestTopUpRpc(payload: unknown) {
   if (!supabase) throw new Error('Supabase is not configured')
-  const { data, error } = await supabase.rpc('boa_bar_request_top_up' as never, { p_payload: payload } as never)
+  const { data, error } = await supabase.rpc('boa_bar_request_top_up', { p_payload: payload as Json })
   if (error) throw error
   return data
 }
 
 export async function updateTopUpRpc(payload: unknown) {
   if (!supabase) throw new Error('Supabase is not configured')
-  const { data, error } = await supabase.rpc('boa_bar_update_top_up' as never, { p_payload: payload } as never)
+  const { data, error } = await supabase.rpc('boa_bar_update_top_up', { p_payload: payload as Json })
   if (error) throw error
   return data
 }

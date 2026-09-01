@@ -875,6 +875,98 @@ export type Database = {
         }
         Relationships: []
       }
+      boa_bar_top_up_request: {
+        Row: {
+          cancelled_at: string | null
+          cancelled_by: string | null
+          docket_id: string | null
+          fulfilled_at: string | null
+          fulfilled_by: string | null
+          id: string
+          idempotency_key: string
+          issued_at: string | null
+          issued_by: string | null
+          location_id: string
+          note: string | null
+          requested_at: string
+          requested_by: string
+          requested_containers: number
+          sku_id: string
+          status: Database["public"]["Enums"]["boa_bar_top_up_status"]
+          urgency: string
+          venue_id: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          docket_id?: string | null
+          fulfilled_at?: string | null
+          fulfilled_by?: string | null
+          id?: string
+          idempotency_key: string
+          issued_at?: string | null
+          issued_by?: string | null
+          location_id: string
+          note?: string | null
+          requested_at?: string
+          requested_by: string
+          requested_containers: number
+          sku_id: string
+          status?: Database["public"]["Enums"]["boa_bar_top_up_status"]
+          urgency?: string
+          venue_id: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          docket_id?: string | null
+          fulfilled_at?: string | null
+          fulfilled_by?: string | null
+          id?: string
+          idempotency_key?: string
+          issued_at?: string | null
+          issued_by?: string | null
+          location_id?: string
+          note?: string | null
+          requested_at?: string
+          requested_by?: string
+          requested_containers?: number
+          sku_id?: string
+          status?: Database["public"]["Enums"]["boa_bar_top_up_status"]
+          urgency?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "boa_bar_top_up_request_docket_id_fkey"
+            columns: ["docket_id"]
+            isOneToOne: true
+            referencedRelation: "boa_bar_docket"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boa_bar_top_up_request_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "boa_bar_location"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boa_bar_top_up_request_sku_id_fkey"
+            columns: ["sku_id"]
+            isOneToOne: false
+            referencedRelation: "boa_bar_sku"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boa_bar_top_up_request_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "boa_bar_venue"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       boa_bar_venue: {
         Row: {
           business_day_start_hour: number
@@ -965,6 +1057,7 @@ export type Database = {
         Returns: Json
       }
       boa_bar_create_docket: { Args: { p_payload: Json }; Returns: Json }
+      boa_bar_create_docket_without_top_up: { Args: { p_payload: Json }; Returns: Json }
       boa_bar_create_invite: { Args: { p_payload: Json }; Returns: Json }
       boa_bar_inventory_snapshot: {
         Args: { p_venue_id: string }
@@ -989,6 +1082,7 @@ export type Database = {
       boa_bar_open_stock: { Args: { p_payload: Json }; Returns: Json }
       boa_bar_record_receipt: { Args: { p_payload: Json }; Returns: Json }
       boa_bar_record_waste: { Args: { p_payload: Json }; Returns: Json }
+      boa_bar_request_top_up: { Args: { p_payload: Json }; Returns: Json }
       boa_bar_set_membership: { Args: { p_payload: Json }; Returns: Json }
       boa_bar_set_person_name: {
         Args: { p_display_name: string; p_user_id?: string; p_venue_id: string }
@@ -1016,6 +1110,8 @@ export type Database = {
           server_time: string
         }[]
       }
+      boa_bar_list_top_up_requests: { Args: { p_venue_id: string }; Returns: Json }
+      boa_bar_update_top_up: { Args: { p_payload: Json }; Returns: Json }
       boa_bar_tolerance_bands: {
         Args: never
         Returns: {
@@ -1055,6 +1151,7 @@ export type Database = {
         | "manager"
         | "auditor"
         | "admin"
+      boa_bar_top_up_status: "requested" | "issued" | "fulfilled" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1217,6 +1314,7 @@ export const Constants = {
         "auditor",
         "admin",
       ],
+      boa_bar_top_up_status: ["requested", "issued", "fulfilled", "cancelled"],
     },
   },
 } as const
