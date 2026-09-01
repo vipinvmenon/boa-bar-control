@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+echo "Running BOA Bar Control pre-commit checks..."
+corepack pnpm format:check
+corepack pnpm typecheck

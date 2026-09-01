@@ -146,7 +146,7 @@ export const COUNT_LINE_COLUMNS =
  */
 export function unwrap<T>(
   label: string,
-  result: { data: T | null; error: PostgrestError | null },
+  result: { data: unknown; error: PostgrestError | null },
 ): T {
   if (result.error) {
     throw new Error(`${label}: ${result.error.message}`, { cause: result.error })
@@ -154,7 +154,10 @@ export function unwrap<T>(
   if (result.data === null) {
     throw new Error(`${label}: no data and no error — refusing to treat this as empty`)
   }
-  return result.data
+  // The generated Supabase client validates table/column names at compile time;
+  // these repository row types intentionally narrow the JSON response to the
+  // exact shape each consumer needs.
+  return result.data as T
 }
 
 /** `.in('id', [])` is a malformed filter in PostgREST, so guard the empty case. */

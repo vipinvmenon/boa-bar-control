@@ -43,7 +43,7 @@ const ITEMS: MoreItem[] = [
   { label: 'COUNTS', sub: 'Opening · mid-event · close-out, per location', go: '/count' },
   { label: 'VARIANCE', sub: 'Counted vs theoretical · tolerance bands', managerOnly: true, todo: 'VARIANCE SCREEN IS BAR-086' },
   { label: 'REPORTS', sub: 'Excise return · stock settlement · sales per hour', go: '/reports' },
-  { label: 'COWORK', sub: 'Inventory assistant', todo: 'COWORK IS BAR-103' },
+  { label: 'TEAM', sub: 'Invite staff · manage venue access', managerOnly: true, go: '/team' },
   // BAR-092. The fallback pack is the concrete settings action needed before
   // load-in; keeping it behind a toast made the already-built print route
   // unreachable from the product shell.
@@ -94,6 +94,22 @@ export function MoreScreen() {
       store.flash(error instanceof Error ? error.message : 'Could not resolve failed action')
     } finally {
       setResolvingFailure(false)
+    }
+  }
+
+  // BAR-074. An expired JWT stops replay without consuming an attempt. Give the
+  // person a direct recovery path; resolving the row would otherwise discard the
+  // queued write's chance to post after they authenticate again.
+  const needsReauthentication = store.failed > 0 && /auth|authori[sz]|permission|jwt|401|403/i.test(store.lastFailure ?? '')
+
+  const reauthenticate = async () => {
+    setSigningOut(true)
+    setSignOutError(undefined)
+    try {
+      await auth.signOut()
+    } catch (error) {
+      setSignOutError(error instanceof Error ? error.message : 'Could not start sign-in again')
+      setSigningOut(false)
     }
   }
 
@@ -159,6 +175,9 @@ export function MoreScreen() {
           </div>
           {store.failed > 0 ? <button className="flow-cta-ghost sync-resolve" onClick={() => void resolveFailure()} disabled={resolvingFailure}>
             {resolvingFailure ? 'Resolving…' : 'Resolve failed action'}
+          </button> : null}
+          {needsReauthentication ? <button className="flow-cta-ghost sync-resolve" onClick={() => void reauthenticate()} disabled={signingOut}>
+            {signingOut ? 'Signing out…' : 'Sign in again to retry'}
           </button> : null}
         </section>
 

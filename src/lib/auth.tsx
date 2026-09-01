@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { isSupabaseConfigured, rpc, supabase } from './supabase'
-import { offlineDb } from './offline-db'
+import { clearUserCache, offlineDb } from './offline-db'
 import { canUseCachedMemberships } from './auth-offline'
 
 export type VenueMembership = {
@@ -29,6 +29,7 @@ type AuthState = {
   activeMembership: VenueMembership | null
   error?: string
   signInWithEmail: (email: string) => Promise<void>
+  verifyEmailOtp: (email: string, token: string) => Promise<void>
   signOut: () => Promise<void>
   /** Redeem a membership invite before any venue membership exists (BAR-143). */
   claimInvite: (code: string) => Promise<{ name: string; role: VenueMembership['role'] }>
@@ -145,18 +146,31 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setLoading(true)
       const { error: signInError } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: window.location.origin },
       })
       setLoading(false)
       if (signInError) throw signInError
+    },
+    verifyEmailOtp: async (email, token) => {
+      if (!supabase) return
+      setLoading(true)
+      const { error: verifyError } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
+      setLoading(false)
+      if (verifyError) throw verifyError
     },
     signOut: async () => {
       if (!supabase) return
       // A shared phone must be handable to the next person even in a dead spot.
       // Local scope clears this device's session without requiring a network
       // round-trip; server-side sessions remain governed by their expiry.
-      const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' })
-      if (signOutError) throw signOutError
+      try {
+        const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' })
+        if (signOutError) throw signOutError
+      } finally {
+        // BAR-137. A shared phone must not retain the previous person's
+        // membership or unfinished form data after sign-out, even if the
+        // auth request reports an error.
+        await clearUserCache()
+      }
     },
     claimInvite: async (code) => {
       const result = (await rpc('boa_bar_claim_invite', { p_code: code })) as

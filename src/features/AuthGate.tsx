@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type PropsWithChildren } from 'react'
+import { useEffect, useState, type FormEvent, type PropsWithChildren } from 'react'
 import { KeyRound, LoaderCircle, Mail, ShieldAlert } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { Panel, RitualButton } from '../components/ui'
@@ -7,7 +7,15 @@ export function AuthGate({ children }: PropsWithChildren) {
   const auth = useAuth()
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
+  const [code, setCode] = useState('')
+  const [resendIn, setResendIn] = useState(0)
   const [message, setMessage] = useState<string>()
+
+  useEffect(() => {
+    if (resendIn <= 0) return
+    const timer = window.setInterval(() => setResendIn((current) => Math.max(0, current - 1)), 1000)
+    return () => window.clearInterval(timer)
+  }, [resendIn])
 
   if (auth.mode === 'demo') return children
   if (auth.loading) return <AuthFrame><LoaderCircle className="auth-spinner" /><h1>Checking access</h1><p>Connecting securely to BOA Bar Control.</p></AuthFrame>
@@ -15,10 +23,13 @@ export function AuthGate({ children }: PropsWithChildren) {
     <AuthFrame>
       <KeyRound /><h1>Staff sign in</h1>
       <p>Use the email address invited to the BOA 2026 operations team.</p>
-      {sent ? <Panel className="auth-notice"><Mail /><div><strong>Check your email</strong><span>The secure sign-in link returns to this device.</span></div></Panel> : <form onSubmit={(event) => {
+      {sent ? <><Panel className="auth-notice"><Mail /><div><strong>Check your email</strong><span>Enter the 8-digit code we sent to {email}.</span></div></Panel><form onSubmit={(event) => {
         event.preventDefault(); setMessage(undefined)
-        void auth.signInWithEmail(email.trim()).then(() => setSent(true)).catch((error) => setMessage(error instanceof Error ? error.message : 'Sign-in failed'))
-      }}><label htmlFor="staff-email">Staff email</label><input id="staff-email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@bangaloreopenair.com" />{message && <small className="auth-error">{message}</small>}<RitualButton wide type="submit">Email secure link</RitualButton></form>}
+        void auth.verifyEmailOtp(email, code.trim()).catch((error) => setMessage(error instanceof Error ? error.message : 'The code could not be verified'))
+      }}><label htmlFor="staff-code">Verification code</label><input id="staff-code" inputMode="numeric" autoComplete="one-time-code" required value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 8))} placeholder="12345678" maxLength={8} />{message && <small className="auth-error" role="alert">{message}</small>}<RitualButton wide type="submit" disabled={code.length !== 8}>Verify code</RitualButton></form><RitualButton tone="ghost" disabled={resendIn > 0} onClick={() => { setMessage(undefined); setCode(''); void auth.signInWithEmail(email).then(() => setResendIn(60)).catch((error) => setMessage(error instanceof Error ? error.message : 'Could not resend code')) }}>{resendIn > 0 ? `Resend code in ${resendIn}s` : 'Resend code'}</RitualButton></> : <form onSubmit={(event) => {
+        event.preventDefault(); setMessage(undefined)
+        void auth.signInWithEmail(email.trim()).then(() => { setSent(true); setResendIn(60) }).catch((error) => setMessage(error instanceof Error ? error.message : 'Sign-in failed'))
+      }}><label htmlFor="staff-email">Staff email</label><input id="staff-email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@bangaloreopenair.com" />{message && <small className="auth-error" role="alert">{message}</small>}<RitualButton wide type="submit">Email me a code</RitualButton></form>}
     </AuthFrame>
   )
   if (!auth.activeMembership) {

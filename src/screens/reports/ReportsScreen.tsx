@@ -1,21 +1,13 @@
 /**
- * The last remnant of the legacy screen regime.
+ * BAR-164. Honest Release 1 placeholder for the reports route.
  *
- * This file once held four screens in 302 lines standing in for twenty-two, full
- * of hardcoded fixtures and reading `demo-store` for SKU data. `issue` (BAR-051),
- * `waste` (BAR-063), `count` (BAR-079) and `docket` (BAR-054) have all been
- * rebuilt as their own screens reading the repository, so only `reports` remains.
- *
- * `reports` is a deliberate honest empty state, not a rebuild: the design's
- * `reports` and `rep` screens are BAR-107 and BAR-108, and both need the ledger
- * views that do not exist yet. It is counted as "legitimately static" by the
- * fidelity gate for that reason.
- *
- * When BAR-107 lands, this file goes with it (BAR-164).
+ * The designed reports and report-detail screens are deliberately cut from
+ * Release 1 until the ledger/reporting work lands. Keeping this route separate
+ * from the retired legacy screen module prevents the old path from returning.
  */
 import { ShieldCheck } from 'lucide-react'
-import { Panel } from '../components/ui'
-import { useAppStore } from '../lib/app-store'
+import { Panel } from '../../components/ui'
+import { useAppStore } from '../../lib/app-store'
 
 export function ReportsScreen() {
   const store = useAppStore()
@@ -40,13 +32,6 @@ export function ReportsScreen() {
     <div className="screen">
       <p className="eyebrow">Manager settlement</p>
       <h1>Variance</h1>
-      {/*
-        BAR-152. This screen previously displayed −2.1% overall, ₹18.4K at risk,
-        94% mapped POS, and four category variances — none of which any code
-        computed, and none of which appear in the approved design. An empty state
-        is honest; an invented figure a manager might defend to STOK or excise is
-        not.
-      */}
       <Panel className="method-note">
         <strong>Not yet available</strong>
         <span>

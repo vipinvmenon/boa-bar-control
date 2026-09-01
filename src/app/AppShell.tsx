@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link, Outlet, useRouterState } from '@tanstack/react-router'
-import { Star, TriangleAlert, Wifi, WifiOff } from 'lucide-react'
+import { Outlet, useRouterState } from '@tanstack/react-router'
+import { TriangleAlert, Wifi, WifiOff } from 'lucide-react'
 import { useAppStore } from '../lib/app-store'
 import { BottomNav } from '../components/layout/BottomNav'
 import { configError } from '../lib/supabase'
@@ -66,12 +66,8 @@ export function AppShell() {
               <i />
               <div>
                 <strong>BAR CONTROL</strong>
-                <span>BOA 2026</span>
               </div>
             </div>
-            <Link className="manager-shortcut" to="/more" aria-label="Open manager controls">
-              <Star size={17} strokeWidth={1.7} aria-hidden="true" />
-            </Link>
           </div>
           {/*
             BAR-139. This line previously read `SYNCED` in live mode and

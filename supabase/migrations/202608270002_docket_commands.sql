@@ -278,7 +278,7 @@ begin
   end if;
 
   update public.boa_bar_docket
-    set status = case when v_short then 'accepted_short' else 'accepted' end,
+    set status = (case when v_short then 'accepted_short' else 'accepted' end)::public.boa_bar_docket_status,
         accepted_by = auth.uid(),
         accepted_at = now(),
         difference_reason = v_reason

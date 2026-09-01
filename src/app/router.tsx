@@ -21,7 +21,7 @@ import { CountDoneScreen } from '../screens/count/CountDoneScreen'
 import { VarianceScreen } from '../screens/count/VarianceScreen'
 import { IssueScreen } from '../screens/issue/IssueScreen'
 import { parseIssueDraftSearch } from '../screens/issue/draft'
-import { ReportsScreen } from '../features/screens'
+import { ReportsScreen } from '../screens/reports/ReportsScreen'
 
 const rootRoute = createRootRoute({ component: AppShell })
 const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: HomeScreen })
