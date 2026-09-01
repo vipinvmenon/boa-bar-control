@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent, type PropsWithChildren } from 'react'
-import { KeyRound, LoaderCircle, Mail, ShieldAlert } from 'lucide-react'
+import { KeyRound, Mail, ShieldAlert } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { Panel, RitualButton } from '../components/ui'
 
@@ -20,7 +20,7 @@ export function AuthGate({ children }: PropsWithChildren) {
   }, [resendIn])
 
   if (auth.mode === 'demo' || fixtureCapture) return children
-  if (auth.loading) return <AuthFrame><LoaderCircle className="auth-spinner" /><h1>Checking access</h1><p>Connecting securely to BOA Bar Control.</p></AuthFrame>
+  if (auth.loading) return <AuthFrame><div className="auth-skeleton" role="status" aria-label="Loading"><i /><i /><i /></div></AuthFrame>
   if (!auth.user) return (
     <AuthFrame>
       <KeyRound /><h1>Staff sign in</h1>
@@ -68,7 +68,7 @@ function JoinWithCode() {
   return <AuthFrame>
     <KeyRound /><h1>Join BOA Bar Control</h1>
     <p>Enter the six-character code supplied by your manager.</p>
-    {joined ? <Panel className="auth-notice"><Mail /><div><strong>Joined as {joined}</strong><span>Loading your venue access.</span></div></Panel> : <form onSubmit={submit}>
+    {joined ? <Panel className="auth-notice"><Mail /><div><strong>Joined as {joined}</strong><span className="auth-inline-skeleton" aria-label="Loading venue access" /></div></Panel> : <form onSubmit={submit}>
       <label htmlFor="invite-code">Invite code</label>
       <input id="invite-code" autoComplete="one-time-code" required value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="K7F2QX" maxLength={6} />
       {message && <small className="auth-error">{message}</small>}

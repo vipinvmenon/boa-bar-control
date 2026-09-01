@@ -23,6 +23,7 @@ import { Advisory, FlowFooter, FlowHeader } from './parts'
 import { describeQuantity } from './quantity'
 import { useRepositoryMutation } from '../../data/RepositoryProvider'
 import { acceptDocket } from '../../services/accept'
+import { ScreenSkeleton } from '../../components/ScreenSkeleton'
 
 export function AcceptScreen() {
   const { docketId } = useParams({ from: '/dockets/$docketId/accept' })
@@ -70,7 +71,7 @@ export function AcceptScreen() {
       <div className="flow-screen">
         <FlowHeader title="Receive stock" onBack={() => void navigate({ to: '/bars' })} />
         <div className="flow-body">
-          <p className="section-empty">Loading docket…</p>
+          <ScreenSkeleton variant="flow" />
         </div>
       </div>
     )

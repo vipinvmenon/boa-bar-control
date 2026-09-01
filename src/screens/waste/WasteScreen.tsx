@@ -21,6 +21,7 @@ import { useNavigate, useParams } from '@tanstack/react-router'
 import { ChevronLeft, Minus, Plus } from 'lucide-react'
 import { useRepositoryMutation, useRepositoryQuery } from '../../data/RepositoryProvider'
 import { recordWaste } from '../../services/waste'
+import { ScreenSkeleton } from '../../components/ScreenSkeleton'
 
 export function WasteScreen() {
   const navigate = useNavigate()
@@ -58,7 +59,7 @@ export function WasteScreen() {
     return (
       <div className="flow-screen">
         <div className="flow-body">
-          <p className="section-empty">Loading…</p>
+          <ScreenSkeleton variant="flow" />
         </div>
       </div>
     )

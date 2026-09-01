@@ -22,6 +22,7 @@ import { ArrowUp, ChevronLeft, ClipboardList, Trash2 } from 'lucide-react'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
 import { useAppStore } from '../../lib/app-store'
 import { useRepositoryMutation } from '../../data/RepositoryProvider'
+import { ScreenSkeleton } from '../../components/ScreenSkeleton'
 import { requestTopUp, type RequestTopUpInput } from '../../services/top-up'
 
 export function BarScreen() {
@@ -43,7 +44,7 @@ export function BarScreen() {
     return (
       <div className="section-screen">
         <div className="section-body">
-          <p className="section-empty">Loading bar…</p>
+          <ScreenSkeleton variant="bar" />
         </div>
       </div>
     )

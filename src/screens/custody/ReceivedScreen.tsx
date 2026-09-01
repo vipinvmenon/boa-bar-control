@@ -15,6 +15,7 @@ import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { Check } from 'lucide-react'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
 import { DetailList, FlowFooter } from './parts'
+import { ScreenSkeleton } from '../../components/ScreenSkeleton'
 
 export function ReceivedScreen() {
   const { docketId } = useParams({ from: '/dockets/$docketId/received' })
@@ -27,7 +28,7 @@ export function ReceivedScreen() {
     return (
       <div className="flow-screen">
         <div className="flow-body">
-          <p className="section-empty">Loading receipt…</p>
+          <ScreenSkeleton variant="flow" />
         </div>
       </div>
     )

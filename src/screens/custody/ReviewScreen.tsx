@@ -15,6 +15,7 @@ import { useRepositoryMutation, useRepositoryQuery } from '../../data/Repository
 import { Advisory, DetailList, FlowFooter, FlowHeader } from './parts'
 import { describeQuantity } from './quantity'
 import { issueStock } from '../../services/issue'
+import { ScreenSkeleton } from '../../components/ScreenSkeleton'
 
 export function ReviewScreen() {
   const navigate = useNavigate()
@@ -59,7 +60,7 @@ export function ReviewScreen() {
       <div className="flow-screen">
         <FlowHeader title="Review issue" onBack={() => void navigate({ to: '/issue', search })} />
         <div className="flow-body">
-          <p className="section-empty">Loading issue draft…</p>
+          <ScreenSkeleton variant="flow" />
         </div>
       </div>
     )

@@ -20,6 +20,7 @@
 import { useState } from 'react'
 import { ACTIVITY_GROUPS, type ActivityGroup } from '../../data/repository'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
+import { ScreenSkeleton } from '../../components/ScreenSkeleton'
 
 export function ActivityScreen() {
   const [group, setGroup] = useState<ActivityGroup>('All')
@@ -47,7 +48,7 @@ export function ActivityScreen() {
       </header>
 
       <div className="activity-list">
-        {entries.isPending ? <p className="section-empty">Loading movements…</p> : null}
+        {entries.isPending ? <ScreenSkeleton /> : null}
         {entries.data?.length === 0 ? (
           <p className="section-empty">No {group.toLowerCase()} recorded yet.</p>
         ) : null}

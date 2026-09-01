@@ -17,6 +17,7 @@ import { Check, Lock } from 'lucide-react'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
 import { useAppStore } from '../../lib/app-store'
 import { DetailList, FlowFooter } from '../custody/parts'
+import { ScreenSkeleton } from '../../components/ScreenSkeleton'
 
 export function CountDoneScreen() {
   const navigate = useNavigate()
@@ -29,7 +30,7 @@ export function CountDoneScreen() {
     return (
       <div className="flow-screen">
         <div className="flow-body">
-          <p className="section-empty">Loading…</p>
+          <ScreenSkeleton variant="flow" />
         </div>
       </div>
     )

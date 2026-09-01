@@ -21,6 +21,7 @@
  */
 import { useNavigate } from '@tanstack/react-router'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
+import { ScreenSkeleton } from '../../components/ScreenSkeleton'
 import type { BarSummary, Tone } from '../../data/repository'
 
 function toneClass(tone: Tone): string {
@@ -77,7 +78,7 @@ export function BarsScreen() {
       </header>
 
       <div className="section-body bars-body">
-        {bars.isPending ? <p className="section-empty">Loading bars…</p> : null}
+        {bars.isPending ? <ScreenSkeleton variant="bars" /> : null}
         {bars.isError ? <p className="section-empty">Bar status is unavailable.</p> : null}
         {bars.data?.map((bar) => (
           <BarCard key={bar.id} bar={bar} onOpen={open} />

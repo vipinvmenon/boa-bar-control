@@ -26,6 +26,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
+import { ScreenSkeleton } from '../../components/ScreenSkeleton'
 import { ChevronLeft, EyeOff, Minus, Plus } from 'lucide-react'
 import { useRepository, useRepositoryMutation, useRepositoryQuery } from '../../data/RepositoryProvider'
 import { partialMlFromWeight, submitCount } from '../../services/count'
@@ -136,7 +137,7 @@ export function CountScreen() {
     return (
       <div className="flow-screen">
         <div className="flow-body">
-          <p className="section-empty">Loading count…</p>
+          <ScreenSkeleton variant="count" />
         </div>
       </div>
     )

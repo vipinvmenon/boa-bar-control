@@ -2355,6 +2355,15 @@ Recommended next: user-owned live/device/print checks and the remaining v1 relea
 
 ### Session — 1 September 2026 · codex
 
+Completed: loading-state UX — replaced screen-level loading copy with a shared content-shaped skeleton system across repository-backed screens and auth bootstrap. Skeletons preserve the dark/sage design language, use a restrained shimmer, expose an accessible loading status, and stop animating under reduced-motion preferences. Write-in-flight labels such as `Recording…` remain because they describe an active durable action rather than initial page loading.
+Files changed: `src/components/ScreenSkeleton.tsx`, `src/styles.css`, `src/features/AuthGate.tsx`, `src/screens/bars/BarsScreen.tsx`, `src/screens/bar/BarScreen.tsx`, `src/screens/warehouse/WarehouseScreen.tsx`, `src/screens/activity/ActivityScreen.tsx`, `src/screens/count/CountScreen.tsx`, `src/screens/count/CountDoneScreen.tsx`, `src/screens/count/VarianceScreen.tsx`, `src/screens/issue/IssueScreen.tsx`, `src/screens/waste/WasteScreen.tsx`, `src/screens/receipt/ReceiptScreen.tsx`, `src/screens/custody/ReviewScreen.tsx`, `src/screens/custody/AcceptScreen.tsx`, `src/screens/custody/DocketScreen.tsx`, `src/screens/custody/ReceivedScreen.tsx`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: The skeleton timing itself was not directly forced in the live browser because fixture data resolves quickly; the rendered bars screen was captured and inspected at `.visual-diff/ux-skeleton-bars.png`. `corepack pnpm test:db` remains unrun because the database password is unavailable; this UI-only change makes no hosted behavior claim.
+Verified: `corepack pnpm typecheck`, `corepack pnpm lint`, 151 unit tests, `corepack pnpm build`, `corepack pnpm check:sql`, and `corepack pnpm test:visual` pass. Visual gate reports 15 data-backed screens, 1 legitimately static screen, 0 hardcoded, 0 errored, and 6 deliberately missing/cut screens.
+Recommended next: user-owned live/device/print checks and the remaining v1 release checklist.
+
+### Session — 1 September 2026 · codex
+
 Completed: BAR-074 and BAR-076 — the outbox now surfaces an authentication-stopped state and More/AppShell direct staff to sign in again while retaining queued commands; the service worker caches only same-origin navigation/static assets plus Supabase SKU/location reference reads, excludes snapshots/RPCs/writes, and removes legacy broad data caches on activation.
 Files changed: `src/domain/outbox-policy.ts`, `src/domain/outbox-policy.test.ts`, `src/lib/offline-db.ts`, `src/lib/app-store.tsx`, `src/screens/more/MoreScreen.tsx`, `src/app/AppShell.tsx`, `src/sw.ts`, `docs/CURRENT-STATE.md`
 Architecture changes: none

@@ -11,6 +11,7 @@ import { ArrowRight, Minus, Plus } from 'lucide-react'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
 import { caseCountLabel, issuePresets, issueStep, quantityFor, type IssueUnit } from '../../domain/units'
 import { FlowFooter, FlowHeader } from '../custody/parts'
+import { ScreenSkeleton } from '../../components/ScreenSkeleton'
 
 function initialContainers(unitsPerCase: number, available: number): number {
   const fullCaseMaximum = Math.floor(available / unitsPerCase) * unitsPerCase
@@ -39,7 +40,7 @@ export function IssueScreen() {
       <div className="flow-screen">
         <FlowHeader title="Issue stock" onBack={() => void navigate({ to: '/warehouse' })} />
         <div className="flow-body">
-          <p className="section-empty">Loading issue options…</p>
+          <ScreenSkeleton variant="flow" />
         </div>
       </div>
     )

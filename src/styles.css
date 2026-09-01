@@ -585,6 +585,46 @@ h1 { font: 400 31px/1 'Anton', sans-serif; letter-spacing: .035em; text-transfor
 .failure-action { margin-top: 5px; min-height: 44px; padding: 0 18px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid rgba(166,201,180,.28); border-radius: 999px; background: rgba(166,201,180,.08); color: var(--sage); font: 700 11px/1 'Oswald', sans-serif; letter-spacing: .16em; }
 /* BAR-044 — a write that failed says so, in the flow footer where the CTA is. */
 .flow-error { margin: 0 0 8px; padding: 9px 12px; border: 1px solid rgba(255,74,61,.4); border-radius: 12px; background: rgba(255,74,61,.09); color: var(--red); font: 400 11px/1.45 'Archivo', sans-serif; }
+.auth-skeleton { width: 100%; display: grid; gap: 12px; }
+.auth-skeleton i, .auth-inline-skeleton { position: relative; display: block; overflow: hidden; border-radius: 8px; background: rgba(166,201,180,.12); }
+.auth-skeleton i { height: 15px; }
+.auth-skeleton i:nth-child(2) { width: 72%; height: 34px; }
+.auth-skeleton i:nth-child(3) { width: 92%; height: 12px; }
+.auth-skeleton i::after, .auth-inline-skeleton::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(242,239,226,.1), transparent); animation: skeletonShimmer 1.8s ease-in-out infinite; }
+.auth-inline-skeleton { width: 132px; height: 10px; margin-top: 4px; }
+@media (prefers-reduced-motion: reduce) { .auth-skeleton i::after, .auth-inline-skeleton::after { animation: none; } }
+
+/* Content-shaped loading states. The shimmer stays inside the approved sage/bone palette. */
+.screen-skeleton { min-height: 100%; padding: 16px; display: grid; align-content: start; gap: 12px; overflow: hidden; }
+.screen-skeleton-flow { padding-top: 18px; }
+.screen-skeleton-bar { padding-top: 14px; }
+.skeleton-head, .skeleton-grid, .skeleton-list { display: grid; gap: 8px; }
+.skeleton-head { grid-template-columns: 1fr 72px; align-items: center; }
+.skeleton-head i, .skeleton-card i, .skeleton-grid i, .skeleton-list i { position: relative; display: block; overflow: hidden; border-radius: 7px; background: rgba(166,201,180,.12); }
+.skeleton-head i { height: 14px; }
+.skeleton-head i:last-child { height: 9px; }
+.skeleton-card { min-height: 116px; padding: 16px; display: grid; align-content: center; gap: 11px; border: 1px solid rgba(166,201,180,.14); border-radius: 18px; background: rgba(27,27,36,.62); }
+.skeleton-card i:first-child { width: 34%; height: 9px; }
+.skeleton-card i:nth-child(2) { width: 58%; height: 28px; border-radius: 9px; }
+.skeleton-card i:last-child { width: 82%; height: 9px; }
+.skeleton-grid { grid-template-columns: repeat(3, 1fr); }
+.skeleton-grid i { height: 58px; border: 1px solid rgba(166,201,180,.12); border-radius: 13px; }
+.skeleton-list { gap: 7px; }
+.skeleton-list i { height: 66px; border: 1px solid rgba(166,201,180,.1); border-radius: 14px; }
+.skeleton-list i:nth-child(2) { height: 78px; }
+.skeleton-list i:nth-child(4) { height: 58px; }
+.screen-skeleton-flow .skeleton-card { min-height: 94px; }
+.screen-skeleton-flow .skeleton-list i { height: 54px; }
+.screen-skeleton-bars .skeleton-card { min-height: 86px; }
+.screen-skeleton-bars .skeleton-list i { height: 92px; }
+.screen-skeleton-bar .skeleton-card { min-height: 132px; }
+.screen-skeleton-bar .skeleton-list i { height: 72px; }
+.screen-skeleton-count .skeleton-card { min-height: 238px; }
+.screen-skeleton-count .skeleton-grid { display: none; }
+.screen-skeleton-count .skeleton-list i { height: 48px; }
+.skeleton-head i::after, .skeleton-card i::after, .skeleton-grid i::after, .skeleton-list i::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(242,239,226,.1), transparent); animation: skeletonShimmer 1.8s ease-in-out infinite; }
+@keyframes skeletonShimmer { to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .skeleton-head i::after, .skeleton-card i::after, .skeleton-grid i::after, .skeleton-list i::after { animation: none; } }
 
 /* BAR-146 — in-custody screen. Not a design reproduction: the design has no
    awaiting-dockets screen. Built from the existing design tokens. */

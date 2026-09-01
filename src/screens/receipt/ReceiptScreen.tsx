@@ -18,6 +18,7 @@ import { ChevronLeft, Minus, Plus, Trash2 } from 'lucide-react'
 import { useRepositoryMutation, useRepositoryQuery } from '../../data/RepositoryProvider'
 import { recordReceipt } from '../../services/receipt'
 import { clearDraft, readDraft, writeDraft } from '../../lib/offline-db'
+import { ScreenSkeleton } from '../../components/ScreenSkeleton'
 
 type Line = { skuId: string; containers: number }
 type ReceiptDraft = {
@@ -99,7 +100,7 @@ export function ReceiptScreen() {
   if (!data || !product) {
     return (
       <div className="flow-screen">
-        <div className="flow-body"><p className="section-empty">Loading…</p></div>
+        <div className="flow-body"><ScreenSkeleton variant="flow" /></div>
       </div>
     )
   }

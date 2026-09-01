@@ -21,6 +21,7 @@ import { Search } from 'lucide-react'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
 import { useRepositoryMutation } from '../../data/RepositoryProvider'
 import { cancelTopUp, type CancelTopUpInput } from '../../services/top-up'
+import { ScreenSkeleton } from '../../components/ScreenSkeleton'
 
 /** design-script.jsx: `['ALL', 'BEER', 'SPIRITS']`. MIXERS is deliberately absent. */
 const FILTERS = ['ALL', 'BEER', 'SPIRITS'] as const
@@ -128,7 +129,7 @@ export function WarehouseScreen() {
           ))}
         </div>
 
-        {catalogue.isPending ? <p className="section-empty wh-empty">Loading stock…</p> : null}
+        {catalogue.isPending ? <ScreenSkeleton /> : null}
         {!catalogue.isPending && groups.length === 0 ? (
           <p className="section-empty wh-empty">No matching stock item.</p>
         ) : null}

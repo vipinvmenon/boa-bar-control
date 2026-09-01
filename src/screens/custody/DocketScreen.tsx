@@ -14,6 +14,7 @@ import { useNavigate, useParams } from '@tanstack/react-router'
 import { QRCodeSVG } from 'qrcode.react'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
 import { DetailList, FlowFooter } from './parts'
+import { ScreenSkeleton } from '../../components/ScreenSkeleton'
 
 export function DocketScreen() {
   const { docketId } = useParams({ from: '/dockets/$docketId' })
@@ -25,7 +26,7 @@ export function DocketScreen() {
     return (
       <div className="flow-screen">
         <div className="flow-body">
-          <p className="section-empty">Loading docket…</p>
+          <ScreenSkeleton variant="flow" />
         </div>
       </div>
     )
