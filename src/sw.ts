@@ -4,7 +4,7 @@ import { clientsClaim } from 'workbox-core'
 import { ExpirationPlugin } from 'workbox-expiration'
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
-import { CacheFirst, NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies'
+import { CacheFirst, StaleWhileRevalidate } from 'workbox-strategies'
 
 declare let self: ServiceWorkerGlobalScope & { __WB_MANIFEST: Array<never> }
 
@@ -31,19 +31,32 @@ registerRoute(
   }),
 )
 
-// BAR-138. This previously matched EVERY same-origin GET, including navigation
-// documents that the NavigationRoute above already handles. Caching documents
-// here can serve a stale shell, and combined with an update that could never
-// activate, a device could be pinned to an old bundle indefinitely. Narrowed to
-// same-origin data requests only.
+// BAR-076. Cache only non-positional reference reads needed to open the app
+// during a network outage. Snapshots, memberships, people, dockets, counts,
+// ledger reads, RPCs, and every write remain network-only so a cached response
+// cannot reveal the expected position to a counting user.
+const supabaseOrigin = import.meta.env.VITE_SUPABASE_URL
+  ? new URL(import.meta.env.VITE_SUPABASE_URL).origin
+  : null
+const referencePaths = new Set(['/rest/v1/boa_bar_sku', '/rest/v1/boa_bar_location'])
+
 registerRoute(
   ({ url, request }) =>
     request.method === 'GET' &&
     request.mode !== 'navigate' &&
-    request.destination === '' &&
-    url.origin === self.location.origin,
-  new NetworkFirst({ cacheName: 'boa-data-v1', networkTimeoutSeconds: 3 }),
+    url.origin === supabaseOrigin &&
+    referencePaths.has(url.pathname),
+  new StaleWhileRevalidate({ cacheName: 'boa-reference-v1' }),
 )
+
+// Remove caches created by the previous broad data/page routes after the safer
+// worker activates on a shared festival device.
+self.addEventListener('activate', (event) => {
+  event.waitUntil(Promise.all([
+    caches.delete('boa-data-v1'),
+    caches.delete('boa-pages-v1'),
+  ]))
+})
 
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting()

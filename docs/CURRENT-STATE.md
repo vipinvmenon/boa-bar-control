@@ -2355,6 +2355,15 @@ Recommended next: perform the user-owned second-account acceptance and A4 print 
 
 ### Session — 1 September 2026 · codex
 
+Completed: BAR-076 — narrowed service-worker runtime caching to Supabase SKU/location reference reads only; snapshots, memberships, people, dockets, counts, ledger reads, RPCs, and writes remain network-only, and legacy broad data caches are removed on activation.
+Files changed: `src/sw.ts`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Service-worker activation and cache behavior still require real-device verification. `corepack pnpm test:db` and `test:visual` were not run; no database mutation was needed for this task.
+Verified: `corepack pnpm typecheck`, `corepack pnpm lint`, 151 unit tests, `corepack pnpm build`, and `corepack pnpm check:sql` pass.
+Recommended next: complete the user-owned two-account docket acceptance and physical A4 print checks.
+
+### Session — 1 September 2026 · codex
+
 Completed: BAR-033 and BAR-138 — aligned `src/types/database.ts` with the hosted top-up request table, enum, relationships, and RPC signatures; removed the two remaining top-up RPC `as never` casts; added repository CSP/HSTS headers and exposed `VITE_RELEASE` with a `dev` fallback in More.
 Files changed: `src/types/database.ts`, `src/lib/supabase.ts`, `vercel.json`, `src/screens/more/MoreScreen.tsx`, `docs/CURRENT-STATE.md`
 Architecture changes: none
