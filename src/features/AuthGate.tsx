@@ -5,6 +5,8 @@ import { Panel, RitualButton } from '../components/ui'
 
 export function AuthGate({ children }: PropsWithChildren) {
   const auth = useAuth()
+  const fixtureCapture = import.meta.env.DEV
+    && new URLSearchParams(window.location.search).has('fixture')
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
   const [code, setCode] = useState('')
@@ -17,7 +19,7 @@ export function AuthGate({ children }: PropsWithChildren) {
     return () => window.clearInterval(timer)
   }, [resendIn])
 
-  if (auth.mode === 'demo') return children
+  if (auth.mode === 'demo' || fixtureCapture) return children
   if (auth.loading) return <AuthFrame><LoaderCircle className="auth-spinner" /><h1>Checking access</h1><p>Connecting securely to BOA Bar Control.</p></AuthFrame>
   if (!auth.user) return (
     <AuthFrame>

@@ -1,6 +1,6 @@
 # BOA Bar Control — Current State
 
-**Last updated: 30 August 2026 (M0 in progress)** · Event: 10 October 2026 — **41 days out**
+**Last updated: 1 September 2026 (M8 in progress)** · Event: 10 October 2026 — **39 days out**
 
 This is the single handoff record. Read it first, before writing any code.
 
@@ -180,7 +180,7 @@ States are defined once in the **Status key** above.
 | BAR-161 | Location-scope the snapshot RPC | `[x]` | **Applied and PROVEN against the live database, 28 August: `blind_count.test.sql` 6/6.** A bar lead can read their bar with no open count, and once a count is open the snapshot returns no row for it and the raw movement lines are unreadable. Required `202608280008` to fix a live defect `_0007` introduced — see event-stopper 21 |
 | BAR-163 | Count witness column | `[~]` | V1 decision: witnessing remains paper-only. The printed count sheet has a `WITNESSED BY` signature block; the app keeps `assigned_to` and manager review without adding a second-user submit gate |
 | BAR-012 | `GRANT USAGE ON SCHEMA private` | `[x]` | `3c6acd9`, verified 28 Aug — `authenticated` has USAGE on `private`, `anon` has none, and `private.boa_bar_balance` is unreachable |
-| BAR-013 | Harden ledger immutability | `[~]` | Row triggers on `movement`, `movement_line` and now `person_name_history`; `alter default privileges … revoke truncate` present. The hosted RLS-disabled advisory was fixed 1 Sep by enabling RLS and adding deny-by-default policies on the private balance/count-seal and public tolerance/excise reference tables. Still no `ENABLE ALWAYS` and no `FORCE ROW LEVEL SECURITY`, so a table owner bypasses both |
+| BAR-013 | Harden ledger immutability | `[~]` | `e71859e` and `41ac189` — hosted RLS-disabled/no-policy and mutable-search-path advisories are cleared: four protected tables have deny-by-default RLS policies, and seven private trigger/guard functions have pinned search paths. Row triggers and revoked default `TRUNCATE` privileges remain. Still no `ENABLE ALWAYS` and no `FORCE ROW LEVEL SECURITY`, so a table owner bypasses both |
 | BAR-014 | `v_position` sums the ledger | `[~]` | `202608310006_position_view.sql` adds security-invoker `public.boa_bar_v_position`, aggregating immutable movement lines independently of the projection. Migration written and `check:sql` passes; hosted application and behavior proof are parked |
 | BAR-015 | Reconciliation view and test | `[~]` | `202608310007_reconciliation_view.sql` adds an ungranted audit view returning only ledger/projection mismatches. Migration written and `check:sql` passes; hosted behavior proof is parked |
 | BAR-016 | Protect the balance projection | `[~]` | `private.boa_bar_balance` now has exactly one writer, `private.boa_bar_post_movement`, instead of the insert being duplicated per entry point. Still no trigger and no scheduled reconciliation — `pnpm bootstrap` compares the projection against a ledger sum once, at bootstrap, which is not the same as protecting it |
@@ -197,10 +197,10 @@ States are defined once in the **Status key** above.
 | BAR-027 | Missing spec §13 columns | `[~]` | BAR-124 added display names. `abv`, `supplier_vendor_id`, `is_licenced`, `is_blind`, `witnessed_by`, `counted_at`, empties and delivery-note remain absent |
 | BAR-028 | Non-negative position guard | `[~]` | `202608310004_non_negative_position.sql` adds a trigger on the sole balance-projection writer, rejecting any resulting negative containers or millilitres. Migration written and `check:sql` passes; live application and behavioral proof are parked with the test work |
 | BAR-029 | Index `movement_line.movement_id` | `[~]` | `202608310008_movement_line_index.sql` adds the missing movement-id join index used by ledger detail/audit reads. Migration written and `check:sql` passes; hosted application is parked |
-| BAR-030 | Behavioural pgTAP suite | `[~]` | **134 assertions pass against the live database, 0 failed** (31 Aug). `movement_guards` adds six behavioural checks for BAR-017/018/022; `location_scope` has 11; `privileges` has 64; `recount` has 9 immutability checks. `ledger.test.sql` (11) remains existence-only and is the last file to replace |
+| BAR-030 | Behavioural pgTAP suite | `[x]` | `dd0b40a` — `ledger.test.sql` now exercises append-only movement headers/lines and derives position from ledger sums; the hosted rollback transaction completed with final `ok 11`. Existing hosted behavior suites cover movement guards, location scope, privileges, recount, and count sealing. The password-dependent `corepack pnpm test:db` wrapper was not run |
 | BAR-031 | Execute migrations | `[x]` | **All migrations through `202608310003_comp_two_leg` applied and present in remote migration history, 31 Aug.** PostgreSQL 17.6. `test:db` reports 128 assertions, 0 failed; `db-state.mjs` reports 1 venue, 9 locations, 11 SKUs, 2 memberships, 4 movements, 2 count sessions, and 3 auth users |
 | BAR-032 | Deterministic seed that renders the design | `[~]` | **Reference data verified present in the hosted project 28 Aug: 1 venue, 9 locations, 11 SKUs.** Opening ledger not yet posted — blocked on the first `auth.users` row. Still no serve mappings (BAR-159) and no tolerance bands in the database (BAR-025) |
-| BAR-033 | Generate database types | `[ ]` | The client is untyped. `src/data/live/rows.ts` hand-writes every row shape precisely because generated types do not exist — 156 lines that a generator would own |
+| BAR-033 | Generate database types | `[x]` | `f5d4694` — `src/types/database.ts` aligns with the hosted schema, the Supabase client is typed, and the top-up RPC casts are removed. Hosted information-schema evidence was used; Supabase CLI regeneration was unavailable, so schema drift still needs checking |
 | BAR-122 | Revoke `TRUNCATE` everywhere | `[x]` | `3c6acd9` — verified empirically over REST: `anon` receives `HTTP 401 permission denied` |
 | BAR-123 | Business date spans the festival night | `[x]` | **Applied and verified against PostgreSQL 17.6 on 28 August: 9/9 behavioural assertions pass**, including that 01:30 on 11 October carries `business_date = 2026-10-10`. `business_day_start_hour` on the venue (06:00 default); `private.boa_bar_business_date` is the only place the rule lives; the client value is ignored |
 | BAR-124 | Person-name resolution | `[~]` | `202608280001_person_names.sql` written — table, generated first name, append-only history, `boa_bar_set_person_name`. **Unapplied, and `boa_bar_person` is empty, so every live name would render `UNNAMED`** |
@@ -231,7 +231,7 @@ States are defined once in the **Status key** above.
 | BAR-048 | Zod at every boundary | `[~]` | Zod now validates both write use cases at the service boundary — the first real use outside `domain/inventory.ts`. RPC **responses**, QR payloads, POS rows and local-store reads are still unvalidated; `rows.ts` casts by hand |
 | BAR-129 | Bounded quantity inputs | `[~]` | Issue cannot exceed the warehouse position, accept cannot exceed the docket, waste floors at 1 and the database refuses more than the location holds. A non-negative position guard on the ledger itself is still BAR-028 |
 | BAR-130 | Full SKU catalogue on every screen | `[x]` | Issue, count and waste all list the full active catalogue through the repository. The `slice(0, 5)` and `slice(0, 3)` screens are deleted |
-| BAR-131 | Remove the fake OS status bar | `[x]` | Removed the hardcoded `19:44` / `4G` chrome from `AppShell` and its CSS; real OS/browser chrome is no longer impersonated |
+| BAR-131 | Remove the fake OS status bar | `[x]` | `27b9925` — removed the hardcoded `19:44` / `4G` chrome from `AppShell` and its CSS; real OS/browser chrome is no longer impersonated |
 | BAR-132 | Seven roles, not two | `[~]` | `auth.tsx` carries all seven. `demo-store.tsx:287` still collapses them to a `managerRoles` boolean |
 
 ### M3 — Stock enters, and moves with custody
@@ -259,19 +259,19 @@ States are defined once in the **Status key** above.
 | BAR-061 | `bar` screen — the bar workspace | `[x]` | `10185b5` |
 | BAR-062 | Bar list navigates to bar detail | `[x]` | Fixed 28 Aug — the `bar.id === 'bar-3'` gate is gone, so every card opens its bar under both fixture and live data |
 | BAR-063 | `waste` screen, three taps | `[x]` | Rebuilt as `src/screens/waste/WasteScreen.tsx` from design-markup.html:612-651. The design's five reasons including `Foam / line loss`, the full catalogue instead of `slice(0, 5)`, and a real write through `boa_bar_record_waste`. **Live write proven 29 Aug:** Warehouse / Bira 91 White / 1 can / Breakage returned Home with 0 pending and total stock 638 → 637 |
-| BAR-064 | Request top-up | `[ ]` | — |
+| BAR-064 | Request top-up | `[x]` | Hosted completion recorded 1 Sep: top-up create/list/update, idempotency, linked issue, non-negative stock protection, and automatic fulfilment after full docket acceptance passed a 21-assertion rollback behavior test. Live hosted application flow beyond that rollback test was not exercised |
 | BAR-065 | Bar-to-bar transfer | `[ ]` | — |
 | BAR-066 | Reference cache | `[x]` | `src/data/live/cache.ts`. Locations, SKUs, people and memberships are written on every successful reference load, and the position snapshot with the server time it was taken at. The table was declared on day one and never written to |
 | BAR-067 | Offline reads from cache | `[~]` | A failed live load now reads the cache, and an empty cache throws `NoCachedDataError` — an explicit error, **never fixture data**. A cached position is safe to show only because every screen carries the design's AS OF stamp and the cached snapshot carries the instant it was taken, so a stale screen reads "AS OF 19:43" at 21:00. **Cached rows for a location this device is counting are dropped**, so the cache cannot hand back what BAR-161 withheld. 8 tests cover the filtering and payload validation; the Dexie IO itself needs a browser (BAR-114) and is unproven |
-| BAR-068 | Cold-start offline | `[~]` | `auth.tsx` now caches memberships per user and restores them on an offline cold start while the JWT remains valid; browser offline cold-start and refresh longevity are not yet verified |
+| BAR-068 | Cold-start offline | `[~]` | `4683bf9` — auth restores user-scoped cached memberships for a still-valid JWT after an offline or failed-network cold start and refuses explicit auth failures. Real browser/device offline cold-start and refresh longevity remain unverified |
 | BAR-069 | Stable idempotency keys | `[x]` | Keys are minted once per user action and now **survive a reload**: the count draft persists its `actionId`, so a resumed count finishes the same count rather than starting a competing one. The outbox dedupes on the key, and every command RPC replays rather than duplicating |
 | BAR-070 | Ordered outbox replay | `[x]` | `selectDrainBatch` replays in causal order and **stops at the first blocked entry**. The previous drain skipped an entry in backoff and posted the ones behind it, so an issue that failed once could be overtaken by its own acceptance. Asserted in `outbox-policy.test.ts`, including the case that used to break |
 | BAR-071 | No silent write loss | `[x]` | Closed by deleting the code. The three unawaited `void queueLiveMovement(...)` writes lived in `demo-store`'s `issue`, `accept` and `waste` actions — all unreachable by the time they went. Every write now goes through a service to the outbox, which resolves only once Dexie has committed |
 | BAR-072 | Persist mutable state | `[~]` | **The count survives a reload**, which was the acceptance criterion. Counted lines, sheet position and the action id are persisted to Dexie on every line and restored on mount, keyed by location. Verified in a browser: counted, reloaded, and the sheet came back at `5 OF 18` saying `RESUMED · 2 lines already counted on this device`. Dockets and counts are no longer React-memory-only — dockets go to the durable outbox. **Still in memory: the receipt screen's line list**, so a delivery being entered is lost on reload |
 | BAR-073 | Real connectivity detection | `[x]` | `app-store` derives `offline` from the browser's own `online`/`offline` events. The hand-operated demo toggle is gone, and the sync line is no longer a button |
-| BAR-074 | Retry, backoff and auth stop | `[~]` | Backoff capped at 60 s with jitter; an auth failure now stops the drain **without consuming an attempt** (it previously burned all eight in two minutes and marked a shift's work failed); a rule violation dead-letters immediately instead of retrying. Not done: nothing prompts re-authentication when the drain stops |
-| BAR-075 | Real "as of" stamps | `[~]` | The live repository derives every stamp from the server's clock in the venue's timezone. `AppShell.tsx:59` still prints a hardcoded `19:44` |
-| BAR-076 | Service worker for a festival network | `[R]` | `06968a4` made an update applicable. No API caching strategy, and still excluded from typecheck and lint |
+| BAR-074 | Retry, backoff and auth stop | `[x]` | `11ad16d` — backoff remains capped at 60 s with jitter; auth failure stops the drain without consuming an attempt, retains the queued command, and exposes a direct sign-in-again recovery action; rule violations dead-letter immediately. Recovery was statically verified; an expired live JWT and replay were not exercised |
+| BAR-075 | Real "as of" stamps | `[~]` | The live repository derives every stamp from the server's clock in the venue's timezone. The fabricated AppShell status-bar clock was removed under BAR-131 |
+| BAR-076 | Service worker for a festival network | `[~]` | `11ad16d` and `1b9b604` — shell/static assets and only same-origin Supabase SKU/location reference reads are cached; snapshots, memberships, people, dockets, counts, ledger reads, RPCs, and writes remain network-only, and legacy broad caches are removed on activation. Browser/device service-worker activation and cache behavior remain unverified |
 | BAR-077 | Remove demo switches from the UI | `[~]` | The offline toggle and the role switch are gone: role is derived from the signed-in membership and connectivity from the browser. `?fixture=b` remains, and is deliberately disabled in production builds |
 | BAR-078 | Tap targets and focus | `[ ]` | Not measured since the rebuild. Needs a pass |
 | BAR-133 | Waste and accept post to the right location | `[x]` | Closed. The three screen literals went on 28 Aug; bar workspaces now carry their selected location into waste, and `boa_bar_record_waste` enforces membership location scope in the database. The legacy `demo-store` path that hardcoded `bar_3` is deleted |
@@ -279,7 +279,7 @@ States are defined once in the **Status key** above.
 | BAR-135 | Dead-letter for invalid outbox entries | `[x]` | Completed 30 Aug. Permanent failures stop on the first refusal and the existing SYNC STATE card shows the failed action and retained server message. A queued acceptance stays on RECEIVE STOCK; only a posted acceptance opens RECEIVED, using the docket number that `custody()` resolves. Proven against live D-0002: its self-acceptance moved from `1 PENDING` to `1 NOT SENT` while stock and docket status remained unchanged |
 | BAR-136 | QR scanner | `[~]` | No scanner. `/dockets` is the deliberate substitute — smaller, and it does not depend on a camera focusing in a dark tent. The scanner is still wanted as the fast path, and `vercel.json` already grants camera permission |
 | BAR-137 | Session longevity for shared devices | `[~]` | Sign-out/account handoff slice completed 30 Aug: More exposes SIGN OUT, clears user-scoped reference cache and drafts, clears in-memory query data, retains unsent outbox commands, and uses local-scope Supabase sign-out so it works without a network round-trip. Browser verified: active VIPIN session returned to Staff sign in. Full offline cold-start, JWT lifetime and refresh behaviour remain unverified |
-| BAR-138 | Security headers and build identity | `[x]` | `06968a4` — a waiting service worker can now actually be activated; previously it could never be replaced |
+| BAR-138 | Security headers and build identity | `[x]` | `f5d4694` — repository CSP/HSTS headers are present, `VITE_RELEASE` is exposed with a `dev` fallback in More, and service-worker update activation is retained. Production deployment headers, release value, HTTPS/custom-domain enforcement, and provider-console settings remain unverified |
 | BAR-141 | Attribute movements to their real actor | `[~]` | Queued payloads carry `actor_id`; migrations 012–013 validate both memberships and wrap all five command RPCs so their existing logic runs under the original actor. Hosted behavior is still unverified, including whether Supabase `auth.uid()` observes the transaction-local subject override |
 | BAR-142 | Outbox visibility and device loss | `[ ]` | — |
 | BAR-146 | Surface `in_transit` stock | `[x]` | `BarDetail.incoming` is a list, the bar screen renders all of them with working CTAs, and `/dockets` shows every awaiting docket plus the in-transit container total. Verified in a browser: two dockets listed, the second opens its own contents |
@@ -292,7 +292,7 @@ States are defined once in the **Status key** above.
 | BAR-079 | `count` sequential and blind | `[x]` | `36ffc4f` — inputs start at zero, stepper resets per line, no expected figure in the read model. Verified by driving the browser |
 | BAR-080 | Partial-container capture | `[x]` | `36ffc4f` — all three modes (`none` / `ml` / `litres`) verified in the browser |
 | BAR-081 | Tare weighing | `[x]` | Spirit partials now take the gross scale reading, derive `partial_ml = gross − SKU tare` through the domain/service helper, and retain `gross_weight_g` as evidence. A non-zero reading below tare is rejected rather than clamped to zero. Verified at 390×844 with the fixture repository: 530 g against 480 g showed 50 ml; 300 g showed an error and disabled Save; 1,030 g showed 550 ml and re-enabled Save |
-| BAR-082 | Count persistence | `[x]` | `202608280005` plus `202608290002` — `boa_bar_submit_count`, a service, and `CountScreen` accumulate blind lines and submit through the outbox. Hosted rollback probe 1 Sep: `boa_bar_open_count` returned `blinded: true`; submit persisted one observed line, changed the session to `submitted`, and replayed the same idempotency key to the same session. |
+| BAR-082 | Count persistence | `[x]` | `202608280005` plus `202608290002`, with queued-RPC grant fix `b875bc4` — `boa_bar_submit_count`, a service, and `CountScreen` accumulate blind lines and submit through the outbox. Hosted rollback probe 1 Sep: `boa_bar_open_count` returned `blinded: true`; submit persisted one observed line, changed the session to `submitted`, and replayed the same idempotency key to the same session. |
 | BAR-083 | Blind enforcement in the database | `[x]` | Same work as BAR-161, proven the same way. `private.boa_bar_is_blinded` is the single definition and gates both the snapshot and the `movement_line` read policy, so the position cannot be re-summed from the ledger |
 | BAR-084 | Seal the theoretical position at submit | `[x]` | `private.boa_bar_count_seal`, summed from the ledger at the instant counted, not from the balance projection which only holds "now". Hosted rollback probe 1 Sep observed the private seal at `3 containers / 1950 ml` for a matching receipt and count; probe 2 confirmed count-line UPDATE/DELETE and seal UPDATE are rejected and the original values remain unchanged. |
 | BAR-085 | `countDone` screen | `[x]` | `36ffc4f` |
@@ -363,15 +363,15 @@ Computed from the rows above, not asserted.
 
 | | Count |
 | --- | --- |
-| `[x]` done | 62 |
-| `[~]` partial | 39 |
-| `[R]` rewrite | 3 |
+| `[x]` done | 66 |
+| `[~]` partial | 38 |
+| `[R]` rewrite | 2 |
 | `[!]` defect actively present | 7 |
-| `[ ]` not started | 51 |
+| `[ ]` not started | 49 |
 | `[?]` unverifiable today | 2 |
 | **Total** | **164** |
 
-Read the middle three rows as the real position: **50 tasks are neither done nor
+Read the middle three rows as the real position: **47 tasks are neither done nor
 untouched**, and 7 of them are defects sitting in the code right now.
 
 ## Would stop the event dead
@@ -2361,6 +2361,15 @@ Architecture changes: none
 Known issues: Service-worker activation and cache behavior still require real-device verification. `corepack pnpm test:db` and `test:visual` were not run; no database mutation was needed for this task.
 Verified: `corepack pnpm typecheck`, `corepack pnpm lint`, 151 unit tests, `corepack pnpm build`, and `corepack pnpm check:sql` pass.
 Recommended next: complete the user-owned two-account docket acceptance and physical A4 print checks.
+
+### Session — 1 September 2026 · codex
+
+Completed: BAR-008 verification support — development-only fixture captures now bypass the live-auth gate when the explicit `?fixture=` query is present, allowing the visual harness to exercise both fixture repositories without weakening production authentication.
+Files changed: `src/features/AuthGate.tsx`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: The visual gate reports 15 data-backed screens, 1 legitimately static screen, 0 hardcoded, 0 errored, and 6 deliberately missing/cut screens; those missing screens remain outside V1. Real-device offline/service-worker, two-account acceptance, and physical A4 output remain unverified.
+Verified: `corepack pnpm test:visual` passes with 15 data-backed / 0 hardcoded / 0 errored; `corepack pnpm typecheck`, `corepack pnpm lint`, 151 unit tests, `corepack pnpm build`, and `corepack pnpm check:sql` pass.
+Recommended next: user-owned live/device/print checks, then freeze the V1 build.
 
 ### Session — 1 September 2026 · codex
 
