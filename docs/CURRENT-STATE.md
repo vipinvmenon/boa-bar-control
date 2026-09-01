@@ -2355,6 +2355,15 @@ Recommended next: address the remaining security advisories by scoped task, begi
 
 ### Session — 1 September 2026 · codex
 
+Completed: BAR-013 security follow-through — pinned `search_path = public, private, pg_temp` on all seven private trigger/guard functions reported by the hosted security advisor.
+Files changed: `supabase/migrations/202609010007_harden_private_function_paths.sql`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Supabase still reports intentional SECURITY DEFINER API-function and Auth configuration advisories; those remain outside this scoped search-path fix. `corepack pnpm test:db` was not run because it requires the database password. `test:visual` was not run because this is a database-only change.
+Verified: Migration applied through Supabase MCP; hosted security inspection reports zero mutable-search-path lints and zero RLS-disabled/no-policy lints. `corepack pnpm typecheck`, lint, 150 unit tests, build, and `check:sql` pass.
+Recommended next: review the remaining SECURITY DEFINER privilege advisories and separate intentional authenticated RPCs from accidental public execution.
+
+### Session — 1 September 2026 · codex
+
 Completed: BAR-082 + BAR-084 — preserved the existing count-submit flow and corrected the queued-actor wrapper's privilege regression so `boa_bar_submit_count(jsonb)` is executable only by `authenticated`, while observed count lines and the private theoretical-position seal remain append-only.
 Files changed: `supabase/migrations/202609010004_count_submit_grant.sql`, `docs/CURRENT-STATE.md`
 Architecture changes: none
