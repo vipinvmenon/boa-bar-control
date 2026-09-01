@@ -180,7 +180,7 @@ States are defined once in the **Status key** above.
 | BAR-161 | Location-scope the snapshot RPC | `[x]` | **Applied and PROVEN against the live database, 28 August: `blind_count.test.sql` 6/6.** A bar lead can read their bar with no open count, and once a count is open the snapshot returns no row for it and the raw movement lines are unreadable. Required `202608280008` to fix a live defect `_0007` introduced — see event-stopper 21 |
 | BAR-163 | Count witness column | `[~]` | V1 decision: witnessing remains paper-only. The printed count sheet has a `WITNESSED BY` signature block; the app keeps `assigned_to` and manager review without adding a second-user submit gate |
 | BAR-012 | `GRANT USAGE ON SCHEMA private` | `[x]` | `3c6acd9`, verified 28 Aug — `authenticated` has USAGE on `private`, `anon` has none, and `private.boa_bar_balance` is unreachable |
-| BAR-013 | Harden ledger immutability | `[~]` | Row triggers on `movement`, `movement_line` and now `person_name_history`; `alter default privileges … revoke truncate` present. Still no `ENABLE ALWAYS` and no `FORCE ROW LEVEL SECURITY`, so a table owner bypasses both |
+| BAR-013 | Harden ledger immutability | `[~]` | Row triggers on `movement`, `movement_line` and now `person_name_history`; `alter default privileges … revoke truncate` present. The hosted RLS-disabled advisory was fixed 1 Sep by enabling RLS and adding deny-by-default policies on the private balance/count-seal and public tolerance/excise reference tables. Still no `ENABLE ALWAYS` and no `FORCE ROW LEVEL SECURITY`, so a table owner bypasses both |
 | BAR-014 | `v_position` sums the ledger | `[~]` | `202608310006_position_view.sql` adds security-invoker `public.boa_bar_v_position`, aggregating immutable movement lines independently of the projection. Migration written and `check:sql` passes; hosted application and behavior proof are parked |
 | BAR-015 | Reconciliation view and test | `[~]` | `202608310007_reconciliation_view.sql` adds an ungranted audit view returning only ledger/projection mismatches. Migration written and `check:sql` passes; hosted behavior proof is parked |
 | BAR-016 | Protect the balance projection | `[~]` | `private.boa_bar_balance` now has exactly one writer, `private.boa_bar_post_movement`, instead of the insert being duplicated per entry point. Still no trigger and no scheduled reconciliation — `pnpm bootstrap` compares the projection against a ledger sum once, at bootstrap, which is not the same as protecting it |
@@ -2343,6 +2343,15 @@ Architecture changes: none
 Known issues: Supabase MCP recorded the applied migrations under generated versions `20260901055116` (`top_up_requests`), `20260901055631` (`non_negative_upsert`), and `20260901055809` (`accept_status_cast`); local filenames remain the source files. The MCP usage limit blocked further live inspection after the passing test. `corepack pnpm test:db` was not run because it requires the unavailable database password. The hosted advisory still reports RLS disabled on `private.boa_bar_balance`, `private.boa_bar_count_seal`, `public.boa_bar_tolerance_band`, and `public.boa_bar_excise_category`; no unrelated remediation was applied. Generated database TypeScript types were not regenerated.
 Verified: `corepack pnpm check:sql`, typecheck, lint, 150 unit tests, and production build pass.
 Recommended next: regenerate database types when the hosted schema snapshot is available, then continue BAR-143 onboarding.
+
+### Session — 1 September 2026 · codex
+
+Completed: BAR-013 security follow-through — enabled RLS on the four tables previously flagged as RLS-disabled and added explicit deny-by-default policies without granting client table access. Hosted Supabase security inspection now reports zero `rls_disabled` and zero `rls_enabled_no_policy` lints.
+Files changed: `supabase/migrations/202609010005_enable_internal_rls.sql`, `supabase/migrations/202609010006_internal_deny_policies.sql`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Supabase still reports unrelated SECURITY DEFINER/search-path and Auth configuration advisories; those were not changed in this scoped RLS fix. `corepack pnpm test:db` was not run because it requires the database password. `test:visual` was not run because this is a database-only change.
+Verified: Both migrations applied through Supabase MCP. A hosted rollback probe confirmed the authenticated tolerance RPC still returns four rows and direct authenticated reads of the private count seal remain denied. `corepack pnpm typecheck`, lint, 150 unit tests, build, and `check:sql` pass.
+Recommended next: address the remaining security advisories by scoped task, beginning with function search paths and privilege review.
 
 ### Session — 1 September 2026 · codex
 
