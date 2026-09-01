@@ -20,11 +20,9 @@
 import { useState } from 'react'
 import { ACTIVITY_GROUPS, type ActivityGroup } from '../../data/repository'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
-import { useAppStore } from '../../lib/app-store'
 
 export function ActivityScreen() {
   const [group, setGroup] = useState<ActivityGroup>('All')
-  const store = useAppStore()
   const entries = useRepositoryQuery(['ledger', group], (r) => r.ledger(group))
   const asOf = useRepositoryQuery(['asOf'], (r) => r.asOf())
 
@@ -54,14 +52,9 @@ export function ActivityScreen() {
           <p className="section-empty">No {group.toLowerCase()} recorded yet.</p>
         ) : null}
         {entries.data?.map((entry) => (
-          <button
+          <div
             key={entry.id}
             className={`activity-row ${entry.flagged ? 'flagged' : ''}`}
-            onClick={() =>
-              // BAR-090 builds the movement detail screen. Say so rather than
-              // leaving the row inert, which is what it was before.
-              store.flash(`MOVEMENT DETAIL IS BAR-090 · ${entry.id.toUpperCase()}`)
-            }
           >
             <time>{entry.at}</time>
             <div className={`activity-row-body tone-${entry.tone}`}>
@@ -72,7 +65,7 @@ export function ActivityScreen() {
               <p className="activity-row-detail">{entry.detail}</p>
               <small className="activity-row-who">{entry.who}</small>
             </div>
-          </button>
+          </div>
         ))}
       </div>
     </div>

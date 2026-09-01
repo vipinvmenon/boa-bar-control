@@ -34,14 +34,14 @@ type MoreItem = {
   sub: string
   managerOnly?: boolean
   go?: string
-  todo?: string
+  available?: boolean
 }
 
 // design-script.jsx `moreItems`, in the design's order.
 const ITEMS: MoreItem[] = [
-  { label: 'CONTROL', sub: 'Live board · run-out projections · open dockets', managerOnly: true, todo: 'CONTROL BOARD IS BAR-100' },
+  { label: 'CONTROL', sub: 'Live board · run-out projections · open dockets', managerOnly: true, available: false },
   { label: 'COUNTS', sub: 'Opening · mid-event · close-out, per location', go: '/count' },
-  { label: 'VARIANCE', sub: 'Counted vs theoretical · tolerance bands', managerOnly: true, todo: 'VARIANCE SCREEN IS BAR-086' },
+  { label: 'VARIANCE', sub: 'Counted vs theoretical · tolerance bands', managerOnly: true, go: '/variance' },
   { label: 'REPORTS', sub: 'Excise return · stock settlement · sales per hour', go: '/reports' },
   { label: 'TEAM', sub: 'Invite staff · manage venue access', managerOnly: true, go: '/team' },
   // BAR-092. The fallback pack is the concrete settings action needed before
@@ -117,11 +117,11 @@ export function MoreScreen() {
       store.flash('MANAGER ACCESS REQUIRED')
       return
     }
+    if (item.available === false) return
     if (item.go) {
       void navigate({ to: item.go })
       return
     }
-    store.flash(item.todo ?? item.label)
   }
 
   return (
@@ -134,12 +134,17 @@ export function MoreScreen() {
       <div className="section-body more-body">
         <div className="more-list">
           {ITEMS.map((item) => (
-            <button className="more-row" key={item.label} onClick={() => activate(item)}>
+            <button
+              className="more-row"
+              key={item.label}
+              onClick={() => activate(item)}
+              aria-disabled={item.available === false}
+            >
               <div>
                 <span className="more-row-label">{item.label}</span>
-                <span className="more-row-sub">{item.sub}</span>
+                <span className="more-row-sub">{item.sub}{item.available === false ? ' · NOT IN V1' : ''}</span>
               </div>
-              <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
+              {item.available !== false ? <ChevronRight size={16} strokeWidth={2} aria-hidden="true" /> : null}
             </button>
           ))}
         </div>

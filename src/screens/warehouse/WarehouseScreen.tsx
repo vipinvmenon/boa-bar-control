@@ -17,10 +17,9 @@
  */
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { ChevronRight, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
 import { useRepositoryMutation } from '../../data/RepositoryProvider'
-import { useAppStore } from '../../lib/app-store'
 import { cancelTopUp, type CancelTopUpInput } from '../../services/top-up'
 
 /** design-script.jsx: `['ALL', 'BEER', 'SPIRITS']`. MIXERS is deliberately absent. */
@@ -29,7 +28,6 @@ type Filter = (typeof FILTERS)[number]
 
 export function WarehouseScreen() {
   const navigate = useNavigate()
-  const store = useAppStore()
   const [filter, setFilter] = useState<Filter>('ALL')
   const [query, setQuery] = useState('')
 
@@ -93,7 +91,7 @@ export function WarehouseScreen() {
         </div>
 
         <div className="wh-actions">
-          <button onClick={() => store.flash('RECEIVE STOCK IS BAR-060')}>Receive stock</button>
+          <button onClick={() => void navigate({ to: '/receipt' })}>Receive stock</button>
           <button className="primary" onClick={() => void navigate({ to: '/issue' })}>
             Issue to bar
           </button>
@@ -142,10 +140,9 @@ export function WarehouseScreen() {
               <strong>{group.totalLabel}</strong>
             </div>
             {group.items.map((item) => (
-              <button
+              <div
                 className="wh-item"
                 key={item.skuId}
-                onClick={() => store.flash('SKU LEDGER IS BAR-050')}
               >
                 <div className="wh-item-main">
                   <strong>{item.name}</strong>
@@ -156,8 +153,7 @@ export function WarehouseScreen() {
                   <strong className={`tone-${item.tone}`}>{item.primary}</strong>
                   <span>{item.secondary}</span>
                 </div>
-                <ChevronRight size={14} strokeWidth={2} aria-hidden="true" />
-              </button>
+              </div>
             ))}
           </section>
         ))}

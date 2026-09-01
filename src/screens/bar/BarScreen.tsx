@@ -169,7 +169,7 @@ export function BarScreen() {
 
         <div className="bar-inv-list">
           {detail.inventory.map((line) => (
-            <button className="bar-inv-row" key={line.skuId} onClick={() => store.flash('SKU LEDGER IS BAR-050')}>
+            <div className="bar-inv-row" key={line.skuId}>
               <div className="bar-inv-main">
                 <strong>{line.name}</strong>
                 <span>{line.movementSummary}</span>
@@ -178,7 +178,7 @@ export function BarScreen() {
                 <strong className={`tone-${line.tone}`}>{line.quantity}</strong>
                 <span>{line.unit}</span>
               </div>
-            </button>
+            </div>
           ))}
         </div>
       </div>

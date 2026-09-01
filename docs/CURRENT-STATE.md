@@ -2346,6 +2346,15 @@ Recommended next: regenerate database types when the hosted schema snapshot is a
 
 ### Session — 1 September 2026 · codex
 
+Completed: UX dead-end cleanup — routed Warehouse “Receive stock” to `/receipt`, routed More “Variance” to `/variance`, routed unknown home receiving alerts to `/dockets`, and removed false detail affordances from warehouse SKU, bar inventory, and activity rows whose v1 detail routes are intentionally cut. More “Control” now states `NOT IN V1` and has no action for managers; permission, sync, error, and durable-write confirmation feedback remain intact.
+Files changed: `src/screens/warehouse/WarehouseScreen.tsx`, `src/screens/more/MoreScreen.tsx`, `src/screens/home/HomeScreen.tsx`, `src/screens/activity/ActivityScreen.tsx`, `src/screens/bar/BarScreen.tsx`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Reports, movement detail, SKU ledger, and Control remain deliberately outside v1; their routes/screens were not invented in this cleanup. `corepack pnpm test:db` was not run because the database password is unavailable; no database behavior changed. The Product Design audit screenshot was captured at `.visual-diff/ux-audit-more.png` and inspected; the visual gate still reports 15 data-backed screens, 1 legitimately static screen, 0 hardcoded, 0 errored, and 6 deliberately missing/cut screens.
+Verified: `corepack pnpm typecheck`, `corepack pnpm lint`, 151 unit tests, `corepack pnpm build`, `corepack pnpm check:sql`, and `corepack pnpm test:visual` pass.
+Recommended next: user-owned live/device/print checks and the remaining v1 release checklist.
+
+### Session — 1 September 2026 · codex
+
 Completed: BAR-074 and BAR-076 — the outbox now surfaces an authentication-stopped state and More/AppShell direct staff to sign in again while retaining queued commands; the service worker caches only same-origin navigation/static assets plus Supabase SKU/location reference reads, excludes snapshots/RPCs/writes, and removes legacy broad data caches on activation.
 Files changed: `src/domain/outbox-policy.ts`, `src/domain/outbox-policy.test.ts`, `src/lib/offline-db.ts`, `src/lib/app-store.tsx`, `src/screens/more/MoreScreen.tsx`, `src/app/AppShell.tsx`, `src/sw.ts`, `docs/CURRENT-STATE.md`
 Architecture changes: none

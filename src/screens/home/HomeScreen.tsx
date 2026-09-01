@@ -22,7 +22,6 @@
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
-import { useAppStore } from '../../lib/app-store'
 import type { Alert } from '../../data/repository'
 
 /** Where each alert's CTA goes. The design's targets, by alert target key. */
@@ -36,7 +35,6 @@ const TARGET_ROUTES: Record<string, string> = {
 
 export function HomeScreen() {
   const navigate = useNavigate()
-  const store = useAppStore()
   const position = useRepositoryQuery(['position'], (r) => r.stockPosition())
   const alerts = useRepositoryQuery(['alerts'], (r) => r.alerts())
   const bars = useRepositoryQuery(['bars'], (r) => r.listBars())
@@ -47,7 +45,7 @@ export function HomeScreen() {
       void navigate({ to: route })
       return
     }
-    store.flash('RECEIVING SCREEN IS BAR-055')
+    void navigate({ to: '/dockets' })
   }
 
   return (
