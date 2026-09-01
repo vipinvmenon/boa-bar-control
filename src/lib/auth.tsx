@@ -20,6 +20,17 @@ export type VenueMembership = {
   locationName?: string
 }
 
+function isAuthFailure(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const candidate = error as { status?: unknown; code?: unknown }
+  return candidate.status === 401 || candidate.status === 403 || candidate.code === '401' || candidate.code === '403'
+}
+
+async function readCachedMemberships(userId: string): Promise<VenueMembership[] | null> {
+  const cached = await offlineDb.referenceCache.get(`auth:memberships:${userId}`)
+  return cached?.value && Array.isArray(cached.value) ? cached.value as VenueMembership[] : null
+}
+
 type AuthState = {
   mode: 'demo' | 'live'
   loading: boolean
@@ -75,55 +86,68 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const load = async () => {
       setLoading(true)
       const cacheKey = `auth:memberships:${session.user.id}`
+      const restore = (cached: VenueMembership[]) => {
+        if (!active) return false
+        setMemberships(cached)
+        setActiveVenueId((current) => current && cached.some((item) => item.venueId === current) ? current : cached[0]?.venueId)
+        setError(undefined)
+        setLoading(false)
+        return true
+      }
       // BAR-068. A cold start in a dead spot must be able to reach the already
       // signed-in venue. Only use a cached membership with a still-valid JWT;
       // sign-out clears this cache before the device changes hands.
       if (canUseCachedMemberships({ online: navigator.onLine, expiresAt: session.expires_at })) {
-        const cached = await offlineDb.referenceCache.get(cacheKey)
-        if (cached?.value && Array.isArray(cached.value)) {
-          setMemberships(cached.value as VenueMembership[])
-          setActiveVenueId((current) => current && (cached.value as VenueMembership[]).some((item) => item.venueId === current) ? current : (cached.value as VenueMembership[])[0]?.venueId)
-          setError(undefined)
-          setLoading(false)
-          return
-        }
+        const cached = await readCachedMemberships(session.user.id)
+        if (cached && restore(cached)) return
       }
-      const { data: membershipRows, error: membershipError } = await client
-        .from('boa_bar_membership')
-        .select('venue_id, role, location_id')
-        .eq('user_id', session.user.id)
-        .eq('active', true)
-        // BAR-128. A user can hold more than one active role; stable ordering
-        // keeps the selected venue deterministic across refreshes and devices.
-        .order('venue_id', { ascending: true })
-        .order('role', { ascending: true })
-        .order('location_id', { ascending: true, nullsFirst: true })
-      if (membershipError) throw membershipError
-      const venueIds = [...new Set((membershipRows ?? []).map((row) => row.venue_id as string))]
-      const locationIds = [...new Set((membershipRows ?? []).map((row) => row.location_id as string | null).filter(Boolean))] as string[]
-      const [{ data: venues, error: venueError }, { data: locations, error: locationError }] = await Promise.all([
-        venueIds.length ? client.from('boa_bar_venue').select('id, code, name, timezone').in('id', venueIds) : Promise.resolve({ data: [], error: null }),
-        locationIds.length ? client.from('boa_bar_location').select('id, name').in('id', locationIds) : Promise.resolve({ data: [], error: null }),
-      ])
-      if (venueError) throw venueError
-      if (locationError) throw locationError
-      const next = (membershipRows ?? []).map((row) => ({
-        venueId: row.venue_id as string,
-        venueCode: (venues ?? []).find((venue) => venue.id === row.venue_id)?.code ?? 'venue',
-        venueName: (venues ?? []).find((venue) => venue.id === row.venue_id)?.name ?? 'BOA Bar Control',
-        // Falls back to the event's own timezone rather than the device's: a
-        // missing column must not silently reinterpret every timestamp.
-        venueTimezone: (venues ?? []).find((venue) => venue.id === row.venue_id)?.timezone ?? 'Asia/Kolkata',
-        role: row.role as VenueMembership['role'],
-        locationId: (row.location_id as string | null) ?? undefined,
-        locationName: (locations ?? []).find((location) => location.id === row.location_id)?.name,
-      }))
-      if (!active) return
-      setMemberships(next)
-      await offlineDb.referenceCache.put({ key: cacheKey, value: next, refreshedAt: Date.now() })
-      setActiveVenueId((current) => current && next.some((item) => item.venueId === current) ? current : next[0]?.venueId)
-      setError(undefined)
-      setLoading(false)
+      try {
+        const { data: membershipRows, error: membershipError } = await client
+          .from('boa_bar_membership')
+          .select('venue_id, role, location_id')
+          .eq('user_id', session.user.id)
+          .eq('active', true)
+          // BAR-128. A user can hold more than one active role; stable ordering
+          // keeps the selected venue deterministic across refreshes and devices.
+          .order('venue_id', { ascending: true })
+          .order('role', { ascending: true })
+          .order('location_id', { ascending: true, nullsFirst: true })
+        if (membershipError) throw membershipError
+        const venueIds = [...new Set((membershipRows ?? []).map((row) => row.venue_id as string))]
+        const locationIds = [...new Set((membershipRows ?? []).map((row) => row.location_id as string | null).filter(Boolean))] as string[]
+        const [{ data: venues, error: venueError }, { data: locations, error: locationError }] = await Promise.all([
+          venueIds.length ? client.from('boa_bar_venue').select('id, code, name, timezone').in('id', venueIds) : Promise.resolve({ data: [], error: null }),
+          locationIds.length ? client.from('boa_bar_location').select('id, name').in('id', locationIds) : Promise.resolve({ data: [], error: null }),
+        ])
+        if (venueError) throw venueError
+        if (locationError) throw locationError
+        const next = (membershipRows ?? []).map((row) => ({
+          venueId: row.venue_id as string,
+          venueCode: (venues ?? []).find((venue) => venue.id === row.venue_id)?.code ?? 'venue',
+          venueName: (venues ?? []).find((venue) => venue.id === row.venue_id)?.name ?? 'BOA Bar Control',
+          // Falls back to the event's own timezone rather than the device's: a
+          // missing column must not silently reinterpret every timestamp.
+          venueTimezone: (venues ?? []).find((venue) => venue.id === row.venue_id)?.timezone ?? 'Asia/Kolkata',
+          role: row.role as VenueMembership['role'],
+          locationId: (row.location_id as string | null) ?? undefined,
+          locationName: (locations ?? []).find((location) => location.id === row.location_id)?.name,
+        }))
+        if (!active) return
+        setMemberships(next)
+        await offlineDb.referenceCache.put({ key: cacheKey, value: next, refreshedAt: Date.now() })
+        setActiveVenueId((current) => current && next.some((item) => item.venueId === current) ? current : next[0]?.venueId)
+        setError(undefined)
+        setLoading(false)
+      } catch (caught) {
+        // `navigator.onLine` can be true on a phone that can reach its local
+        // network but not Supabase. Treat a failed membership read as offline
+        // only when it is not an explicit auth/permission rejection.
+        if (!isAuthFailure(caught) && canUseCachedMemberships({ online: false, expiresAt: session.expires_at })) {
+          const cached = await readCachedMemberships(session.user.id)
+          if (cached && restore(cached)) return
+        }
+        throw caught
+      }
     }
     void load().catch((caught) => {
       if (!active) return
