@@ -1,0 +1,12 @@
+BOA BAR CONTROL
+
+You've been invited
+
+You have been given access to the BOA Bar Control workspace. Set your password to activate your account.
+
+Accept your invitation:
+{{ .ConfirmationURL }}
+
+This invitation is intended for you. If you were not expecting it, you can ignore this email.
+
+Bangalore Open Air · Bar Control

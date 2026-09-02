@@ -1,140 +1,118 @@
-/**
- * BAR-104 / BAR-165 — the More screen.
- *
- * The design's version (references/ui/more.png, `moreItems` in design-script.jsx)
- * is six rows: CONTROL, COUNTS, VARIANCE, REPORTS, COWORK, SETTINGS. Four of
- * those six destinations do not exist in V1, which the design could not have
- * known, and the first implementation rendered them anyway — CONTROL swallowing
- * its tap in silence, REPORTS dead-ending non-managers, VARIANCE and TEAM
- * answering with a toast.
- *
- * The rule since BAR-165: **a row is rendered only if it navigates somewhere
- * real, for the person holding the phone.** Two more corrections on review:
- *
- *   - COUNTS pointed at `/count`, which resolves its location from the
- *     membership. A manager holds none, so it was changed to `/bars` — which is
- *     the BARS tab in the navigation two inches below, so the row did nothing a
- *     tap on BARS did not already do. It is now offered only to somebody whose
- *     membership carries a location, where it opens *their* count sheet directly
- *     and is a genuine shortcut.
- *   - IN CUSTODY was reachable only from a home alert, which exists only while
- *     a docket is awaiting acceptance. Stock that has left the warehouse and not
- *     arrived is the case specification §5 exists to resolve; it needs a
- *     permanent way in.
- *
- * What remains is a menu of what the bottom navigation cannot reach. Approved
- * deviation from the design — see docs/DECISIONS.md ADR-015.
- */
+import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { ChevronRight } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { CheckCircle2, ChevronRight, ClipboardCheck, FileText, LockKeyhole, LogOut, PackageCheck, RefreshCw, Scale, UserPlus, Users } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useAppStore } from '../../lib/app-store'
+import { useAuth } from '../../lib/auth'
+import { clearUserCache, resolveFailedCommand } from '../../lib/offline-db'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
 
-type MoreItem = {
-  label: string
-  sub: string
-  go: string
-  /** Manager, admin or auditor only. */
-  managerOnly?: boolean
-  /** Only for a membership posted to a location — it resolves one. */
-  needsLocation?: boolean
+type MoreItem = { label: string; sub: string; go: string; icon: LucideIcon; managerOnly?: boolean; needsLocation?: boolean }
+
+const FAILED_ACTION: Record<string, string> = {
+  movement: 'Movement', create_docket: 'Docket issue', accept_docket: 'Docket acceptance', submit_count: 'Count submission',
+  record_waste: 'Waste entry', record_receipt: 'Stock receipt', request_top_up: 'Top-up request', update_top_up: 'Top-up update',
 }
 
-const ITEMS: MoreItem[] = [
-  {
-    label: 'IN CUSTODY',
-    sub: 'Dockets issued and not yet accepted · what is in transit',
-    go: '/dockets',
-  },
-  {
-    label: 'COUNTS',
-    sub: 'Open a blind count for your location',
-    go: '/count',
-    needsLocation: true,
-  },
-  {
-    label: 'VARIANCE',
-    sub: 'Counted vs theoretical · tolerance bands',
-    go: '/variance',
-    managerOnly: true,
-  },
-  {
-    label: 'TEAM',
-    sub: 'Invite staff · manage venue access',
-    go: '/team',
-    managerOnly: true,
-  },
-  {
-    label: 'SETTINGS',
-    sub: 'Signed-in person · device · sync · printed fallback sheets',
-    go: '/settings',
-  },
+const OPERATIONS: MoreItem[] = [
+  { label: 'IN CUSTODY', sub: 'Dockets issued and not yet accepted', go: '/dockets', icon: PackageCheck },
+  { label: 'COUNTS', sub: 'Open a blind count for your location', go: '/count', icon: ClipboardCheck, needsLocation: true },
+  { label: 'VARIANCE', sub: 'Counted vs theoretical · tolerance bands', go: '/variance', icon: Scale, managerOnly: true },
 ]
+
+function initials(name: string) {
+  const words = name.trim().split(/\s+/).filter(Boolean)
+  const first = words[0] ?? ''
+  const second = words[1] ?? ''
+  if (second) return `${first[0] ?? ''}${second[0] ?? ''}`.toUpperCase()
+  return name.trim().slice(0, 2).toUpperCase() || '—'
+}
 
 export function MoreScreen() {
   const store = useAppStore()
+  const auth = useAuth()
   const navigate = useNavigate()
-  const offline = store.offline
+  const queryClient = useQueryClient()
   const session = useRepositoryQuery(['session'], (r) => r.session())
+  const asOf = useRepositoryQuery(['asOf'], (r) => r.asOf())
+  const [signingOut, setSigningOut] = useState(false)
+  const [confirmSignOut, setConfirmSignOut] = useState(false)
+  const [signOutError, setSignOutError] = useState<string>()
+  const [resolvingFailure, setResolvingFailure] = useState(false)
+  const fixtureCapture = import.meta.env.DEV && new URLSearchParams(window.location.search).has('fixture')
+  const isManager = store.role === 'Manager' || fixtureCapture
+  const canInvite = fixtureCapture || Boolean(auth.user?.email && ['vipinmenon16@gmail.com', 'salman@bangaloreopenair.com'].includes(auth.user.email.toLowerCase()))
+  const canManageTeam = canInvite || isManager
+  const operations = OPERATIONS.filter((item) => (!item.managerOnly || isManager) && (!item.needsLocation || Boolean(store.activeLocationId)))
+  const personName = session.data?.signedInName ?? auth.user?.email?.split('@')[0] ?? 'Staff'
 
-  const isManager = store.role === 'Manager'
-  const items = ITEMS.filter((item) => (
-    (!item.managerOnly || isManager) && (!item.needsLocation || Boolean(store.activeLocationId))
-  ))
+  const signOut = async () => {
+    setSigningOut(true); setSignOutError(undefined)
+    try { await clearUserCache(); queryClient.clear(); await auth.signOut() }
+    catch (error) { setSignOutError(error instanceof Error ? error.message : 'Could not sign out'); setSigningOut(false); setConfirmSignOut(false) }
+  }
 
-  return (
-    <div className="section-screen">
-      <header className="section-head">
-        <h1 className="section-head-title">More</h1>
-        <span className="more-role">{store.role.toUpperCase()}</span>
-      </header>
+  const resolveFailure = async () => {
+    if (!store.lastFailureId) return
+    setResolvingFailure(true)
+    try { await resolveFailedCommand(store.lastFailureId); store.flash('FAILED ACTION RESOLVED · QUEUE UNBLOCKED') }
+    catch (error) { store.flash(error instanceof Error ? error.message : 'Could not resolve failed action') }
+    finally { setResolvingFailure(false) }
+  }
 
-      <div className="section-body more-body">
-        <div className="more-list">
-          {items.map((item) => (
-            <button className="more-row" key={item.label} onClick={() => void navigate({ to: item.go })}>
-              <div>
-                <span className="more-row-label">{item.label}</span>
-                <span className="more-row-sub">{item.sub}</span>
-              </div>
-              <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
-            </button>
-          ))}
-        </div>
+  const reauthenticate = async () => {
+    setSigningOut(true); setSignOutError(undefined)
+    try { await auth.signOut() }
+    catch (error) { setSignOutError(error instanceof Error ? error.message : 'Could not start sign-in again'); setSigningOut(false) }
+  }
 
-        {/*
-          BAR-165. One row at the foot, not two.
+  const syncLabel = store.authStopped ? 'SIGN IN AGAIN' : store.failed > 0 ? `${store.failed} NOT SENT` : store.offline ? `${store.pending} QUEUED` : 'SYNCED'
+  const failedActionLabel = FAILED_ACTION[store.lastFailureKind ?? ''] ?? 'Write'
+  const syncCopy = store.authStopped
+    ? `${store.pending} retained action${store.pending === 1 ? '' : 's'} · renew this session to retry`
+    : store.failed > 0
+      ? `${failedActionLabel} needs attention`
+      : store.offline ? 'Saved on this device · will post when the network returns' : `Last sync ${asOf.data?.label ?? '—'} · all movements posted`
 
-          Who the phone is signed in as and whether its work has been sent were
-          two rows that opened the same screen — a duplicate destination, and the
-          identity sat above a menu it is not part of. It is now a single row at
-          the bottom, where an account belongs, carrying the queue's state as a
-          badge rather than as a second tap.
+  const renderItem = (item: MoreItem) => {
+    const Icon = item.icon
+    return <button className="more-row" key={item.label} onClick={() => void navigate({ to: item.go })}>
+      <Icon className="more-row-icon" size={20} strokeWidth={1.8} aria-hidden="true" />
+      <span className="more-row-main"><span className="more-row-label">{item.label}</span><span className="more-row-sub">{item.sub}</span></span>
+      <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
+    </button>
+  }
 
-          The badge is not a control. Specification §10 requires the app to say
-          whether work is saved, and a bar lead has to be able to read that
-          without opening anything.
-        */}
-        <button className="more-identity" onClick={() => void navigate({ to: '/settings' })}>
-          <span className="more-identity-label">SIGNED IN</span>
-          <strong>{session.data?.signedInName ?? '—'}</strong>
-          <small>{store.activeVenueName ?? 'BOA 2026'}</small>
-          <span className="more-identity-right">
-            <span className={`sync-card-badge ${store.authStopped || store.failed > 0 ? 'failed' : offline ? 'offline' : ''}`}>
-              {store.authStopped
-                ? '! SIGN IN AGAIN'
-                : store.failed > 0
-                ? `! ${store.failed} NOT SENT`
-                : offline
-                  ? `○ OFFLINE · ${store.pending} QUEUED`
-                  : '✓ SYNCED'}
-            </span>
-            <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
-          </span>
-        </button>
-
-        <p className="more-build">BOA BAR INVENTORY · BUILD {import.meta.env.VITE_RELEASE || 'dev'} · BOA 2026</p>
+  return <div className="section-screen">
+    <header className="section-head"><h1 className="section-head-title">More</h1></header>
+    <div className="section-body more-body more-index-body">
+      <div className="more-profile">
+        <span className="settings-avatar" aria-hidden="true">{initials(personName)}</span>
+        <span className="settings-identity-copy"><strong>{personName}</strong><small>{store.role.toUpperCase()}</small></span>
       </div>
+
+      {operations.length > 0 && <section className="settings-group"><h2>OPERATIONS</h2><div className="more-list settings-list">{operations.map(renderItem)}</div></section>}
+
+      {canManageTeam && <section className="settings-group"><h2>TEAM ACCESS</h2><div className="more-list settings-list">
+        {canInvite && <button className="more-row" onClick={() => void navigate({ to: '/settings/invite' })}><UserPlus className="more-row-icon" size={20} strokeWidth={1.8} aria-hidden="true" /><span className="more-row-main"><span className="more-row-label">INVITE CREW</span><span className="more-row-sub">Invite by email · assign role and location</span></span><ChevronRight size={16} strokeWidth={2} aria-hidden="true" /></button>}
+        <button className="more-row" onClick={() => void navigate({ to: '/team' })}><Users className="more-row-icon" size={20} strokeWidth={1.8} aria-hidden="true" /><span className="more-row-main"><span className="more-row-label">TEAM MEMBERS</span><span className="more-row-sub">Review roles and locations</span></span><ChevronRight size={16} strokeWidth={2} aria-hidden="true" /></button>
+      </div></section>}
+
+      <section className="settings-group"><h2>DEVICE &amp; CONTINUITY</h2><div className="more-list settings-list">
+        <div className={`more-row settings-status-row ${store.authStopped || store.failed > 0 ? 'has-failure' : ''}`}><RefreshCw className="more-row-icon" size={20} strokeWidth={1.8} aria-hidden="true" /><span className="more-row-main"><span className="more-row-label">SYNC STATE</span><span className="more-row-sub">{syncCopy}</span>{store.failed > 0 && <span className="settings-status-note">Retained on this device</span>}</span><span className={`sync-card-badge ${store.authStopped || store.failed > 0 ? 'failed' : store.offline ? 'offline' : ''}`}>{syncLabel}{!store.authStopped && store.failed === 0 && !store.offline ? <CheckCircle2 size={15} strokeWidth={2.4} aria-hidden="true" /> : null}</span></div>
+        {(store.failed > 0 || store.authStopped) && <div className="settings-status-action"><button className="flow-cta-ghost" onClick={() => void (store.authStopped ? reauthenticate() : resolveFailure())} disabled={signingOut || resolvingFailure}>{store.authStopped ? 'Sign in again to retry' : resolvingFailure ? 'Resolving…' : 'Resolve failed action'}</button></div>}
+        <button className="more-row" onClick={() => void navigate({ to: '/print' })}><FileText className="more-row-icon" size={20} strokeWidth={1.8} aria-hidden="true" /><span className="more-row-main"><span className="more-row-label">PAPER FALLBACK</span><span className="more-row-sub">Print count sheets &amp; a blank docket</span></span><ChevronRight size={16} strokeWidth={2} aria-hidden="true" /></button>
+      </div></section>
+
+      <section className="settings-group"><h2>ACCOUNT</h2><div className="more-list settings-list">
+        <button className="more-row" onClick={() => void navigate({ to: '/settings/password' })}><LockKeyhole className="more-row-icon" size={20} strokeWidth={1.8} aria-hidden="true" /><span className="more-row-main"><span className="more-row-label">CHANGE PASSWORD</span><span className="more-row-sub">Update your account password</span></span><ChevronRight size={16} strokeWidth={2} aria-hidden="true" /></button>
+        <button className="more-row settings-signout-row" onClick={() => setConfirmSignOut(true)}><LogOut className="more-row-icon" size={20} strokeWidth={1.8} aria-hidden="true" /><span className="more-row-main"><span className="more-row-label">SIGN OUT</span><span className="more-row-sub">Sign out of BOA Bar Control</span></span><ChevronRight size={16} strokeWidth={2} aria-hidden="true" /></button>
+      </div></section>
+
+      {signOutError ? <p className="flow-error" role="alert">NOT SIGNED OUT · {signOutError}</p> : null}
+      {confirmSignOut && <ConfirmDialog title="Sign out of BOA?" confirmLabel="Sign out" cancelLabel="Keep me signed in" onCancel={() => setConfirmSignOut(false)} onConfirm={() => void signOut()} busy={signingOut}><p>Cached SKU data and any count in progress will be cleared from this device. Queued work will be kept.</p></ConfirmDialog>}
     </div>
-  )
+  </div>
 }

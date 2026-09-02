@@ -17,6 +17,8 @@ import { ReceiptScreen } from '../screens/receipt/ReceiptScreen'
 import { PrintScreen } from '../screens/print/PrintScreen'
 import { TeamScreen } from '../screens/team/TeamScreen'
 import { SettingsScreen } from '../screens/settings/SettingsScreen'
+import { InviteCrewScreen } from '../screens/settings/InviteCrewScreen'
+import { PasswordScreen } from '../screens/settings/PasswordScreen'
 import { CountScreen } from '../screens/count/CountScreen'
 import { CountDoneScreen } from '../screens/count/CountDoneScreen'
 import { VarianceScreen } from '../screens/count/VarianceScreen'
@@ -57,9 +59,10 @@ const barWasteRoute = createRoute({
 const teamRoute = createRoute({ getParentRoute: () => rootRoute, path: '/team', component: TeamScreen })
 // BAR-092. Not a design screen — the paper fallback, printed before load-in.
 const printRoute = createRoute({ getParentRoute: () => rootRoute, path: '/print', component: PrintScreen })
-// BAR-165. Not a design screen — the design's SETTINGS row has no destination
-// drawn for it (`flash('SETTINGS')`). See SettingsScreen's header.
+// Compatibility route: Settings options now live in More; old links redirect.
 const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/settings', component: SettingsScreen })
+const inviteCrewRoute = createRoute({ getParentRoute: () => rootRoute, path: '/settings/invite', component: InviteCrewScreen })
+const passwordRoute = createRoute({ getParentRoute: () => rootRoute, path: '/settings/password', component: PasswordScreen })
 // BAR-060. Not a design screen — see ReceiptScreen's header.
 const receiptRoute = createRoute({ getParentRoute: () => rootRoute, path: '/receipt', component: ReceiptScreen })
 const countRoute = createRoute({ getParentRoute: () => rootRoute, path: '/count', component: CountScreen })
@@ -132,6 +135,8 @@ const routeTree = rootRoute.addChildren([
   printRoute,
   teamRoute,
   settingsRoute,
+  inviteCrewRoute,
+  passwordRoute,
   countRoute,
   barCountRoute,
   reportsRoute,

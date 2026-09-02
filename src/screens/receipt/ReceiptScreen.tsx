@@ -19,6 +19,7 @@ import { useRepositoryMutation, useRepositoryQuery } from '../../data/Repository
 import { recordReceipt } from '../../services/receipt'
 import { clearDraft, readDraft, writeDraft } from '../../lib/offline-db'
 import { ScreenSkeleton } from '../../components/ScreenSkeleton'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 
 type Line = { skuId: string; containers: number }
 type ReceiptDraft = {
@@ -268,15 +269,6 @@ export function ReceiptScreen() {
         {submit.isError && (
           <p className="flow-error" role="alert">NOT RECORDED · {submit.error.message}</p>
         )}
-        {confirmDiscard ? (
-          <div className="leave-guard" role="alert">
-            <p>Clear the supplier, the delivery note and {lines.length} line{lines.length === 1 ? '' : 's'}? Nothing has been recorded, so nothing is lost from the ledger.</p>
-            <div className="leave-guard-actions">
-              <button className="flow-cta-ghost" onClick={() => setConfirmDiscard(false)}>Keep it</button>
-              <button className="flow-cta-ghost is-active" onClick={discard}>Discard delivery</button>
-            </div>
-          </div>
-        ) : null}
         {blocker && !confirmDiscard ? <p className="flow-hint">{blocker}</p> : null}
         <button className="flow-cta" disabled={!canRecord} onClick={() => submit.mutate(
           { lines },
@@ -291,6 +283,7 @@ export function ReceiptScreen() {
           <button className="flow-cta-ghost" onClick={() => setConfirmDiscard(true)}>Discard delivery</button>
         ) : null}
       </footer>
+      {confirmDiscard && <ConfirmDialog title="Discard delivery?" confirmLabel="Discard delivery" cancelLabel="Keep delivery" onCancel={() => setConfirmDiscard(false)} onConfirm={discard}><p>Clear the supplier, delivery note, and {lines.length} line{lines.length === 1 ? '' : 's'}? Nothing has been recorded, so nothing will be removed from the ledger.</p></ConfirmDialog>}
     </div>
   )
 }

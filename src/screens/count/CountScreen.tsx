@@ -27,6 +27,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { ScreenSkeleton } from '../../components/ScreenSkeleton'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { ChevronLeft, EyeOff, Minus, Plus } from 'lucide-react'
 import { useRepository, useRepositoryMutation, useRepositoryQuery } from '../../data/RepositoryProvider'
 import { partialMlFromWeight, submitCount } from '../../services/count'
@@ -405,27 +406,6 @@ export function CountScreen() {
           effect is a count nobody can defend, so the sheet refuses it rather than
           relying on somebody reading a red line at 01:00.
         */}
-        {confirmLeave && (
-          <div className="leave-guard" role="alert">
-            <p>
-              This count stays open and your {Object.keys(counted).length} counted{' '}
-              line{Object.keys(counted).length === 1 ? '' : 's'} {Object.keys(counted).length === 1 ? 'is' : 'are'} kept
-              on this device. Until you come back and submit it, this device will not show{' '}
-              {s.locationName}'s stock — that is what keeps the count blind.
-            </p>
-            <div className="leave-guard-actions">
-              <button className="flow-cta-ghost" onClick={() => setConfirmLeave(false)}>Keep counting</button>
-              <button
-                className="flow-cta-ghost is-active"
-                onClick={() => void (barId
-                  ? navigate({ to: '/bars/$barId', params: { barId } })
-                  : navigate({ to: '/bars' }))}
-              >
-                Leave for now
-              </button>
-            </div>
-          </div>
-        )}
         {openError && (
           <p className="flow-error" role="alert">
             COUNT NOT OPENED · {openError} · This sheet cannot be submitted. Go back and start the
@@ -443,6 +423,7 @@ export function CountScreen() {
           {submit.isPending ? 'Recording…' : isLast ? 'Submit count' : 'Save & next'}
         </button>
       </footer>
+      {confirmLeave && <ConfirmDialog title="Leave count open?" confirmLabel="Leave for now" cancelLabel="Keep counting" onCancel={() => setConfirmLeave(false)} onConfirm={() => void (barId ? navigate({ to: '/bars/$barId', params: { barId } }) : navigate({ to: '/bars' }))}><p>This count stays open and your {Object.keys(counted).length} counted line{Object.keys(counted).length === 1 ? '' : 's'} will be kept on this device. You can return and submit it later.</p></ConfirmDialog>}
     </div>
   )
 }

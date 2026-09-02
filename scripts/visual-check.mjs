@@ -93,7 +93,21 @@ const EXTRA_SCREENS = [
     label: 'SETTINGS',
     route: '/settings',
     expectsData: false,
-    note: 'session, device and queue state, not fixture SKU data',
+    note: 'compatibility redirect to More; options now live in the More index',
+  },
+  {
+    key: 'settings-invite',
+    label: 'INVITE CREW',
+    route: '/settings/invite',
+    expectsData: false,
+    note: 'permission-gated account invitation flow',
+  },
+  {
+    key: 'settings-password',
+    label: 'CHANGE PASSWORD',
+    route: '/settings/password',
+    expectsData: false,
+    note: 'authenticated account password update flow',
   },
 ]
 

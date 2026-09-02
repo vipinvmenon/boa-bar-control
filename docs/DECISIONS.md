@@ -428,7 +428,7 @@ table is a defect, and `supabase/tests/privileges.test.sql` fails if one appears
 
 ## ADR-014 — How twenty temporary staff get an auth session
 
-**Status:** PROPOSED — needs the user's decision · **Date:** 28 August 2026
+**Status:** ACCEPTED — user decision, 2 September 2026
 
 **Provenance: MINE.** Specification §16 does not cover authentication, and no
 design screen shows a sign-in. This is a genuine gap, not a restatement.
@@ -454,25 +454,23 @@ underneath. This ADR is only about what produces it.
 | **B. Email + password, pre-created** | A manager creates accounts ahead of time and hands out cards | Needs the service-role key to create users in bulk, which must never reach the app (ADR: rule 2 in SECURITY.md). Doable as an operator script |
 | **C. Anonymous sign-in + invite code** | The app calls `signInAnonymously()`, then the person enters their code. Supabase issues a real, distinct `auth.users` row | No email, no password, no typing on a phone in the dark. The identity is still distinct and carries a real name from the invite |
 
-### Recommendation
+### Decision
 
-**C, with B as the fallback for managers and auditors.** Anonymous does not mean
-unattributed here: the row is distinct and permanent, and
-`boa_bar_claim_invite` attaches the manager-chosen name before the person can post
-anything, so every movement still carries a real name. Crew never type an address
-or a password; managers, who need their access to survive a lost phone, use B.
+Use password-based, email invitations. Vipin Menon and Salman may invite staff
+from the app by email; the server-side invitation path creates the Supabase user,
+BOA membership, and venue display name. The invitee accepts the email, sets a
+password, and then signs in with email and password. No OTP and no six-character
+claim code are part of the staff login flow.
 
-### What is NOT decided until the user rules
+The service-role key remains server-only. Database membership remains the
+authoritative access control, and the Team screen manages existing memberships.
+New staff invitations are issued from Settings.
 
-Whether to enable anonymous sign-in on the Supabase project at all. It widens who
-can obtain a JWT, and although every table and function is already gated on
-membership — an anonymous user with no membership can reach nothing — that is a
-security posture change and it is the user's call, not an agent's.
+### Operational requirement
 
-### Consequence if unanswered
-
-Load-in falls back to magic links, and the realistic outcome is shared logins,
-which destroys the named-person guarantee that §4 and §5 exist to provide.
+Supabase Auth must use the invite email template and a verified `noreply@boa.com`
+sender. The sender domain and SMTP provider configuration are hosting-side setup,
+not client code.
 
 ---
 

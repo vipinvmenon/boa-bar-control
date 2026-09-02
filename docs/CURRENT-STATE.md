@@ -3096,3 +3096,606 @@ Verified:
 - `test:visual`, three consecutive runs identical: 19 reading the data layer,
   0 hardcoded, 0 errored.
 - More looked at in a browser at 390×844.
+
+### Session — 1 September 2026 · codex
+
+Completed: Deployed the current main branch to Vercel production at
+https://boa-bar-control.vercel.app. Linked the repository to the Vercel project
+`vipin-menon/boa-bar-control`, connected GitHub deployments, and added only
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` to Production and
+Preview. Vercel build reached READY.
+
+Files changed: `.gitignore`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: The final smoke check verified the production HTML shell only;
+it did not verify an authenticated browser session, Supabase live writes, or
+service-worker behavior on a device.
+Recommended next: BAR-114, then the signed-in pass carrying the remaining
+unproven deployment and device checks.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass. 151 unit tests.
+
+### Session — 2 September 2026 · codex
+
+Completed: Prevented the local Vite SPA fallback from being treated as a
+successful invitation API response. The invite screen now requires an explicit
+`{ ok: true }` response before showing “Invitation sent”, and explains that the
+local preview cannot send invitations. Deployed as `dpl_G7hTEL1WAjURiJoQytqLSN6AL7iY`,
+which reached `READY` and is aliased at https://boa-bar-control.vercel.app.
+
+Files changed: `src/screens/settings/InviteCrewScreen.tsx`,
+`docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: The earlier local attempt did not send an email. I did not send a
+test invitation through production because that would email a real recipient;
+live email delivery remains unverified.
+Recommended next: Use the production URL and send one invitation to the
+intended crew address.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass. 151 unit tests.
+
+### Session — 2 September 2026 · codex
+
+Completed: Fixed invitation sending by excluding `/api/*` from Vercel's SPA
+fallback rewrite. The client now safely handles non-JSON API responses and
+reports the HTTP status instead of throwing `Unexpected end of JSON input`.
+Deployed to Vercel production as `dpl_97Za5b6K1Qn5aVMYCgQQxjVafASf`, which
+reached `READY` and is aliased at https://boa-bar-control.vercel.app.
+
+Files changed: `vercel.json`, `src/screens/settings/InviteCrewScreen.tsx`,
+`docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: The invitation was not sent against the live production API by
+Codex because that would email a real team member. Database state and the live
+email delivery remain unverified.
+Recommended next: Retry one invitation in production with the intended crew
+email and confirm the invitation arrives.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass. 151 unit tests.
+
+### Session — 2 September 2026 · codex
+
+Completed: Applied the user-selected Product Design Option 3 to the More and
+Settings hierarchy. More is now a compact Operations/Admin index. Settings is
+grouped into Team Access, Device & Continuity, and Account; Invite Crew, Team
+Members, and Change Password each have a dedicated destination. The original
+manager-only invitation API and live permission checks remain in place. Fixed
+duplicate React keys in the multi-location Team fixture while validating the
+new flow.
+
+Files changed: `src/screens/more/MoreScreen.tsx`,
+`src/screens/settings/SettingsScreen.tsx`,
+`src/screens/settings/InviteCrewScreen.tsx`,
+`src/screens/settings/PasswordScreen.tsx`, `src/screens/team/TeamScreen.tsx`,
+`src/app/router.tsx`, `src/styles.css`, `scripts/visual-check.mjs`,
+`design-qa.md`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: This redesign is local only and has not been deployed. The live
+invitation endpoint, authenticated password update, live database behavior,
+physical-device layout, and service-worker activation were not verified. The
+project Playwright visual gate was not run; responsive and interaction checks
+were performed in the in-app browser at 390 × 844 instead.
+Recommended next: Review Option 3 in the open local preview, then deploy only
+after user approval.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass; 151 unit tests.
+- Product Design comparison passed at 390 × 844; see `design-qa.md`.
+- Settings, More, Invite Crew, Team Members, and Change Password showed no
+  horizontal overflow at 390 px. Mobile form controls compute to 16 px.
+- More → Invite Crew, More → Team Members, and More → Change Password navigation
+  targets were exercised locally. Legacy `/settings` redirects to `/more`.
+
+### Session — 2 September 2026 · codex
+
+Completed: Consolidated the full Settings index into More at the user's request.
+More now owns Operations, Team Access, Device & Continuity, and Account in one
+scrollable options screen. `/settings` remains only as a compatibility redirect;
+there is no duplicate Settings page.
+
+Files changed: `src/screens/more/MoreScreen.tsx`,
+`src/screens/settings/SettingsScreen.tsx`, `design-qa.md`,
+`docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: This is local only and has not been deployed. Live invitation,
+password update, database writes, physical-device behavior, and service-worker
+activation remain unverified. The project Playwright visual gate was not run;
+the in-app browser verified 390 × 844 layout, no horizontal overflow, and the
+More destination navigation.
+Recommended next: Review the consolidated More screen and approve deployment if
+the grouping feels right.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass; 151 unit tests.
+- More contains all former Settings options and scrolls vertically without
+  horizontal overflow at 390 px.
+- More → Invite Crew, More → Team Members, More → Change Password, and legacy
+  `/settings` → `/more` were exercised locally.
+
+### Session — 2 September 2026 · codex
+
+Completed: Refined More's identity strip. It now derives initials from the
+signed-in user's name and shows their role beneath the name instead of the
+venue name. The redundant header role badge was removed.
+
+Files changed: `src/screens/more/MoreScreen.tsx`, `design-qa.md`,
+`docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: This remains local only and has not been deployed. Authenticated
+production rendering, live writes, physical-device behavior, and service-worker
+activation were not verified.
+Recommended next: Review the local More screen, then approve deployment.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass; 151 unit tests.
+- At 390 × 844, the fixture identity renders `RA` and `CREW` with no horizontal
+  overflow.
+
+### Session — 2 September 2026 · codex
+
+Completed: Simplified More's identity area by removing the profile-level
+“SYNCED” badge and the `BOA BAR CONTROL · BUILD dev · BOA 2026` footer. Sync
+health remains in the Device & Continuity / Sync State row.
+
+Files changed: `src/screens/more/MoreScreen.tsx`, `design-qa.md`,
+`docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: This remains local only and has not been deployed. Authenticated
+production rendering, live writes, physical-device behavior, and service-worker
+activation were not verified.
+Recommended next: Review the cleaned-up More screen, then approve deployment.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint` pass.
+- At 390 × 844, the profile-level sync badge and build footer are absent, the
+  dedicated Sync State row remains visible, and document width is 390 px.
+
+### Session — 2 September 2026 · codex
+
+Completed: Wired Supabase `PASSWORD_RECOVERY` sessions to the existing one-time
+Set Password screen, so a manager without a password can use the recovery link
+to establish one; ordinary sign-in remains password-only.
+
+Files changed: `src/lib/auth.tsx`, `src/features/AuthGate.tsx`,
+`docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: The recovery-link flow was not exercised against the live hosted
+project or a physical device. SMTP/domain verification and live database
+behavior remain unverified for this change.
+Recommended next: Use one recovery link for `vipinmenon16@gmail.com` and
+confirm the password setup screen opens.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass; 151 unit tests.
+- Vercel Production deployment `dpl_7Fk27ygh6pLPsmaTKQB3YU9oLb8g` reached `READY` and is aliased at `https://boa-bar-control.vercel.app`.
+
+### Session — 2 September 2026 · codex
+
+Completed: Increased sign-in poster visibility after reviewing the running
+screen: reduced the frame overlay and raised the poster opacity while keeping
+the artwork at 100% height.
+Files changed: `src/styles.css`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: This remains local only and has not been deployed. I did not
+verify a physical device, authenticated flows, live writes, or service-worker
+activation.
+Recommended next: Review the local sign-in screen, then deploy after approval.
+
+Verified:
+
+- `corepack pnpm test:visual` passes with 0 hardcoded and 0 errored routes.
+
+### Session — 2 September 2026 · codex
+
+Completed: Refined the sign-in composition after visual review: reduced the
+“STAFF SIGN IN” heading, enlarged the BOA logo, and returned the poster to
+100% height with adjusted positioning so the illustrated face is more visible
+without zooming the artwork.
+Files changed: `src/styles.css`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: This remains local only and has not been deployed. I did not
+verify a physical device, authenticated flows, live writes, or service-worker
+activation.
+Recommended next: Review the local sign-in screen, then deploy after approval.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass; 151 unit tests.
+- `corepack pnpm test:visual` passes with 0 hardcoded and 0 errored routes.
+
+### Session — 1 September 2026 · codex
+
+Completed: Fixed the sign-in mobile frame override ordering so the phone layout
+actually removes the desktop border, rounded corners, and shadow from
+`.auth-frame`. Deployed production `dpl_BH5EdWyEWjPAc7xqV98BK8ADgNU6`.
+
+Files changed: `src/styles.css`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Physical-device verification remains outstanding; an old PWA
+service worker may need to activate before the new stylesheet appears.
+Recommended next: Hard-refresh the phone and recheck sign-in at the smallest
+viewport in use.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass. 151 unit tests.
+- Vercel production deployment reached `READY` and is aliased at https://boa-bar-control.vercel.app.
+
+### Session — 2 September 2026 · codex
+
+Completed: Scoped the clean poster background to mobile sign-in only. Desktop
+web sign-in no longer renders the poster artwork; mobile view renders it as a
+low-opacity layer behind the form. Deployed production
+`dpl_2uVfW9y61h3fWkiKN3A5iUCqczpH`.
+
+Files changed: `src/styles.css`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Physical-device visual verification remains outstanding; the PWA
+may need a full close/reopen before the mobile-only background activates.
+Recommended next: Recheck sign-in on both desktop and phone after the service
+worker updates.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass. 151 unit tests.
+- Vercel production deployment reached `READY` and is aliased at https://boa-bar-control.vercel.app.
+
+### Session — 2 September 2026 · codex
+
+Completed: Adjusted the sign-in artwork treatment to match the home navigation
+style: the clean no-text poster is now a low-opacity background layer across the
+mobile view, while the sign-in panel remains dark and readable. Deployed
+production `dpl_83PA8jRgVtnyML3dudRbPWEBxo3i`.
+
+Files changed: `src/styles.css`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Physical-device visual verification remains outstanding; the PWA
+may need a full close/reopen before the new background treatment activates.
+Recommended next: Recheck sign-in on the phone after the service worker updates.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass. 151 unit tests.
+- Vercel production deployment reached `READY` and is aliased at https://boa-bar-control.vercel.app.
+
+### Session — 2 September 2026 · codex
+
+Completed: Added a cleaned poster-art background for sign-in with all artist
+names, event copy, sponsor marks, and other text removed. The original poster
+asset remains unchanged. The sign-in stage now uses the clean artwork with a
+dark translucent form panel. Deployed production `dpl_5bZ5rshh4iSiC93ccbRFBc1HJzdF`.
+
+Files changed: `public/assets/boa-poster-clean.png`, `src/styles.css`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Physical-device visual verification remains outstanding; the PWA
+may need a full close/reopen before the new asset activates.
+Recommended next: Recheck sign-in on the phone after the service worker updates.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass. 151 unit tests.
+- Vercel production deployment reached `READY` and is aliased at https://boa-bar-control.vercel.app.
+
+### Session — 2 September 2026 · codex
+
+Completed: Prevented iOS Safari focus zoom on small-screen search, sign-in,
+invite, receipt, and select controls by applying a mobile-only 16px text size.
+Deployed production `dpl_D8W3dyssZBauRtorA3aRsYHmMmy9`.
+
+Files changed: `src/styles.css`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Physical-device verification remains outstanding; the PWA may
+need a full close/reopen before the new stylesheet activates.
+Recommended next: Recheck SKU search and every form control on the phone.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass. 151 unit tests.
+- Vercel production deployment reached `READY` and is aliased at https://boa-bar-control.vercel.app.
+- Vercel production deployment `dpl_CEdK7xY2aK3BFYp45968qhi4CL4F` reached `READY`.
+- `https://boa-bar-control.vercel.app` returned the expected BOA Bar Control HTML shell.
+
+### Session — 1 September 2026 · codex
+
+Completed: Fixed the shared mobile layout so the app and authentication screens
+use the full phone viewport without the desktop phone-frame border or shadow.
+Locked document-level scrolling, constrained nested flex scrollers, disabled
+overscroll chaining, and added safe-area padding for phone browser insets.
+Deployed as Vercel production `dpl_688gcZDMdboaE6mUKRLMwhzUVnbB`.
+
+Files changed: `src/styles.css`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: A real phone still needs a hard refresh or the PWA's update action
+to evict the previously cached shell. I could not verify authenticated flows,
+live writes, or service-worker activation on a physical device.
+Recommended next: Recheck login, home, and one long flow on the phone after the
+new bundle activates; then continue BAR-114.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass. 151 unit tests.
+- Vercel production deployment reached `READY` and `https://boa-bar-control.vercel.app` was aliased to it.
+
+### Session — 2 September 2026 · codex
+
+Completed: Updated the local sign-in preview so the clean poster artwork is
+contained within the sign-in panel at every viewport size, including the
+desktop-sized local preview that represents the mobile app frame. The outer
+web stage remains plain and the artwork remains low opacity.
+
+Files changed: `src/styles.css`, `public/assets/boa-poster-clean.png`,
+`docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: This change has not been deployed; user review of the local
+preview is pending. I did not verify a physical device, authenticated flows,
+live writes, or service-worker activation.
+Recommended next: After user approval, run the full gates and deploy the
+approved local version to Vercel.
+
+### Session — 2 September 2026 · codex
+
+Completed: Increased the visibility of the contained clean poster artwork so
+the central face reads clearly behind the auth content. Confirmed that all
+unauthenticated states share `AuthFrame`, while the logged-in app remains on
+the separate app shell.
+
+Files changed: `src/styles.css`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Awaiting user approval of the local preview before running the
+release gates or deploying. I did not verify a physical device, authenticated
+flows, live writes, or service-worker activation.
+Recommended next: After approval, run the full gates and deploy to Vercel.
+
+### Session — 2 September 2026 · codex
+
+Completed: Repositioned and slightly enlarged the contained poster artwork so
+the illustrated face is clearly above the foreground logo instead of directly
+behind it. The shared `AuthFrame` keeps the treatment consistent across all
+unauthenticated pages; the logged-in app shell remains unchanged.
+
+Files changed: `src/styles.css`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: This adjustment is local only and has not been deployed. I did
+not verify a physical device, authenticated flows, live writes, or
+service-worker activation.
+Recommended next: After user approval, run the full gates and deploy to
+Vercel.
+
+### Session — 2 September 2026 · codex
+
+Completed: Restyled the “USE A DIFFERENT EMAIL” auth action as an un-underlined
+secondary pill button with the existing Oswald typography and palette, including
+a subtle hover state.
+
+Files changed: `src/styles.css`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: This remains local only and has not been deployed. I did not
+verify the second sign-in step on a physical device, authenticated flows, live
+writes, or service-worker activation.
+Recommended next: Review the local OTP screen, then run the full gates and
+deploy after approval.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint` pass.
+
+### Session — 2 September 2026 · codex
+
+Completed: Began the approved password-based invitation flow. Sign-in now uses
+email and password, invited users with `needs_password` metadata receive a local
+password setup screen, Settings has an operator-only team invitation form, and
+the old OTP/claim-code screens are removed from the auth path. Added a Vercel
+server function that keeps the Supabase service-role key server-side and creates
+the invited user's membership and venue display name. Team now reviews and edits
+existing access only. Accepted ADR-014 records the new decision.
+
+Files changed: `api/invite-user.ts`, `src/lib/auth.tsx`,
+`src/features/AuthGate.tsx`, `src/screens/settings/SettingsScreen.tsx`,
+`src/screens/team/TeamScreen.tsx`, `src/styles.css`, `.env.example`,
+`docs/DECISIONS.md`, `docs/CURRENT-STATE.md`
+Architecture changes: server-side Vercel invitation endpoint added; the
+service-role key is not exposed to the client.
+Known issues: Supabase service-role environment configuration, invite email
+template, `noreply@boa.com` SMTP/DNS verification, and a complete live invite
+acceptance are not verified. Database tests and live writes were not run.
+Recommended next: Configure the server-only Vercel variables and Supabase/Resend
+sender, then test one complete invite acceptance before deployment.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass; 151 unit tests.
+- `api/invite-user.ts` type-checks independently.
+
+### Session — 2 September 2026 · codex
+
+Completed: Added the Supabase URL and hidden service-role key to Vercel
+Production and Preview, ran the full project gates, fixed Vercel's API-function
+typing issue, and deployed the password-based invitation build. Production
+deployment `dpl_GQ5yFrRTVK2fhxUBkzU76oqJTVoW` reached `READY` and is aliased at
+https://boa-bar-control.vercel.app. A safe GET check returned 405 from
+`/api/invite-user`, confirming the server function route is active.
+
+Files changed: `api/invite-user.ts`, `src/lib/auth.tsx`,
+`src/features/AuthGate.tsx`, `src/screens/settings/SettingsScreen.tsx`,
+`src/screens/team/TeamScreen.tsx`, `src/styles.css`, `.env.example`,
+`docs/DECISIONS.md`, `docs/CURRENT-STATE.md`
+Architecture changes: server-side Vercel invitation endpoint added; service-role
+key remains server-only.
+Known issues: A complete live invitation acceptance and database behavior were
+not verified. Physical-device behavior, live writes, and service-worker
+activation remain unverified. The Supabase SMTP sender must be configured and
+verified before sending production invitations reliably.
+Recommended next: Send one real invitation from Settings, accept it on a
+separate device, set the password, and confirm the new crew account can sign in.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass; 151 unit tests.
+- Vercel Production deployment reached `READY`.
+
+### Session — 2 September 2026 · codex
+
+Completed: Reduced the size of the “USE A DIFFERENT EMAIL” secondary auth
+button while preserving a comfortable tap target.
+
+Files changed: `src/styles.css`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: This remains local only and has not been deployed. I did not
+verify the second sign-in step on a physical device, authenticated flows, live
+writes, or service-worker activation.
+Recommended next: Review the local OTP screen, then run the full gates and
+deploy after approval.
+
+### Session — 2 September 2026 · codex
+
+Completed: Dimmed the contained poster artwork and moved the shared
+unauthenticated auth content farther down so the foreground logo clears the
+illustrated face.
+
+Files changed: `src/styles.css`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: This remains local only and has not been deployed. I did not
+verify a physical device, authenticated flows, live writes, or service-worker
+activation.
+Recommended next: After user approval, run the full gates and deploy to
+Vercel.
+
+### Session — 2 September 2026 · codex
+
+Completed: Increased the contained poster opacity, reduced its zoom so more of
+the illustration is visible, and nudged the shared unauthenticated auth content
+slightly downward.
+
+Files changed: `src/styles.css`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: This remains local only and has not been deployed. I did not
+verify a physical device, authenticated flows, live writes, or service-worker
+activation.
+Recommended next: After user approval, run the full gates and deploy to
+Vercel.
+
+### Session — 1 September 2026 · codex
+
+Completed: Redeployed the current working tree to Vercel production after the
+responsive layout fix. Deployment `dpl_HkZWWmEen8dDyC76J8J9hv7cjcPw` reached
+`READY` and is aliased at https://boa-bar-control.vercel.app.
+
+Files changed: `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: Physical-device refresh and authenticated/live-flow verification
+remain outstanding.
+Recommended next: Recheck the updated PWA on a phone after its service worker
+activates, then continue BAR-114.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass. 151 unit tests.
+### Session — 2 September 2026 · codex
+
+Completed: Deployed the verified modal-confirmation changes to Vercel
+production. Deployment `dpl_2CGq76fXWVQKRgTkDK3TJmUP4v49` reached `READY` and
+is aliased at https://boa-bar-control.vercel.app.
+
+Files changed: `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: I did not verify the deployed confirmation flows on a physical
+device or verify authenticated/live database behavior.
+Recommended next: Open the production PWA and check sign-out, leave-count, and
+discard-delivery confirmations on the target phone.
+
+Verified:
+
+- Vercel production build completed successfully.
+
+### Session — 2 September 2026 · codex
+
+Completed: Replaced inline confirmations with a reusable modal dialog for sign
+out, leaving an in-progress blind count, and discarding a delivery draft. The
+dialog supports outside-click and Escape dismissal and keeps the destructive
+action visually distinct.
+
+Files changed: `src/components/ConfirmDialog.tsx`,
+`src/screens/more/MoreScreen.tsx`, `src/screens/count/CountScreen.tsx`,
+`src/screens/receipt/ReceiptScreen.tsx`, `src/styles.css`,
+`docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: This remains local only. I did not verify a physical device,
+authenticated/live sync write, database state, or service-worker activation.
+The browser visual check could not be completed because the in-app browser
+automation session had no usable tab handle; the standard code gates passed.
+Recommended next: Review the modal in the local preview, then deploy if approved.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass. 151 unit tests.
+
+### Session — 2 September 2026 · codex
+
+Completed: Polished the failed-sync state in More so the action description and
+device-retention note have separate hierarchy, the status badge stays on one
+line, and the retry/resolve action reads as a compact error control.
+
+Files changed: `src/screens/more/MoreScreen.tsx`, `src/styles.css`,
+`docs/CURRENT-STATE.md`, `design-qa.md`
+Architecture changes: none
+Known issues: This remains local only. I did not verify a physical device,
+authenticated/live sync write, database state, or service-worker activation.
+The failure-state screenshot was supplied by the user; the fixture harness
+does not generate a failed outbox row by itself.
+Recommended next: Review the local More screen, then deploy if approved.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass. 151 unit tests.
+
+### Session — 2 September 2026 · codex
+
+Completed: Added a clean, branded Supabase Auth invitation email template with
+the BOA logo, the artwork-only no-lineup poster from the public Supabase Storage
+`email-assets` bucket, a clear password-setup invitation CTA with pill-shaped
+corners, and a plain-text fallback.
+
+Files changed: `docs/email-templates/invite-user.html`,
+`docs/email-templates/invite-user.txt`, `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: The updated template has not been pasted into Supabase or sent as
+a live test by Codex. Gmail image-loading behavior was not verified. The current
+production sender/domain and Gmail placement were not changed.
+Recommended next: Paste the HTML into Supabase Authentication → Emails → Invite
+user, save it, and send one test invitation.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass. 151 unit tests.
+
+### Session — 2 September 2026 · codex
+
+Completed: Fixed invitation sending by excluding `/api/*` from Vercel's SPA
+fallback rewrite. The client now safely handles non-JSON API responses and
+reports the HTTP status instead of throwing `Unexpected end of JSON input`.
+Deployed to Vercel production as `dpl_97Za5b6K1Qn5aVMYCgQQxjVafASf`, which
+reached `READY` and is aliased at https://boa-bar-control.vercel.app.
+
+Files changed: `vercel.json`, `src/screens/settings/InviteCrewScreen.tsx`,
+`docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: The invitation was not sent against the live production API by
+Codex because that would email a real team member. Database state and the live
+email delivery remain unverified.
+Recommended next: Retry one invitation in production with the intended crew
+email and confirm the invitation arrives.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass. 151 unit tests.

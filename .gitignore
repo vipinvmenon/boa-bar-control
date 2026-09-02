@@ -33,3 +33,4 @@ Bangalore Open Air — Ritual/
 # how this project spent five weeks building against assumptions — see
 # docs/DECISIONS.md ADR-001. If repository size becomes a problem, move them to
 # Git LFS; do not untrack them.
+.vercel

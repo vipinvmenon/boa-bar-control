@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
-import { isSupabaseConfigured, rpc, supabase } from './supabase'
+import { isSupabaseConfigured, supabase } from './supabase'
 import { clearUserCache, offlineDb } from './offline-db'
 import { canUseCachedMemberships } from './auth-offline'
 
@@ -43,12 +43,12 @@ type AuthState = {
    * answer that — see `membershipsFor`.
    */
   membershipsReady: boolean
+  /** True for the one-time password setup session opened from a recovery link. */
+  passwordSetupRequired: boolean
   error?: string
-  signInWithEmail: (email: string) => Promise<void>
-  verifyEmailOtp: (email: string, token: string) => Promise<void>
+  signInWithPassword: (email: string, password: string) => Promise<void>
+  setPassword: (password: string) => Promise<void>
   signOut: () => Promise<void>
-  /** Redeem a membership invite before any venue membership exists (BAR-143). */
-  claimInvite: (code: string) => Promise<{ name: string; role: VenueMembership['role'] }>
   setActiveVenue: (venueId: string) => void
 }
 
@@ -60,6 +60,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [activeVenueId, setActiveVenueId] = useState<string>()
   const [loading, setLoading] = useState(isSupabaseConfigured)
   const [error, setError] = useState<string>()
+  const [passwordSetupRequired, setPasswordSetupRequired] = useState(false)
   /**
    * BAR-165. The user id whose memberships have been resolved — from the cache,
    * from the server, or by failing.
@@ -86,9 +87,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setSession(data.session)
       setLoading(false)
     })
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession)
       setError(undefined)
+      if (event === 'PASSWORD_RECOVERY') setPasswordSetupRequired(true)
       if (nextSession) window.dispatchEvent(new CustomEvent('boa:auth-ready'))
     })
     return () => {
@@ -190,6 +192,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     loading,
     /** False while a signed-in user's memberships have not been resolved yet. */
     membershipsReady: !session?.user || membershipsFor === session.user.id,
+    passwordSetupRequired,
     user: session?.user ?? null,
     session,
     memberships,
@@ -205,17 +208,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
      * was sent the person was thrown back to the address step to do it again.
      * The request's in-flight state belongs to its own button.
      */
-    signInWithEmail: async (email) => {
+    signInWithPassword: async (email, password) => {
       if (!supabase) return
-      const { error: signInError } = await supabase.auth.signInWithOtp({ email })
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
       if (signInError) throw signInError
     },
-    verifyEmailOtp: async (email, token) => {
+    setPassword: async (password) => {
       if (!supabase) return
-      setLoading(true)
-      const { error: verifyError } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
-      setLoading(false)
-      if (verifyError) throw verifyError
+      const { error: passwordError } = await supabase.auth.updateUser({
+        password,
+        data: { needs_password: false },
+      })
+      if (passwordError) throw passwordError
+      setPasswordSetupRequired(false)
     },
     signOut: async () => {
       if (!supabase) return
@@ -232,15 +237,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
         await clearUserCache()
       }
     },
-    claimInvite: async (code) => {
-      const result = (await rpc('boa_bar_claim_invite', { p_code: code })) as
-        | { display_name?: string; role?: VenueMembership['role'] }
-        | null
-      if (!result?.role) throw new Error('That code is not valid')
-      return { name: result.display_name ?? '', role: result.role }
-    },
     setActiveVenue: setActiveVenueId,
-  }), [activeVenueId, error, loading, memberships, membershipsFor, session])
+  }), [activeVenueId, error, loading, memberships, membershipsFor, passwordSetupRequired, session])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

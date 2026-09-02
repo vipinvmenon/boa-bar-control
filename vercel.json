@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/((?!assets/|registerSW.js|manifest.webmanifest|sw.js|workbox-).*)", "destination": "/index.html" }
+    { "source": "/((?!api/|assets/|registerSW.js|manifest.webmanifest|sw.js|workbox-).*)", "destination": "/index.html" }
   ],
   "headers": [
     {

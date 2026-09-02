@@ -1,0 +1,79 @@
+import { useState, type FormEvent } from 'react'
+import { useNavigate } from '@tanstack/react-router'
+import { ChevronLeft, UserPlus } from 'lucide-react'
+import { useAuth } from '../../lib/auth'
+import { useRepositoryQuery } from '../../data/RepositoryProvider'
+import type { VenueRole } from '../../data/repository'
+
+export function InviteCrewScreen() {
+  const auth = useAuth()
+  const navigate = useNavigate()
+  const team = useRepositoryQuery(['settings-team'], (r) => r.team())
+  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
+  const [role, setRole] = useState<VenueRole>('crew')
+  const [locationId, setLocationId] = useState('')
+  const [message, setMessage] = useState<string>()
+  const [inviting, setInviting] = useState(false)
+  const fixtureCapture = import.meta.env.DEV && new URLSearchParams(window.location.search).has('fixture')
+  const canInvite = fixtureCapture || Boolean(auth.user?.email && ['vipinmenon16@gmail.com', 'salman@bangaloreopenair.com'].includes(auth.user.email.toLowerCase()))
+
+  const invite = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setInviting(true)
+    setMessage(undefined)
+    try {
+      const accessToken = auth.session?.access_token
+      if (!accessToken || !auth.activeMembership) throw new Error('Your session is not ready')
+      const response = await fetch('/api/invite-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ email, displayName: name, role, locationId: locationId || null, venueId: auth.activeMembership.venueId }),
+      })
+      const responseText = await response.text()
+      let result: { ok?: boolean; error?: string } = {}
+      if (responseText) {
+        try { result = JSON.parse(responseText) as { ok?: boolean; error?: string } }
+        catch { result = { error: responseText.slice(0, 180) } }
+      }
+      if (!response.ok || result.ok !== true) {
+        throw new Error(result.error?.startsWith('<!doctype') || result.error?.startsWith('<html')
+          ? 'Invitation service is unavailable in this local preview. Open the production app to send an invitation.'
+          : result.error ?? `Could not send invitation (${response.status})`)
+      }
+      setEmail('')
+      setName('')
+      setLocationId('')
+      setMessage('INVITATION SENT · THEY WILL SET A PASSWORD FROM THE EMAIL')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Could not send invitation')
+    } finally {
+      setInviting(false)
+    }
+  }
+
+  return (
+    <div className="section-screen">
+      <header className="section-head"><div className="count-head-left">
+        <button className="flow-back" onClick={() => void navigate({ to: '/settings' })} aria-label="Back to settings"><ChevronLeft size={18} strokeWidth={2} aria-hidden="true" /></button>
+        <h1 className="section-head-title">Invite crew</h1>
+      </div></header>
+      <div className="section-body settings-form-body">
+        {canInvite && (auth.activeMembership || fixtureCapture) ? (
+          <section className="sync-card settings-invite-card">
+            <div className="sync-card-top"><span className="sync-card-eyebrow"><UserPlus size={13} aria-hidden="true" /> NEW TEAM MEMBER</span></div>
+            <p className="sync-card-copy">Send a secure invitation. They will set a password before entering the app.</p>
+            <form className="settings-invite-form" onSubmit={(event) => void invite(event)}>
+              <input aria-label="Team member name" required value={name} onChange={(event) => setName(event.target.value)} placeholder="Full name" />
+              <input aria-label="Team member email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email address" />
+              <select aria-label="Team member role" value={role} onChange={(event) => setRole(event.target.value as VenueRole)}><option value="crew">CREW</option><option value="warehouse">WAREHOUSE</option><option value="bar_lead">BAR LEAD</option><option value="auditor">AUDITOR</option></select>
+              <select aria-label="Team member location" value={locationId} onChange={(event) => setLocationId(event.target.value)}><option value="">Select bar / location</option>{(team.data?.locations ?? []).map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}</select>
+              <button className="ritual-button wide" type="submit" disabled={inviting}>{inviting ? 'Sending…' : 'Send invitation'}</button>
+            </form>
+            {message && <p className="flow-hint" role="status">{message}</p>}
+          </section>
+        ) : <p className="section-empty">Only the approved BOA managers can invite crew.</p>}
+      </div>
+    </div>
+  )
+}

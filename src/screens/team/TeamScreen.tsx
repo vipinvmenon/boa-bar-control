@@ -1,155 +1,39 @@
-/**
- * BAR-144, and the half of BAR-143 that does not depend on how people sign in.
- *
- * Two failures this closes, both of which happen on the night:
- *   - a bar lead arriving at 20:00 could not be enrolled at all;
- *   - when the manager left at 23:00, variance, reports and count sign-off left
- *     with them, because nobody could be promoted.
- *
- * Not a design screen — the design has no team management. Built from existing
- * tokens.
- *
- * The claim box is shown to everybody, including people with no membership: it is
- * the only thing a new starter can use, and the venue they are joining is the one
- * the code belongs to.
- */
-import { useState } from 'react'
+/** Team membership review and role management. New staff invitations live in Settings. */
 import { useNavigate } from '@tanstack/react-router'
-import { ChevronLeft, UserPlus } from 'lucide-react'
-import { useRepository, useRepositoryMutation, useRepositoryQuery } from '../../data/RepositoryProvider'
+import { ChevronLeft } from 'lucide-react'
+import { useRepositoryMutation, useRepositoryQuery } from '../../data/RepositoryProvider'
 import type { VenueRole } from '../../data/repository'
 
 const ROLE_LABEL: Record<VenueRole, string> = {
-  crew: 'CREW',
-  warehouse: 'WAREHOUSE',
-  bar_lead: 'BAR LEAD',
-  manager: 'MANAGER',
-  auditor: 'AUDITOR',
-  admin: 'ADMIN',
+  crew: 'CREW', warehouse: 'WAREHOUSE', bar_lead: 'BAR LEAD', manager: 'MANAGER', auditor: 'AUDITOR', admin: 'ADMIN',
 }
 
 export function TeamScreen() {
   const navigate = useNavigate()
-  const repository = useRepository()
   const team = useRepositoryQuery(['team'], (r) => r.team())
-
-  const [name, setName] = useState('')
-  const [role, setRole] = useState<VenueRole>('crew')
-  const [locationId, setLocationId] = useState('')
-  const [issued, setIssued] = useState<{ code: string; name: string } | null>(null)
-
-  const invite = useRepositoryMutation((r, input: { displayName: string; role: VenueRole; locationId?: string }) =>
-    r.createInvite(input),
-  )
   const change = useRepositoryMutation((r, input: { userId: string; role: VenueRole }) =>
     r.setMembership({ userId: input.userId, role: input.role, active: true }),
   )
-
   const data = team.data
 
-  return (
-    <div className="section-screen">
-      <header className="section-head">
-        <div className="count-head-left">
-          <button className="flow-back" onClick={() => void navigate({ to: '/more' })} aria-label="Back">
-            <ChevronLeft size={18} strokeWidth={2} aria-hidden="true" />
-          </button>
-          <h1 className="section-head-title">Team</h1>
-        </div>
-      </header>
-
-      <div className="section-body">
-        {data?.canInvite && (
-          <section className="panel team-card">
-            <span className="issue-label"><UserPlus size={13} strokeWidth={2} aria-hidden="true" /> INVITE SOMEBODY</span>
-            <p className="team-helper">Create a single-use code, then give it to the staff member who will receive this access.</p>
-            <label className="field">
-              <span className="issue-label">NAME</span>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Aditi" />
-            </label>
-            <div className="team-roles">
-              {(Object.keys(ROLE_LABEL) as VenueRole[])
-                // Only an admin may mint management. Otherwise a manager could
-                // promote themselves by inviting a second account and claiming it.
-                .filter((r) => data.canGrantManagement || (r !== 'manager' && r !== 'admin'))
-                .map((option) => (
-                  <button
-                    key={option}
-                    className={role === option ? 'active' : ''}
-                    onClick={() => setRole(option)}
-                  >
-                    {ROLE_LABEL[option]}
-                  </button>
-                ))}
-            </div>
-            <label className="field">
-              <span className="issue-label">POSTED TO</span>
-              <select value={locationId} onChange={(e) => setLocationId(e.target.value)}>
-                <option value="">No fixed location</option>
-                {data.locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </select>
-            </label>
-            {/*
-              BAR-165. The invite carries the person's name into every movement
-              they will post (BAR-124), so it is required — which the dead button
-              did not say.
-            */}
-            {name.trim() === '' ? (
-              <p className="flow-hint">Enter their name. It is what every movement they post will be signed with.</p>
-            ) : null}
-            <button
-              className="ritual-button wide"
-              disabled={name.trim() === '' || invite.isPending}
-              onClick={() => invite.mutate(
-                { displayName: name.trim(), role, locationId: locationId || undefined },
-                { onSuccess: (result) => { setIssued(result); setName('') } },
-              )}
-            >
-              {invite.isPending ? 'Creating…' : 'Create invite'}
-            </button>
-            {invite.isError && <p className="flow-error" role="alert">{invite.error.message}</p>}
-            {issued && (
-              <div className="team-code" role="status">
-                <span>READ THIS OUT TO {issued.name.toUpperCase()}</span>
-                <strong>{issued.code}</strong>
-                <small>Single use. It expires in 24 hours.</small>
-              </div>
-            )}
-          </section>
-        )}
-
-        <div className="section-label">
-          ON THIS VENUE
-          {data ? <span>{data.members.length}</span> : null}
-        </div>
-
-        {data?.members.map((member) => (
-          <div className="team-row" key={member.userId}>
-            <span>
-              <strong>{member.name}</strong>
-              <small>{ROLE_LABEL[member.role]}{member.locationName ? ` · ${member.locationName}` : ''}</small>
-            </span>
-            {data.canManage && !member.isSelf ? (
-              <select
-                value={member.role}
-                onChange={(e) => change.mutate({ userId: member.userId, role: e.target.value as VenueRole })}
-                aria-label={`Change role for ${member.name}`}
-              >
-                {(Object.keys(ROLE_LABEL) as VenueRole[])
-                  .filter((r) => data.canGrantManagement || (r !== 'manager' && r !== 'admin'))
-                  .map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
-              </select>
-            ) : (
-              <span className="team-self">{member.isSelf ? 'YOU' : ''}</span>
-            )}
-          </div>
-        ))}
-
-        {change.isError && <p className="flow-error" role="alert">{change.error.message}</p>}
-        {repository.kind === 'fixture' && (
-          <p className="section-empty">Demo data — no invite created here is real.</p>
-        )}
+  return <div className="section-screen">
+    <header className="section-head">
+      <div className="count-head-left">
+        <button className="flow-back" onClick={() => void navigate({ to: '/settings' })} aria-label="Back to settings"><ChevronLeft size={18} strokeWidth={2} aria-hidden="true" /></button>
+        <h1 className="section-head-title">Team</h1>
       </div>
+    </header>
+    <div className="section-body">
+      <p className="flow-hint">Review the people who currently have access to this venue.</p>
+      <div className="section-label">ON THIS VENUE{data ? <span>{data.members.length}</span> : null}</div>
+      {data?.members.map((member, index) => <div className="team-row" key={`${member.userId}-${member.locationName ?? member.role}-${index}`}>
+        <span><strong>{member.name}</strong><small>{ROLE_LABEL[member.role]}{member.locationName ? ' · ' + member.locationName : ''}</small></span>
+        {data.canManage && !member.isSelf ? <select value={member.role} onChange={(event) => change.mutate({ userId: member.userId, role: event.target.value as VenueRole })} aria-label={'Change role for ' + member.name}>
+          {(Object.keys(ROLE_LABEL) as VenueRole[]).filter((role) => data.canGrantManagement || (role !== 'manager' && role !== 'admin')).map((role) => <option key={role} value={role}>{ROLE_LABEL[role]}</option>)}
+        </select> : <span className="team-self">{member.isSelf ? 'YOU' : ''}</span>}
+      </div>)}
+      {change.isError && <p className="flow-error" role="alert">{change.error.message}</p>}
+      {data && data.members.length === 0 && <p className="section-empty">No active team members.</p>}
     </div>
-  )
+  </div>
 }
