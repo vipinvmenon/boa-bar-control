@@ -3119,6 +3119,25 @@ Verified:
 
 ### Session — 2 September 2026 · codex
 
+Completed: Committed and pushed the accumulated BOA Bar Control working-tree
+changes as `69df4b5`, then deployed that revision to Vercel production.
+Deployment `dpl_4gw8cv661kfrQB2F7TrKktzvvSGm` reached `READY` and is aliased at
+https://boa-bar-control.vercel.app.
+
+Files changed: `docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues: I did not verify authenticated/live database behavior, physical
+device behavior, or send a production invitation. The deployment build emitted
+only the existing large-chunk warning.
+Recommended next: Recheck the production PWA and paste the final invitation
+template into Supabase if it has not already been saved there.
+
+Verified:
+
+- Full local typecheck, lint, 151 tests, and production build passed before deployment.
+
+### Session — 2 September 2026 · codex
+
 Completed: Prevented the local Vite SPA fallback from being treated as a
 successful invitation API response. The invite screen now requires an explicit
 `{ ok: true }` response before showing “Invitation sent”, and explains that the
