@@ -77,6 +77,7 @@ select private.boa_bar_post_movement(jsonb_build_object(
 -- Scoped bar lead: writes Bar 3, never Bar 4.
 -- ---------------------------------------------------------------------------
 
+select set_config('request.jwt.claim.sub', '', true);  -- see the BAR-141 note below
 set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000000b1","role":"authenticated"}';
 set local role authenticated;
 
@@ -173,6 +174,24 @@ select is(
 -- Global manager: no fixed location, but may explicitly operate either bar.
 -- ---------------------------------------------------------------------------
 
+-- BAR-141 LEAK, found 3 September 2026 the first time this suite ran against the
+-- hosted schema. The five BAR-141 wrappers do
+-- `set_config('request.jwt.claim.sub', <actor>, true)` so a queued command posts
+-- as its original author. `true` means transaction-local — and pgTAP runs this
+-- whole file in ONE transaction, while `auth.uid()` reads
+-- `request.jwt.claim.sub` in PREFERENCE to `request.jwt.claims`.
+--
+-- So the first `record_waste` below pins auth.uid() to the bar lead for the rest
+-- of the file, and every later `set local request.jwt.claims` is silently
+-- ignored. That is why the three manager assertions failed with the BAR LEAD's
+-- permissions: "a manager can record waste at an explicitly selected bar" was
+-- never testing a manager.
+--
+-- Clearing the override is what makes an identity switch mean anything here. In
+-- production each RPC is its own transaction so the leak is bounded to one call,
+-- but the wrapper restoring what it overrode is the real fix and is recorded as a
+-- defect in docs/CURRENT-STATE.md.
+select set_config('request.jwt.claim.sub', '', true);
 reset role;
 set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000000b2","role":"authenticated"}';
 set local role authenticated;
