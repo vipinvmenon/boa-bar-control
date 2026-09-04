@@ -60,12 +60,19 @@ export const STOCK_POSITION: StockPosition = {
 }
 
 // design-script.jsx:183-186 — the three alerts, verbatim
+//
+// BAR-175 added `skuId` to the first alert. The design's own copy names the SKU
+// ("Bar 3 · Kingfisher low"), so the field states in data what the title already
+// states in prose; no title, metric or note was rewritten. Only the run-out
+// alert carries one: the docket alert can stand for several dockets of several
+// lines each, and the count alert is about a whole bar, so both leave it unset
+// rather than nominate an arbitrary line.
 export const ALERTS: Alert[] = [
   {
     id: 'kingfisher-low', level: 'CRITICAL', ageLabel: 'RUN-OUT ~20:10',
     title: 'Bar 3 · Kingfisher low', subtitle: 'Depleting 38 bottles/hr',
     metric: '12', metricUnit: 'LEFT', meterPct: 14, meterNote: '26 MIN OF COVER',
-    actionLabel: 'ISSUE', tone: 'red', target: 'issue', locationId: 'bar-3',
+    actionLabel: 'ISSUE', tone: 'red', target: 'issue', locationId: 'bar-3', skuId: 'kf',
   },
   {
     id: 'dockets-open', level: 'WARNING', ageLabel: 'OLDEST 18 MIN',
@@ -494,6 +501,11 @@ export function variant() {
    * never-counted branch — the one that used to render an em-dash in a numeral
    * slot — had no fixture state at all and the gate could not see it. Home
    * passed only because the hero and the bar grid differ.
+   *
+   * BAR-175. Neither variant alert carries a `skuId`: one is a bar-wide count
+   * and one stands for a docket of several lines. That is the honest value, and
+   * it also gives the gate a case where the home CTA must navigate with no SKU
+   * in the URL at all.
    */
   const alerts: Alert[] = [
     {

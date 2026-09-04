@@ -59,14 +59,26 @@ export function HomeScreen() {
      * `validateSearch: parseIssueDraftSearch` all along; only this call site was
      * missing. Recognition over recall: carry what the alert already holds.
      *
-     * It holds the location and no more. `Alert` (src/data/repository.ts) has a
-     * `locationId` but no `skuId`, so the PRODUCT half of the seed cannot be
-     * supplied from here without a data-layer change — out of scope for this
-     * task, and inventing a SKU would be worse than leaving the default.
-     * Recorded rather than approximated.
+     * BAR-175 finishes it. `Alert` now carries an optional `skuId`, so the
+     * PRODUCT half of the seed comes from the alert too. Until then the issue
+     * screen only *appeared* to open on the right product: the fixture's
+     * `defaultProductId` is the same SKU the demo alert names, so a screenshot
+     * of Kingfisher landing on Kingfisher proved nothing and would not have
+     * held for an alert about any other SKU.
+     *
+     * `skuId` is omitted from the search rather than passed as `undefined`, so
+     * an alert that names no SKU — a docket or count alert, and every alert the
+     * live path can currently produce — leaves the URL clean and the issue
+     * screen falls back to the repository's default product, which is the
+     * correct behaviour when nothing is known.
      */
     if (alert.target === 'issue' && alert.locationId) {
-      void navigate({ to: '/issue', search: { toLocationId: alert.locationId } })
+      void navigate({
+        to: '/issue',
+        search: alert.skuId
+          ? { toLocationId: alert.locationId, skuId: alert.skuId }
+          : { toLocationId: alert.locationId },
+      })
       return
     }
     /**

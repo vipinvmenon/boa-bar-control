@@ -178,6 +178,24 @@ export type Alert = {
    * manager which bar was overdue could not take them to that bar's sheet.
    */
   locationId?: string
+  /**
+   * BAR-175. The SKU the alert is about, when the alert is about one.
+   *
+   * BAR-173 carried the alert's location into `/issue` but had to leave the
+   * product behind, because this type had no way to say which SKU was running
+   * dry. The issue screen therefore opened on the repository's default product
+   * and the user had to step through the catalogue one SKU per tap on a CHANGE
+   * button. Worse, it *looked* fixed: the fixture's default product happens to
+   * be the same SKU the demo alert names, so the seed appeared correct by
+   * coincidence and would not have held for an alert about anything else.
+   *
+   * Optional because most alerts are not about a single SKU — a docket alert
+   * can stand for several dockets of several lines, and a count alert is about
+   * a whole bar. Absent means "no SKU is known", never "any SKU will do": a
+   * guessed SKU on a run-out alert is exactly the quiet wrongness this project
+   * exists to remove.
+   */
+  skuId?: string
 }
 
 // ---------------------------------------------------------------------------

@@ -525,6 +525,20 @@ export function createLiveRepository(context: LiveContext): Repository {
        * Inventing either would put a run-out time on a manager's home screen
        * that no calculation stands behind. Recorded as outstanding rather than
        * approximated.
+       *
+       * BAR-175 added an optional `skuId` to `Alert` so the home CTA can seed
+       * the issue screen's product. Nothing below sets it, and that is correct
+       * rather than unfinished: this producer emits exactly two alerts, and
+       * neither is about a single SKU. The docket alert covers every awaiting
+       * docket at once (`awaiting.length` is its metric) and a docket carries
+       * lines for many SKUs — `boa_bar_docket` has no `sku_id`; only
+       * `boa_bar_docket_line` does, one row per SKU. The count alert is about a
+       * whole bar's sheet. The only SKU-scoped alert the design has is the
+       * run-out alert directly above, which this path cannot produce at all for
+       * the reasons already stated. So the live `skuId` stays `undefined` until
+       * that alert exists; picking a docket line or a low-looking SKU to fill
+       * the field would put a product in front of a user that no calculation
+       * chose.
        */
 
       const oldest = awaiting[0]
