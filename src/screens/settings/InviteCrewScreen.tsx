@@ -16,7 +16,15 @@ export function InviteCrewScreen() {
   const [message, setMessage] = useState<string>()
   const [inviting, setInviting] = useState(false)
   const fixtureCapture = import.meta.env.DEV && new URLSearchParams(window.location.search).has('fixture')
-  const canInvite = fixtureCapture || Boolean(auth.user?.email && ['vipinmenon16@gmail.com', 'salman@bangaloreopenair.com'].includes(auth.user.email.toLowerCase()))
+  /**
+   * BAR-171. The same two-personal-address literal list that gated the MORE
+   * screen's row also gated this screen. Both now read the membership role the
+   * database enforces on `/api/invite-user`; this remains a usability
+   * affordance, never a control (non-negotiable 7). `auditor` is excluded
+   * deliberately — read access to variance is not permission to enrol crew.
+   */
+  const venueRole = auth.activeMembership?.role
+  const canInvite = fixtureCapture || venueRole === 'manager' || venueRole === 'admin'
 
   const invite = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()

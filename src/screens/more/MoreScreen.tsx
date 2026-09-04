@@ -43,7 +43,20 @@ export function MoreScreen() {
   const [resolvingFailure, setResolvingFailure] = useState(false)
   const fixtureCapture = import.meta.env.DEV && new URLSearchParams(window.location.search).has('fixture')
   const isManager = store.role === 'Manager' || fixtureCapture
-  const canInvite = fixtureCapture || Boolean(auth.user?.email && ['vipinmenon16@gmail.com', 'salman@bangaloreopenair.com'].includes(auth.user.email.toLowerCase()))
+  /**
+   * BAR-171. This used to compare `auth.user.email` against two literal personal
+   * addresses in client code. On the night nobody else could enrol a walk-up, and
+   * the workaround — signing in as one of those two accounts — destroys
+   * attribution on every movement made afterwards, which is the whole point of
+   * the custody model.
+   *
+   * The gate is now the membership role the database already enforces on the
+   * invite path; this stays a usability affordance, never a control
+   * (non-negotiable 7). It reads `venueRole`, not the derived `store.role`,
+   * because `store.role` folds `auditor` into `Manager` — an auditor may read
+   * variance but must not enrol crew.
+   */
+  const canInvite = fixtureCapture || store.venueRole === 'manager' || store.venueRole === 'admin'
   const canManageTeam = canInvite || isManager
   const operations = OPERATIONS.filter((item) => (!item.managerOnly || isManager) && (!item.needsLocation || Boolean(store.activeLocationId)))
   const personName = session.data?.signedInName ?? auth.user?.email?.split('@')[0] ?? 'Staff'
