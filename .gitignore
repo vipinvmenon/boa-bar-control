@@ -11,6 +11,13 @@ test-results/
 supabase/.temp/
 .visual-diff/
 
+# Agent worktrees. `git worktree` checkouts live inside the project root, so a
+# reflexive `git add -A` would stage four full copies of the repository. They are
+# also why `vite.config.ts` excludes them from the test gate — Vitest was
+# collecting every copy's suite and reporting 755 passing tests for a suite of
+# 151 (BAR-171).
+.claude/worktrees/
+
 # Working scratch, not deliverables
 *.log
 
