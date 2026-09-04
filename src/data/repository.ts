@@ -273,6 +273,19 @@ export type DetailRow = { label: string; value: string; tone?: Tone }
  * quantity changes. The previous implementation hardcoded such figures, which is
  * how "1.5 cases" appeared next to a container count that could not produce it.
  */
+/** BAR-177. One product on a docket. A docket carries one or more. */
+export type CustodyLine = {
+  skuId: string
+  productName: string
+  productSpec: string
+  unitsPerCase: number
+  mlPerContainer: number
+  /** What the docket says was issued, for this line. */
+  expectedContainers: number
+  /** Source position before the issue, for the review screen's after-figure. */
+  warehouseBefore: number
+}
+
 export type Custody = {
   /**
    * BAR-044. The docket's primary key, which is what `boa_bar_accept_docket`
@@ -281,8 +294,6 @@ export type Custody = {
    */
   docketId: string
   docketNo: string
-  /** The SKU being moved, for the acceptance command. */
-  skuId: string
   /** Source location id, for the issue command. */
   fromLocationId: string
   /**
@@ -298,14 +309,22 @@ export type Custody = {
   toName: string
   issuedBy: string
   issuedAt: string
-  productName: string
-  productSpec: string
-  unitsPerCase: number
-  mlPerContainer: number
-  /** What the docket says was issued. */
-  expectedContainers: number
-  /** Warehouse position before the issue, for the review screen's after-figure. */
-  warehouseBefore: number
+  /**
+   * BAR-177. Every line on the docket, not the first one.
+   *
+   * This was seven scalar fields — `productName`, `expectedContainers` and so on
+   * — and the live repository filled them from `lines[0]`. A docket has always
+   * been able to carry several: `boa_bar_create_docket` iterates
+   * `p_payload->'lines'`, and `boa_bar_docket_line` is a table, not a column. So
+   * the moment anything issued more than one SKU, the receiving lead would have
+   * been shown one product, accepted it, and left the rest in transit — stock in
+   * nobody's position, which is the failure this whole two-party mechanism exists
+   * to prevent.
+   *
+   * Carried as an array before anything can create one, so the read path can
+   * never be the half that is missing.
+   */
+  lines: CustodyLine[]
   /** design-script.jsx `diffReasons`. */
   differenceReasons: string[]
   /** Who is receiving, for the receipt record. */

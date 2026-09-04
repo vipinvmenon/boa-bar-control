@@ -34,8 +34,19 @@ export function ReceivedScreen() {
     )
   }
 
-  const expected = d.expectedContainers
+  /*
+    BAR-177. The docket's total, across every line. `qty` in the URL is what the
+    acceptance actually credited — a single figure, because the receipt states
+    one outcome for one docket, not a per-line breakdown.
+  */
+  const expected = d.lines.reduce((sum, line) => sum + line.expectedContainers, 0)
   const accepted = qty ?? expected
+  /*
+    "bottles" is the design's word and it is right for the docket the design
+    draws. Across several products the units differ — bottles, cans, kegs — so
+    naming one of them would be wrong on the others.
+  */
+  const unitWord = d.lines.length === 1 ? 'bottles' : 'containers'
   const short = expected - accepted
   const isShort = short > 0
 
@@ -49,16 +60,16 @@ export function ReceivedScreen() {
           <p className="received-title">{isShort ? 'RECEIVED SHORT' : 'RECEIVED'}</p>
           <p className="received-sub">
             {isShort
-              ? `${d.toName} credited with ${accepted} bottles. The shortfall is now an open discrepancy.`
-              : `${d.toName} credited with ${accepted} bottles. Docket ${d.docketNo} closed.`}
+              ? `${d.toName} credited with ${accepted} ${unitWord}. The shortfall is now an open discrepancy.`
+              : `${d.toName} credited with ${accepted} ${unitWord}. Docket ${d.docketNo} closed.`}
           </p>
         </div>
 
         <DetailList
           rows={[
             { label: 'Docket', value: d.docketNo },
-            { label: 'Expected', value: `${expected} BOTTLES` },
-            { label: 'Accepted', value: `${accepted} BOTTLES`, tone: isShort ? 'red' : 'green' },
+            { label: 'Expected', value: `${expected} ${unitWord.toUpperCase()}` },
+            { label: 'Accepted', value: `${accepted} ${unitWord.toUpperCase()}`, tone: isShort ? 'red' : 'green' },
             {
               label: 'Difference',
               value: isShort ? `−${short} · ${reason ?? ''}`.trim() : 'NONE',

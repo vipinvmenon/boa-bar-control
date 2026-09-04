@@ -1325,25 +1325,41 @@ export function createLiveRepository(context: LiveContext): Repository {
         .eq('docket_id', docket.id)
         .then((r) => unwrap<DocketLineRow[]>('custody docket lines', r))
 
-      const first = lines[0]
-      if (!first) throw new Error(`Docket ${docket.docket_no} has no lines`)
-      const sku = ref.skuById.get(first.sku_id)
-      if (!sku) throw new Error(`Docket ${docket.docket_no} references an unknown SKU`)
-      const shape = toSkuShape(sku)
+      if (lines.length === 0) throw new Error(`Docket ${docket.docket_no} has no lines`)
 
       /**
-       * NOTE — the design's custody screens show ONE product per docket, so this
-       * read model carries one. `boa_bar_docket_line` is correctly many-to-one,
-       * and a multi-line docket created outside this app would display only its
-       * first line here. Multi-line custody screens are not in the design and are
-       * recorded as an open question rather than invented.
+       * BAR-177. Every line, not `lines[0]`.
+       *
+       * The note that stood here said the design's custody screens show one
+       * product, so this read model carried one, and recorded a multi-line docket
+       * displaying only its first line as an open question. It was not a
+       * question — it was a silent data loss with the worst possible
+       * consequence: the receiving lead sees one product, accepts it, and the
+       * rest of the docket stays in transit forever. Nobody's position holds it
+       * and no screen ever mentions it again.
+       *
+       * A line whose SKU is unknown to the reference cache still throws: a docket
+       * that cannot be fully described must not be partially accepted, which is
+       * the same defect in a smaller costume.
        */
-
-      // Warehouse position before the issue. The dispatch leg has already been
-      // posted, so the position now is the position before, less what went out.
-      const sourceNow = snap.rows
-        .filter((r) => r.location_id === docket.from_location_id && r.sku_id === first.sku_id)
-        .reduce((sum, r) => sum + Number(r.containers), 0)
+      const custodyLines = lines.map((line) => {
+        const sku = ref.skuById.get(line.sku_id)
+        if (!sku) throw new Error(`Docket ${docket.docket_no} references an unknown SKU`)
+        // Source position before the issue. The dispatch leg has already been
+        // posted, so the position now is the position before, less what went out.
+        const sourceNow = snap.rows
+          .filter((r) => r.location_id === docket.from_location_id && r.sku_id === line.sku_id)
+          .reduce((sum, r) => sum + Number(r.containers), 0)
+        return {
+          skuId: line.sku_id,
+          productName: sku.name,
+          productSpec: specLabel(toSkuShape(sku)),
+          unitsPerCase: sku.units_per_case,
+          mlPerContainer: sku.ml_per_container,
+          expectedContainers: line.issued_containers,
+          warehouseBefore: sourceNow + line.issued_containers,
+        }
+      })
 
       const statusLabel =
         docket.status === 'awaiting'
@@ -1357,7 +1373,6 @@ export function createLiveRepository(context: LiveContext): Repository {
       return {
         docketId: docket.id,
         docketNo: docket.docket_no,
-        skuId: first.sku_id,
         fromLocationId: docket.from_location_id,
         toLocationId: docket.to_location_id,
         statusLabel,
@@ -1365,12 +1380,7 @@ export function createLiveRepository(context: LiveContext): Repository {
         toName: locationName(ref, docket.to_location_id).toUpperCase(),
         issuedBy: who(ref, docket.issued_by),
         issuedAt: clock.time(docket.issued_at),
-        productName: sku.name,
-        productSpec: specLabel(shape),
-        unitsPerCase: sku.units_per_case,
-        mlPerContainer: sku.ml_per_container,
-        expectedContainers: first.issued_containers,
-        warehouseBefore: sourceNow + first.issued_containers,
+        lines: custodyLines,
         /**
          * The four reasons in design-script.jsx `diffReasons`. Held here rather
          * than in the screen because the accept RPC validates against the same

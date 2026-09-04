@@ -60,7 +60,18 @@ export function DocketScreen() {
         <DetailList
           rows={[
             { label: 'Route', value: `${d.fromName} → ${d.toName}` },
-            { label: 'Items', value: `${d.expectedContainers} × ${d.productName.toUpperCase()}` },
+            /*
+              BAR-177. One row per line. A docket that listed only its first
+              product was a docket the receiving lead could not reconcile against
+              what actually arrived on the trolley.
+            */
+            ...(d.lines.length === 1
+              // The design's row, unchanged, for the docket the design draws.
+              ? [{ label: 'Items', value: `${d.lines[0]!.expectedContainers} × ${d.lines[0]!.productName.toUpperCase()}` }]
+              : d.lines.map((line) => ({
+                label: line.productName.toUpperCase(),
+                value: String(line.expectedContainers),
+              }))),
             { label: 'Issued by', value: d.issuedBy },
             { label: 'Issued at', value: d.issuedAt },
             { label: 'Status', value: d.statusLabel, tone: 'gold' },

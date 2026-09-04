@@ -19,6 +19,7 @@ import { useState } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { Check, Minus, Plus } from 'lucide-react'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
+import type { CustodyLine } from '../../data/repository'
 import { Advisory, FlowFooter, FlowHeader } from './parts'
 import { describeQuantity } from './quantity'
 import { useRepositoryMutation } from '../../data/RepositoryProvider'
@@ -32,7 +33,16 @@ export function AcceptScreen() {
   const d = custody.data
 
   const [diffOpen, setDiffOpen] = useState(false)
-  const [received, setReceived] = useState<number | null>(null)
+  /**
+   * BAR-177. Received quantities per SKU, not one figure for the docket.
+   *
+   * Keyed by SKU because `boa_bar_docket_line` is unique on
+   * (docket_id, sku_id), so a docket cannot carry the same product twice. An
+   * absent key means "not adjusted", and reads as the issued quantity — the
+   * difference panel starts by agreeing with the docket, exactly as the single
+   * stepper did.
+   */
+  const [received, setReceived] = useState<Record<string, number>>({})
   const [reason, setReason] = useState<string | null>(null)
 
   /**
@@ -52,15 +62,19 @@ export function AcceptScreen() {
   // order on every render. The docket is therefore read inside the callback,
   // where it is guaranteed to be loaded — the button that fires this does not
   // exist until it is.
-  const submit = useRepositoryMutation((repository, input: { accepted: number; why?: string }) => {
+  const submit = useRepositoryMutation((repository, input: { accepted: Record<string, number>; why?: string }) => {
     if (!d) throw new Error('The docket is still loading')
     return acceptDocket({
       repository,
       actionId,
       docketId: d.docketId,
-      lines: [
-        { skuId: d.skuId, issuedContainers: d.expectedContainers, acceptedContainers: input.accepted },
-      ],
+      // BAR-177. Every line is sent, adjusted or not. A line omitted from an
+      // acceptance is a line left in transit.
+      lines: d.lines.map((line) => ({
+        skuId: line.skuId,
+        issuedContainers: line.expectedContainers,
+        acceptedContainers: input.accepted[line.skuId] ?? line.expectedContainers,
+      })),
       differenceReason: input.why,
     })
   })
@@ -77,17 +91,26 @@ export function AcceptScreen() {
     )
   }
 
-  const expected = d.expectedContainers
-  const qty = received ?? expected
+  const qtyFor = (line: CustodyLine) => received[line.skuId] ?? line.expectedContainers
+  const expected = d.lines.reduce((sum, line) => sum + line.expectedContainers, 0)
+  const qty = d.lines.reduce((sum, line) => sum + qtyFor(line), 0)
   const short = expected - qty
   const isShort = short > 0
+  const multiLine = d.lines.length > 1
 
-  // BAR-129: the stepper is bounded. An unbounded one let a receiver accept more
-  // than was issued, and the excess was then classified as a shortfall.
-  const step = (delta: number) => setReceived(Math.max(0, Math.min(expected, qty + delta)))
+  // BAR-129: every stepper is bounded. An unbounded one let a receiver accept
+  // more than was issued, and the excess was then classified as a shortfall.
+  // BAR-177: bounded per line, against that line's own issued quantity — a
+  // single docket-wide bound would let a surplus on one product hide a shortfall
+  // on another.
+  const step = (line: CustodyLine, delta: number) => setReceived((current) => ({
+    ...current,
+    [line.skuId]: Math.max(0, Math.min(line.expectedContainers, qtyFor(line) + delta)),
+  }))
 
   // Just the "2 cases" part of the design's "2 cases · 650 ml · 31.2 L".
-  const casesLabel = (describeQuantity(expected, d.unitsPerCase, d.mlPerContainer).split(' · ')[0] ?? '').toUpperCase()
+  const casesLabel = (line: CustodyLine) =>
+    (describeQuantity(line.expectedContainers, line.unitsPerCase, line.mlPerContainer).split(' · ')[0] ?? '').toUpperCase()
 
   // Disabled while the write is in flight, or once it is durably queued, so a
   // second tap cannot claim another acceptance before the first has landed.
@@ -102,7 +125,7 @@ export function AcceptScreen() {
    */
   const accept = () => {
     submit.mutate(
-      { accepted: qty, why: reason ?? undefined },
+      { accepted: received, why: reason ?? undefined },
       {
         onSuccess: (outcome) => {
           // A queued acceptance is durable but is not yet a custody receipt.
@@ -149,43 +172,68 @@ export function AcceptScreen() {
 
         <section className="accept-items">
           <span className="accept-items-eyebrow">ITEMS ON DOCKET</span>
-          <div className="accept-items-row">
-            <div>
-              <strong>{d.productName}</strong>
-              <span>{d.productSpec}</span>
+          {d.lines.map((line) => (
+            <div className="accept-items-row" key={line.skuId}>
+              <div>
+                <strong>{line.productName}</strong>
+                <span>{line.productSpec}</span>
+              </div>
+              <div className="accept-items-qty">
+                <p>{line.expectedContainers}</p>
+                <span>{casesLabel(line)}</span>
+              </div>
             </div>
-            <div className="accept-items-qty">
-              <p>{expected}</p>
-              <span>{casesLabel}</span>
-            </div>
-          </div>
+          ))}
         </section>
 
         {diffOpen ? (
           <section className="diff-panel">
             <span className="diff-eyebrow">REPORT DIFFERENCE</span>
-            <div className="diff-counter">
-              <div className="diff-expected">
-                <span>EXPECTED</span>
-                <strong>{expected}</strong>
-              </div>
-              <div className="diff-stepper">
-                <button onClick={() => step(-1)} aria-label="One fewer received">
-                  <Minus size={18} strokeWidth={2.2} aria-hidden="true" />
-                </button>
-                <div className="diff-value">
-                  <p>{qty}</p>
-                  <span>RECEIVED</span>
+            {/*
+              BAR-177. One counter per line. A shortfall has to be attributed to
+              the product that is short: `boa_bar_docket_line` records an accepted
+              quantity per SKU, and "the docket is 6 down" is not something the
+              ledger, the excise return or the next morning's investigation can
+              use.
+            */}
+            {d.lines.map((line) => (
+              <div className="diff-line" key={line.skuId}>
+                {multiLine ? <span className="diff-line-name">{line.productName.toUpperCase()}</span> : null}
+                <div className="diff-counter">
+                  <div className="diff-expected">
+                    <span>EXPECTED</span>
+                    <strong>{line.expectedContainers}</strong>
+                  </div>
+                  <div className="diff-stepper">
+                    <button
+                      onClick={() => step(line, -1)}
+                      aria-label={`One fewer ${line.productName} received`}
+                      disabled={qtyFor(line) <= 0}
+                    >
+                      <Minus size={18} strokeWidth={2.2} aria-hidden="true" />
+                    </button>
+                    <div className="diff-value">
+                      <p>{qtyFor(line)}</p>
+                      <span>RECEIVED</span>
+                    </div>
+                    <button
+                      onClick={() => step(line, 1)}
+                      aria-label={`One more ${line.productName} received`}
+                      disabled={qtyFor(line) >= line.expectedContainers}
+                    >
+                      <Plus size={18} strokeWidth={2.2} aria-hidden="true" />
+                    </button>
+                  </div>
                 </div>
-                <button onClick={() => step(1)} aria-label="One more received" disabled={qty >= expected}>
-                  <Plus size={18} strokeWidth={2.2} aria-hidden="true" />
-                </button>
               </div>
-            </div>
+            ))}
             {/* The design's string is `+ ' BOTTLES'` unconditionally, but its demo
                 default of 46-of-48 means it never renders the singular. Pluralised
-                here because a real short-by-one would read "1 BOTTLES". */}
-            <p className="diff-short">SHORT BY {short} {short === 1 ? 'BOTTLE' : 'BOTTLES'}</p>
+                here because a real short-by-one would read "1 BOTTLES", and made
+                unit-neutral across several products because their units differ. */}
+            <p className="diff-short">
+              SHORT BY {short} {multiLine ? (short === 1 ? 'CONTAINER' : 'CONTAINERS') : (short === 1 ? 'BOTTLE' : 'BOTTLES')}
+            </p>
 
             <span className="diff-reason-label">REASON · REQUIRED</span>
             <div className="diff-reasons">
@@ -241,14 +289,14 @@ export function AcceptScreen() {
             ? 'Recording…'
             : isShort
               ? `Accept ${qty} · report short ${short}`
-              : `Accept ${expected} bottles`}
+              : multiLine ? `Accept all ${d.lines.length} products` : `Accept ${expected} bottles`}
         </button>
         <button
           className={`flow-cta-ghost ${diffOpen ? 'is-active' : ''}`}
           onClick={() => {
             setDiffOpen((open) => !open)
             if (diffOpen) {
-              setReceived(null)
+              setReceived({})
               setReason(null)
             }
           }}

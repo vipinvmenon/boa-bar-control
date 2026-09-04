@@ -270,7 +270,6 @@ export const CUSTODY_OVERVIEW: CustodyOverview = {
 export const CUSTODY: Custody = {
   docketId: 'D-0184',
   docketNo: 'D-0184',
-  skuId: 'kf',
   fromLocationId: 'warehouse',
   toLocationId: 'bar-3',
   statusLabel: 'AWAITING ACCEPTANCE',
@@ -278,12 +277,20 @@ export const CUSTODY: Custody = {
   toName: 'BAR 3',
   issuedBy: 'CHANDAN',
   issuedAt: '19:31',
-  productName: 'Kingfisher Premium',
-  productSpec: 'Beer · 650 ml bottle',
-  unitsPerCase: 24,
-  mlPerContainer: 650,
-  expectedContainers: 48,
-  warehouseBefore: 288,
+  // BAR-177. The design's docket carries one product and this one still does —
+  // the fixture reproduces the design (`docket.png`, `accept.png`), it does not
+  // exercise the new shape. D-0185 below is the multi-line case.
+  lines: [
+    {
+      skuId: 'kf',
+      productName: 'Kingfisher Premium',
+      productSpec: 'Beer · 650 ml bottle',
+      unitsPerCase: 24,
+      mlPerContainer: 650,
+      expectedContainers: 48,
+      warehouseBefore: 288,
+    },
+  ],
   differenceReasons: ['Short on pallet', 'Breakage in transit', 'Miscount at issue', 'Other'],
   acceptedBy: 'RAHUL',
   acceptedAt: '19:38',
@@ -385,12 +392,35 @@ export const CUSTODY_BY_DOCKET: Record<string, Custody> = {
     ...CUSTODY,
     docketId: 'D-0185',
     docketNo: 'D-0185',
-    skuId: 'corona',
-    productName: 'Corona Extra',
-    productSpec: 'Beer · 355 ml bottle',
-    mlPerContainer: 355,
-    expectedContainers: 24,
-    warehouseBefore: 96,
+    /**
+     * BAR-177. Deliberately two lines.
+     *
+     * The design has no multi-line docket, so nothing in `references/ui/`
+     * exercises one — and a shape no fixture produces is a shape the screens are
+     * never actually rendered against. D-0184 above stays single-line and remains
+     * the capture the fidelity gate compares; this one is how the custody chain
+     * gets driven with more than one product before a real docket has any.
+     */
+    lines: [
+      {
+        skuId: 'corona',
+        productName: 'Corona Extra',
+        productSpec: 'Beer · 355 ml bottle',
+        unitsPerCase: 24,
+        mlPerContainer: 355,
+        expectedContainers: 24,
+        warehouseBefore: 96,
+      },
+      {
+        skuId: 'monk',
+        productName: 'Old Monk',
+        productSpec: 'Spirit · 750 ml bottle',
+        unitsPerCase: 12,
+        mlPerContainer: 750,
+        expectedContainers: 6,
+        warehouseBefore: 62,
+      },
+    ],
     issuedAt: '19:15',
   },
 }
