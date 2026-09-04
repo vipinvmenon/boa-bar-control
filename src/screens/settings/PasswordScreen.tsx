@@ -19,7 +19,9 @@ export function PasswordScreen() {
     setMessage(undefined)
     try {
       await auth.setPassword(password)
-      void navigate({ to: '/settings' })
+      // BAR-172. `/more`, not `/settings`: the redirect at `/settings` would push
+      // another `/settings → /more` pair onto the stack behind the person.
+      void navigate({ to: '/more' })
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Could not change password')
       setSaving(false)
@@ -29,7 +31,7 @@ export function PasswordScreen() {
   return (
     <div className="section-screen">
       <header className="section-head"><div className="count-head-left">
-        <button className="flow-back" onClick={() => void navigate({ to: '/settings' })} aria-label="Back to settings"><ChevronLeft size={18} strokeWidth={2} aria-hidden="true" /></button>
+        <button className="flow-back" onClick={() => void navigate({ to: '/more' })} aria-label="Back to more"><ChevronLeft size={18} strokeWidth={2} aria-hidden="true" /></button>
         <h1 className="section-head-title">Change password</h1>
       </div></header>
       <div className="section-body settings-form-body">
