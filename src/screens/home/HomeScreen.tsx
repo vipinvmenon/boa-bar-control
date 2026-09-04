@@ -50,6 +50,31 @@ export function HomeScreen() {
       void navigate({ to: '/bars/$barId/count', params: { barId: alert.locationId } })
       return
     }
+    /**
+     * BAR-173. The issue CTA navigated to `/issue` with an empty search, so the
+     * screen that already knew which bar was running dry threw that away and
+     * landed the user on the repository's default destination — and on the
+     * default product, which is only changed by a CHANGE button that steps
+     * through the catalogue one SKU per tap. `/issue` has declared
+     * `validateSearch: parseIssueDraftSearch` all along; only this call site was
+     * missing. Recognition over recall: carry what the alert already holds.
+     *
+     * It holds the location and no more. `Alert` (src/data/repository.ts) has a
+     * `locationId` but no `skuId`, so the PRODUCT half of the seed cannot be
+     * supplied from here without a data-layer change — out of scope for this
+     * task, and inventing a SKU would be worse than leaving the default.
+     * Recorded rather than approximated.
+     */
+    if (alert.target === 'issue' && alert.locationId) {
+      void navigate({ to: '/issue', search: { toLocationId: alert.locationId } })
+      return
+    }
+    /**
+     * BAR-173. The docket CTA is deliberately left unparameterised: `/dockets`
+     * declares no `validateSearch`, and the alert carries no docket id — it can
+     * stand for several awaiting dockets at once (see BAR-146 above). There is
+     * no context here being discarded.
+     */
     const route = TARGET_ROUTES[alert.target]
     if (route) {
       void navigate({ to: route })
