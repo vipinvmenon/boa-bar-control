@@ -3829,3 +3829,83 @@ Verified:
 - `corepack pnpm test:visual`: 16 implemented · 19 reading the data layer · 0 hardcoded · 0 errored · 6 missing. Unchanged.
 - Driven at 375×812. Waste at `/bars/bar-3/waste`, queued: returns to **BAR 3**, toast `1 CORONA EXTRA · BREAKAGE · QUEUED` with an Undo. Tapping Undo took the outbox from 2 rows to 1 and reported `UNDONE · NOTHING RECORDED`. With the row forced to `syncing` first, the same tap left it in place and reported `ALREADY SENT · … IS ON THE LEDGER`. Posted: `1 CORONA EXTRA · SPILLAGE · RECORDED`, no action, `pointer-events: none` retained.
 - Receipt: `1 LINE · STOK · RECORDED`, returning to `/warehouse`.
+
+### Session — 4 September 2026 · claude (four parallel agents)
+
+Completed: the remaining P0s and two P1s from the 4 September UX audit —
+**BAR-169, BAR-170, BAR-171, BAR-172, BAR-173, BAR-174** — built by four agents
+in isolated git worktrees and merged here one at a time. All five audit P0s are
+now closed.
+
+- **BAR-169** A count can no longer be sealed without review. The sheet's entered
+  lines are keyed by **sheet step** rather than by `skuId`: keyed by SKU, 18
+  counted steps collapsed into 3 keys (the sheet cycles its SKU set), so the
+  state could not tell "counted zero" from "never reached". `linesForSubmit`
+  folds the steps back to the per-SKU shape the submit command takes, last step
+  per SKU winning — which is what overwriting by `skuId` did implicitly, now
+  explicit and ordered. The submit payload shape is unchanged.
+- **BAR-170** Role changes stage, then confirm inline in the row.
+- **BAR-171** The invite gate is the membership role. **The same two-address
+  allowlist was also in `api/invite-user.ts`**, which the client change would
+  have turned into a screen offering INVITE CREW and a server answering 403; it
+  is removed, and the handler's existing `boa_bar_membership` check — the real
+  control — stands. **This widens invitation rights from two named people to any
+  active manager or admin of the venue.**
+- **BAR-172** The `/settings` redirect replaces instead of pushing.
+- **BAR-173** The home alert carries its bar into `/issue`. **Not its SKU** — see
+  BAR-175.
+- **BAR-174** Warehouse search has its own row (66 px → 241 px measured) and the
+  filter set is derived, so MIXERS is reachable.
+
+Files changed: `src/screens/count/CountScreen.tsx`,
+`src/screens/team/TeamScreen.tsx`, `src/screens/warehouse/WarehouseScreen.tsx`,
+`src/screens/home/HomeScreen.tsx`, `src/screens/more/MoreScreen.tsx`,
+`src/screens/settings/{SettingsScreen,InviteCrewScreen,PasswordScreen}.tsx`,
+`src/styles.css`, `api/invite-user.ts`, `vite.config.ts`, `docs/ROADMAP.md`,
+`docs/CURRENT-STATE.md`
+Architecture changes: none. No file under `supabase/`, `src/services/`,
+`src/domain/` or `src/data/` was touched by any of the six tasks.
+
+Known issues, and things this session found rather than fixed:
+
+- **The test gate was measuring five copies of itself.** Worktrees check out
+  under `.claude/worktrees/`, inside the project root, so Vitest collected every
+  agent's suite: one run reported **755 passing tests** where the suite has 151.
+  Excluded in `vite.config.ts`. A gate that counts copies of itself is the
+  original defect of this project wearing different clothes, and it was one
+  paste away from being quoted as evidence.
+- **`test:visual`'s classification counts are environment-sensitive.** All three
+  agents that ran it measured `20 reading the data layer / 3 legitimately
+  static` against their own dev servers and each independently concluded the
+  documented 19 was stale. Two consecutive runs here measure **19 / 4**. The
+  numbers that matter — 16 implemented, 0 hardcoded, 0 errored, 6 missing — agree
+  everywhere and are unchanged by this session. But the earlier claim in this
+  document that "three consecutive runs agree exactly" is only true *within one
+  environment*, and these counts should not be quoted as absolute truth.
+- **BAR-169 invalidates every count draft in progress.** The draft's shape
+  changed, and `isCountDraft` correctly rejects the old `counted`-keyed shape —
+  `useDraft` then silently falls back to a fresh sheet without setting
+  `restored`, so the counter is not told their lines are gone. Losing a draft is
+  the right trade against feeding a mis-keyed one into a submit, but **do not
+  deploy this mid-count on 10 October.** No live count exists today.
+- **An unvisited count line is not reachable through the UI.** Every forward and
+  backward move records the line being left, so gaps only arise from an
+  externally altered draft. The state and the review render distinguish them;
+  no skip control was invented to make it reachable.
+- **Fixture defect, not fixed:** `design-data.ts`'s `bar2-count` alert reads
+  "Bar 2 mid-count overdue" but carries `locationId: 'bar-3'`, so the count CTA
+  opens the wrong bar's sheet. Demo data only.
+- Nothing in this session ran against live Supabase or a physical device. Role
+  changes, invitations and the derived filter set are proven against fixtures.
+  BAR-170's failure path was exercised by patching the repository at runtime.
+
+Recommended next: BAR-175 (an alert carries its SKU), then the audit's P1 block —
+the shared product picker (UX-P1-01), quantity reset on product change
+(UX-P1-02), and multi-line dockets (UX-P1-03), which is the largest time saving
+available on the night.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass **on the merged result**, which is the only tree where that means anything: 151 unit tests, 338 class names all defined.
+- `corepack pnpm test:visual`, twice, agreeing exactly: 16 implemented · 19 reading the data layer · 4 legitimately static · 0 hardcoded · 0 errored · 6 missing.
+- Re-verified by driving the merged tree at `localhost:5173`, not by trusting the agents' reports: 18 taps on the count footer reach `REVIEW COUNT` with 18 rows and `18 LINES COUNTED · 18 LEFT AT ZERO`, never `/count/submitted`. A regex scan of the rendered shell on both a counting line and the review list for `expect|variance|delta|theoretical|previous count|on hand|should be` returns only the advisory sentence that names those things as hidden — no figure, no comparison (non-negotiable 3 holds). `/more` → `/team` → `history.back()` returns to `/more`. Staging Aditi BAR LEAD → WAREHOUSE shows `Change Aditi to WAREHOUSE?` with two 44 px buttons; Cancel restores the select to `bar_lead` and removes the confirm. Warehouse search measures 241 px with an unclipped `Search SKU`, four 44 px chips, and MIXERS filters to the mixer group.
