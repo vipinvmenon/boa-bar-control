@@ -24,8 +24,18 @@ insert into public.boa_bar_location (id, venue_id, code, name, kind) values
    '00000000-0000-4000-8000-0000000000d0', 'BAR-TEST', 'Test bar', 'bar');
 
 -- An admin, a bar lead, and somebody arriving at 20:00 with no access at all.
+--
+-- BAR-166 note, 3 September 2026. The admin's email is one of the two on ADR-014's
+-- operator allowlist, because `202608310011_invite_admin_allowlist.sql` moved the
+-- gate from "manager or admin" to "one of two named people". This suite still
+-- asserted the old contract and had been failing 8 of 10 against the applied
+-- schema — undetected, because it had never been run against it.
+--
+-- The allowlist is checked against `auth.users.email` inside
+-- `private.boa_bar_is_invite_admin()`, so the only way to test the real rule is to
+-- be one of them. Everything here is rolled back.
 insert into auth.users (id, aud, role, email, created_at, updated_at) values
-  ('00000000-0000-4000-8000-0000000000d1','authenticated','authenticated','admin@example.test',now(),now()),
+  ('00000000-0000-4000-8000-0000000000d1','authenticated','authenticated','salman@bangaloreopenair.com',now(),now()),
   ('00000000-0000-4000-8000-0000000000d2','authenticated','authenticated','lead@example.test',now(),now()),
   ('00000000-0000-4000-8000-0000000000d3','authenticated','authenticated','newstarter@example.test',now(),now());
 
@@ -44,12 +54,13 @@ select throws_ok(
        'venue_id','00000000-0000-4000-8000-0000000000d0',
        'role','crew','display_name','Someone')) $$,
   '42501',
-  'only a manager or admin may invite staff',
+  'only the designated BOA operators may invite staff',
   'a bar lead cannot invite staff'
 );
 
 -- ---------------------------------------------------------------------------
--- As the admin.
+-- As a designated operator (ADR-014). Being an admin is no longer sufficient;
+-- being on the allowlist is what counts, and it is enforced in the database.
 -- ---------------------------------------------------------------------------
 
 set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000000d1","role":"authenticated"}';
@@ -60,7 +71,7 @@ select lives_ok(
        'role','bar_lead',
        'location_id','00000000-0000-4000-8000-0000000000d4',
        'display_name','Aditi')) $$,
-  'an admin can invite a bar lead'
+  'a designated operator can invite a bar lead'
 );
 
 select is(
