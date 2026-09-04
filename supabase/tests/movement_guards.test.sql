@@ -23,17 +23,11 @@ values ('00000000-0000-4000-8000-0000000000f1', 'GUARD', 'Guard Test Venue', cur
 insert into public.boa_bar_location (id, venue_id, code, name, kind)
 values ('00000000-0000-4000-8000-0000000000f2',
         '00000000-0000-4000-8000-0000000000f1', 'GUARD-WH', 'Guard Warehouse', 'warehouse');
--- BAR-166 note, 3 September 2026. `excise_category` became NOT NULL with a
--- foreign key in 202608310010, and this fixture had never been updated — so this
--- whole suite ERRORED before its first assertion, silently taking three
--- behavioural proofs (hand-keyed sales refused, cross-venue lines refused, comps
--- balanced) out of the gate. Found the first time the suite ran against the
--- hosted schema. A test that cannot run is not a test.
 insert into public.boa_bar_sku
-  (id, venue_id, code, name, category_key, excise_category, container_type, ml_per_container)
+  (id, venue_id, code, name, category_key, container_type, ml_per_container)
 values ('00000000-0000-4000-8000-0000000000f3',
         '00000000-0000-4000-8000-0000000000f1', 'GUARD-SKU', 'Guard Beer',
-        'bottled_beer', 'beer', 'bottle', 650);
+        'bottled_beer', 'bottle', 650);
 
 set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000000c1","role":"authenticated"}';
 set local role authenticated;
