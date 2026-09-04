@@ -32,7 +32,27 @@ type AuthAdminClient = {
   }
 }
 
-const OPERATORS = new Set(['vipinmenon16@gmail.com', 'salman@bangaloreopenair.com'])
+/*
+   BAR-171. The two-personal-address allowlist that used to gate this handler is
+   gone.
+
+   It was never the control. Below, the caller must hold an active `admin` or
+   `manager` membership in the venue they are inviting into, checked against
+   `boa_bar_membership` with the service-role client — that is the authorisation,
+   and it is enforced where non-negotiable 7 says it has to be. The email set sat
+   in front of it and refused everybody else first, so the real check could only
+   ever narrow a decision it had already made.
+
+   It also could not stay once the client stopped using it: the MORE screen now
+   shows INVITE CREW to any venue manager, and a manager who filled in the form
+   would have been refused here with "Only BOA operators may invite staff" — a
+   screen promising something the server would not do.
+
+   This widens who can invite from two named people to any active manager or
+   admin of the venue. That is the intent. The invitee's own role is still
+   refused if it is `admin` or `manager` (below), so this cannot be used to
+   escalate.
+*/
 
 export default async function handler(req: Request, res: Response) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
@@ -49,7 +69,6 @@ export default async function handler(req: Request, res: Response) {
   const adminClient = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } })
   const { data: caller, error: callerError } = await (callerClient.auth as unknown as AuthUserClient).getUser(token.slice(7))
   if (callerError || !caller.user?.email) return res.status(401).json({ error: 'Authentication required' })
-  if (!OPERATORS.has(caller.user.email.toLowerCase())) return res.status(403).json({ error: 'Only BOA operators may invite staff' })
 
   const body = (req.body ?? {}) as InviteBody
   const email = body.email?.trim().toLowerCase() ?? ''
