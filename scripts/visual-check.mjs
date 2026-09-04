@@ -35,16 +35,30 @@ const OUT = path.join(ROOT, '.visual-diff')
 /**
  * BAR-179 — the gate serves the tree it is testing, rather than assuming a port.
  *
- * This defaulted to `http://localhost:5173` and probed whatever answered there.
- * On a machine running more than one checkout — an agent worktree, a second
- * session, a colleague's branch — that is somebody else's application, and the
- * gate reports on it in this tree's name. It happened twice in one afternoon,
- * and the verdict was not a mild skew: a clean tree was reported as
- * `0 reading the data layer / 18 hardcoded / home HARD`, which is the exact
- * shape of the defect this gate exists to catch, against code that did not have
- * it. A gate that can fabricate its own headline finding is worse than no gate,
- * because this project's history is documents asserting verifications that were
- * never performed.
+ * This defaulted to `http://localhost:5173` and probed whatever answered there —
+ * a long-running server started by somebody else, in a process this gate does
+ * not control and cannot inspect.
+ *
+ * What that cost, on 4 September: a clean tree was reported as
+ * `0 reading the data layer / 18 hardcoded / home HARD` — the exact shape of the
+ * defect this gate exists to catch, against code that did not have it. Two
+ * agents hit the same false verdict within the hour.
+ *
+ * The cause is worth stating precisely, because the obvious explanation is the
+ * wrong one. The server on 5173 was serving THIS tree, not another checkout;
+ * running `pnpm add -D` mid-session invalidated its dependency optimisation, and
+ * for a window it served a degraded module graph in which every screen rendered
+ * alike. "Identical under two fixture sets" is exactly what this gate calls
+ * hardcoded. It recovered on its own and the same probe then returned
+ * `0 hardcoded`, which is worse than a stable failure: the verdict depended on
+ * when you happened to run it.
+ *
+ * So the rule is not "beware other checkouts". It is that a gate must control
+ * the thing it measures. Any state in a server this script did not start — a
+ * stale optimisation, an in-flight HMR update, a different branch, another
+ * project entirely — arrives as a finding about the code. A gate that can
+ * fabricate its own headline finding is worse than no gate on a project whose
+ * documented root cause is verifications that were never performed.
  *
  * So: with no explicit override, start a dev server from THIS directory on a
  * free port, measure that, and shut it down. `VISUAL_BASE_URL` still wins — CI
