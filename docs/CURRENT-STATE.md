@@ -3909,3 +3909,95 @@ Verified:
 - `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass **on the merged result**, which is the only tree where that means anything: 151 unit tests, 338 class names all defined.
 - `corepack pnpm test:visual`, twice, agreeing exactly: 16 implemented · 19 reading the data layer · 4 legitimately static · 0 hardcoded · 0 errored · 6 missing.
 - Re-verified by driving the merged tree at `localhost:5173`, not by trusting the agents' reports: 18 taps on the count footer reach `REVIEW COUNT` with 18 rows and `18 LINES COUNTED · 18 LEFT AT ZERO`, never `/count/submitted`. A regex scan of the rendered shell on both a counting line and the review list for `expect|variance|delta|theoretical|previous count|on hand|should be` returns only the advisory sentence that names those things as hidden — no figure, no comparison (non-negotiable 3 holds). `/more` → `/team` → `history.back()` returns to `/more`. Staging Aditi BAR LEAD → WAREHOUSE shows `Change Aditi to WAREHOUSE?` with two 44 px buttons; Cancel restores the select to `bar_lead` and removes the confirm. Warehouse search measures 241 px with an unclipped `Search SKU`, four 44 px chips, and MIXERS filters to the mixer group.
+
+### Session — 4 September 2026 · claude (second parallel batch)
+
+Completed: **BAR-175, BAR-176, BAR-178** from three agents in isolated
+worktrees, plus **BAR-179**, which is work this session created for itself by
+running the gates and finding three of them broken.
+
+- **BAR-175** `Alert.skuId`, so the run-out alert seeds the product as well as
+  the bar. The live path leaves it `undefined` and says why: neither live alert
+  is SKU-scoped, and the only one that would be — the run-out alert — cannot
+  exist until there is a par level per SKU per location (BAR-162) and a
+  POS-derived depletion rate. No SQL was changed and none is needed.
+- **BAR-176** One searchable product picker across issue, waste, receipt and the
+  bar's top-up. Reaching a specific SKU went from up to nine taps through a
+  hidden catalogue to **two, for any SKU**. The agent also found and fixed a bug
+  no screenshot would have shown: nested in the top-up panel the sheet rendered
+  354×434 clipped to the form, because `.panel`'s `backdrop-filter` makes it a
+  containing block for absolutely positioned descendants.
+- **BAR-178** The confirm dialog's choices are weighted, focus opens on cancel,
+  is trapped, and returns to the opener; one disabled treatment replaces two,
+  and it removes the fill rather than dimming it — `opacity: .45` over a
+  saturated gradient on near-black still reads as lit. The dead `.leave-guard`
+  rules are gone.
+- **BAR-179** See below.
+
+Files changed: `src/components/{ProductPicker,ConfirmDialog}.tsx`,
+`src/screens/{issue,waste,receipt,bar,home}/…`, `src/data/repository.ts`,
+`src/data/fixture/design-data.ts`, `src/data/live/live-repository.ts`,
+`src/styles.css`, `src/lib/offline-db.test.ts`, `scripts/visual-check.mjs`,
+`eslint.config.js`, `vite.config.ts`, `package.json`, `docs/`
+Architecture changes: none.
+
+**The gates were lying, in three different ways.** All three were found by
+running them, not by reading them, and all three are the same shape — a thing
+inside the project that is not the project:
+
+1. Vitest collected `.claude/worktrees/`, reporting **755 passing tests** for a
+   suite of 151.
+2. ESLint linted the same directory, so a clean tree failed `--max-warnings=0`
+   on a half-written component that does not exist on this branch.
+3. `visual-check.mjs` probed a hardcoded `localhost:5173` in a process it did
+   not control. For a window it reported this tree as **`0 reading the data
+   layer / 18 hardcoded / home HARD`** — the exact shape of the defect the gate
+   exists to catch, against code that did not have it. Two agents hit the same
+   false verdict independently; one correctly concluded it was not their change
+   but could not see why.
+
+   **The obvious explanation is the wrong one, and it is recorded correctly in
+   the script:** 5173 was serving *this* tree, not another checkout. Running
+   `pnpm add -D` mid-session invalidated that long-running server's dependency
+   optimisation, and for a window it served a degraded module graph in which
+   every screen rendered alike. It recovered on its own and the same probe then
+   returned `0 hardcoded`. A verdict that depends on when you run it is worse
+   than a stable failure. The gate now starts its own server on a free port,
+   prints what it served, and shuts it down; `VISUAL_BASE_URL` still wins but is
+   announced as unverifiable.
+
+**Any `test:visual` figure quoted in this document from before 4 September was
+measured against a server nobody verified.** The four load-bearing numbers have
+been stable everywhere and are unchanged — 16 implemented · 0 hardcoded · 0
+errored · 6 missing — but the classification split (`reading the data layer` /
+`legitimately static`) should not be treated as exact.
+
+Known issues:
+
+- **Receipt's discard dialog does not get its focus returned.** `ReceiptScreen`
+  renders the trigger as `hasDraft && !confirmDiscard`, so the opener unmounts
+  while the dialog is open and focus falls to `<body>`. Fixing it needs a caller
+  edit, which BAR-178 was scoped out of. Fold it into the task that passes
+  `tone="danger"` from the three call sites — no caller passes it today, so the
+  danger treatment still never renders in production.
+- **The top-up form pre-selects `detail.inventory[0]`**, so the picker's "choose
+  a product" state is unreachable there and the form always arrives with a
+  product nobody chose.
+- Nothing in this session ran against live Supabase or a physical device. The
+  live `skuId` conclusion is from reading row types and query builders, not from
+  live rows.
+- The product picker has no component test. A jsdom environment now exists
+  (added for BAR-179), so one is possible for the first time — `@testing-library/react`
+  has been an unused dependency until now.
+
+Recommended next: **BAR-177**, multi-line dockets — scoped and evidenced in
+ROADMAP.md as UI-only, and the largest time saving available on the night. Then
+UX-P1-02 (quantity reset on product change), which BAR-176 deliberately left
+alone so the two changes stayed separable.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass on the merged result: 161 unit tests (151 + 10 new), 349 class names all defined.
+- `corepack pnpm test:visual` on the merged result, serving its own server from this directory: 16 implemented · 19 reading the data layer · 4 legitimately static · 0 hardcoded · 0 errored · 6 missing, exit 0.
+- The undo guard is mutation-checked: removing the status check from `cancelQueuedCommand` fails exactly three tests — `syncing`, `done` and `failed` — and passes the other seven.
+- Re-verified by driving the merged tree rather than trusting the reports: the waste screen's product row opens the sheet, typing `monk` narrows it to one 52 px row, selecting changes the product to `Old Monk · Spirit · 750 ml bottle`, the sheet closes and focus returns to the trigger.
