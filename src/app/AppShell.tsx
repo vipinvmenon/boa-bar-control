@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Outlet, useRouterState } from '@tanstack/react-router'
-import { TriangleAlert, Wifi, WifiOff } from 'lucide-react'
+import { Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
+import { CloudUpload, TriangleAlert, Wifi, WifiOff } from 'lucide-react'
 import { useAppStore } from '../lib/app-store'
 import { BottomNav } from '../components/layout/BottomNav'
 import { configError } from '../lib/supabase'
@@ -59,6 +59,14 @@ export function AppShell() {
             DEMO DATA · NOT LIVE · NOTHING IS RECORDED
           </div>
         )}
+        {/*
+          BAR-167. Queue and connection state, on every route.
+          Deliberately placed above the screen's own header rather than inside
+          it: a flow screen renders no app header at all, and the four write
+          flows are exactly where a person most needs to know whether their work
+          left the phone.
+        */}
+        {!isDemo && <OperationalStatus />}
         {isHome && <header className="app-header">
           <div className="brand-line">
             <div className="brand-lockup">
@@ -90,30 +98,20 @@ export function AppShell() {
             state now comes from the browser and the count from the outbox, so the
             line reports rather than pretends.
           */}
+          {/*
+            BAR-167. This line no longer reports the queue.
+            `OperationalStatus` below does, on every route rather than on this
+            one — so the pending count, the offline state and a failed write are
+            not duplicated here, where twenty-one screens could not see them.
+            What is left is the one thing that is only true of the shell: whether
+            this session is live at all.
+          */}
           <div className={`sync-line ${isDemo ? 'demo' : ''} ${store.offline ? 'offline' : ''}`}>
             <span>
               {isDemo ? <TriangleAlert size={13} /> : store.offline ? <WifiOff size={13} /> : <Wifi size={13} />}
-              {isDemo
-                ? 'DEMO DATA'
-                : store.offline
-                  ? `OFFLINE · ${store.pending} PENDING`
-                  : `LIVE · ${store.pending} PENDING`}
+              {isDemo ? 'DEMO DATA' : store.offline ? 'OFFLINE' : 'LIVE'}
             </span>
-            <small>
-              {isDemo
-                ? 'NOT LIVE'
-                : store.authStopped
-                  ? 'SIGN IN AGAIN TO SYNC'
-                : store.failed > 0
-                  ? `${store.failed} NOT SENT · NEEDS ATTENTION`
-                  /*
-                    BAR-165. Was the venue name, which is fixed for the whole
-                    event and told nobody anything they did not already know,
-                    while occupying the one slot that reports queue health. Empty
-                    when there is nothing to report.
-                  */
-                  : ''}
-            </small>
+            <small>{isDemo ? 'NOT LIVE' : ''}</small>
           </div>
         </header>}
 
@@ -137,6 +135,72 @@ export function AppShell() {
         {store.toast && <div className={`toast ${fullFlow ? 'is-flow' : ''}`} role="status">{store.toast}</div>}
       </div>
       <div className="stage-caption" aria-hidden="true">BOA BAR INVENTORY / 390 × 844 / {caption}</div>
+    </div>
+  )
+}
+
+/**
+ * BAR-167 — whether this device is holding work that has not been sent.
+ *
+ * Before this, the answer existed on the home route only (BAR-039's sync strip,
+ * rendered inside `{isHome && <header>}`). Every write flow — issue, accept,
+ * waste, count — hides both the header and the bottom navigation, so the four
+ * screens where somebody actually commits a movement were the four screens that
+ * could not tell them whether it had gone anywhere. The outbox underneath is
+ * sound; it was simply invisible.
+ *
+ * Three rules, in order of what the person needs to do about it:
+ *
+ *   FAILED    a write has given up, or the session expired and the drain is
+ *             paused. This is the only state that needs a decision, so it is the
+ *             only one that is tappable — it goes to More, where the retry and
+ *             the exact server refusal live.
+ *   OFFLINE   the browser reports no connection. Shown even with an empty queue:
+ *             knowing the network is gone BEFORE starting a count is worth more
+ *             than being told afterwards.
+ *   QUEUED    online, with work still draining. Reassurance, not an alarm.
+ *
+ * Silence is the healthy state. Online with an empty queue renders nothing —
+ * a permanent green tick trains people to stop reading the strip, and this strip
+ * has to still mean something at 2am.
+ */
+function OperationalStatus() {
+  const store = useAppStore()
+  const navigate = useNavigate()
+
+  const failed = store.authStopped || store.failed > 0
+  if (!failed && !store.offline && store.pending === 0) return null
+
+  const pendingLabel = `${store.pending} QUEUED`
+
+  if (failed) {
+    return (
+      <button
+        className="op-status failed"
+        onClick={() => void navigate({ to: '/more' })}
+      >
+        <TriangleAlert size={13} strokeWidth={2.2} aria-hidden="true" />
+        <span>{store.authStopped ? 'SIGN IN AGAIN TO SYNC' : `${store.failed} NOT SENT`}</span>
+        <small>TAP TO FIX</small>
+      </button>
+    )
+  }
+
+  if (store.offline) {
+    return (
+      <div className="op-status offline" role="status">
+        <WifiOff size={13} strokeWidth={2.2} aria-hidden="true" />
+        <span>{store.pending > 0 ? `OFFLINE · ${pendingLabel}` : 'OFFLINE'}</span>
+        <small>{store.pending > 0 ? 'SAVED ON THIS DEVICE' : 'NOTHING WAITING TO SEND'}</small>
+      </div>
+    )
+  }
+
+  return (
+    <div className="op-status sending" role="status">
+      <CloudUpload size={13} strokeWidth={2.2} aria-hidden="true" />
+      <span>{pendingLabel}</span>
+      <small>SENDING</small>
     </div>
   )
 }

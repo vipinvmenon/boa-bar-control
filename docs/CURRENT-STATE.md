@@ -3718,3 +3718,55 @@ email and confirm the invitation arrives.
 Verified:
 
 - `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass. 151 unit tests.
+
+### Session — 4 September 2026 · claude
+
+Completed: A UX/UI audit of the running application, driven in the browser rather
+than read from source — 16 built routes at 375×812, 768 and 1280, every write flow
+taken end to end. Then the first fix from it, **BAR-167**: queue and connection
+state now render on every route.
+
+The audit's headline finding is that the visual system is in better shape than the
+interaction model. The radius ladder, the colour tokens and the semantic
+green/gold/red are applied consistently across all 22 routes; what was assembled
+screen-by-screen is what happens *after* a tap. Six findings are rated
+operationally dangerous, and BAR-167 is the first of them.
+
+BAR-167 itself: `AppShell` rendered the sync strip inside `{isHome && <header>}`,
+so the four screens where somebody commits a movement — issue, accept, waste,
+count, all of which also hide the bottom navigation — were the four screens that
+could not tell them whether it had gone anywhere. The outbox underneath is sound;
+it was invisible. A new `OperationalStatus` strip now renders above the screen's
+own header on every route, with no healthy state: online with an empty queue shows
+nothing. The home header keeps only `LIVE` / `OFFLINE` / `DEMO DATA` and no longer
+duplicates the pending count.
+
+Files changed: `src/app/AppShell.tsx`, `src/styles.css`, `docs/ROADMAP.md`,
+`docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues:
+
+- The strip is suppressed in demo mode, so it cannot be seen on this machine's
+  fixture-served build without a temporary patch. All three states were verified
+  by patching the demo guard out, seeding the Dexie outbox directly, and
+  overriding `navigator.onLine`; the patch was reverted and the seeded rows
+  deleted before the gates were re-run. **It has not been seen against a live
+  Supabase session or on a physical device.**
+- The five remaining P0 findings from the audit are not fixed: no confirmation
+  after a write (and the per-mount idempotency key does not protect a repeated
+  *flow*), a count that seals with no review from the same pixel tapped 17 times,
+  no way to correct an earlier count line, a role change that commits on
+  `select` change, and `canInvite` gated on two hardcoded email addresses.
+- Unrelated drift found while running the gate: `test:visual` now reports **7**
+  routes off the design, not the 5 this document records — `settings-invite` and
+  `settings-password` were added after that sentence was written.
+
+Recommended next: BAR-168 — confirm every write, with an undo that is valid while
+the outbox entry has not drained. It removes the cause of duplicate ledger
+movements, which is the audit's second P0.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass. 151 unit tests, 321 class names all defined.
+- `corepack pnpm test:visual`: 16 implemented · 19 reading the data layer · 0 hardcoded · 0 errored · 6 missing. Unchanged by this task — the strip does not render in fixture mode, so no reference capture moves.
+- Driven in the browser at 375×812 on `/count` (a flow screen, which had no status at all before): `3 QUEUED · SENDING`; `OFFLINE · 3 QUEUED · SAVED ON THIS DEVICE`; `1 NOT SENT · TAP TO FIX` as a 44 px button that navigates to `/more`. Cleared to nothing when the queue emptied.

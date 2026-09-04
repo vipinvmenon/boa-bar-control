@@ -252,6 +252,7 @@ with no signal. Specification §10, §14.
 | BAR-070 | Ordered outbox replay | claude | A failed earlier entry blocks later ones; an acceptance cannot post before its issue |
 | BAR-071 | No silent write loss | claude | Every write path surfaces failure; no `void` promise can swallow a throw; success is reported only after durable enqueue |
 | BAR-072 | Persist mutable state | claude | Dockets, counts and optimistic deltas survive a reload |
+| BAR-167 | Queue and connection state on every route | claude | BAR-039 built the sync strip inside the home header, so the twenty-one other screens — including all four write flows, which hide the header and the bottom navigation — could not say whether a movement had left the phone. **Acceptance:** one strip rendered by the shell on every route; silent when online with an empty queue; `n QUEUED · SENDING` while draining; gold `OFFLINE · n QUEUED · SAVED ON THIS DEVICE` with no connection, shown even when the queue is empty; red and tappable to More when a write has failed or the drain is auth-stopped, at ≥44 px; the home header no longer duplicates the count |
 | BAR-073 | Real connectivity detection | codex | Derived from `navigator.onLine` and sync outcomes; single source of truth for online state and pending count |
 | BAR-074 | Retry, backoff and auth stop | claude | Per the table in OFFLINE-SYNC; a mid-shift 401 holds the queue intact |
 | BAR-075 | Real "as of" stamps | codex | Every stamp derives from the data's timestamp; a fixed-clock test asserts it |
