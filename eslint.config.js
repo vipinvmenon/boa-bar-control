@@ -5,7 +5,20 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['dist', 'coverage'] },
+  /*
+     BAR-179. `.claude/worktrees/` holds agent worktrees — full checkouts of this
+     repository, inside its own root. Without this, `eslint .` lints those too,
+     so a lint run in this tree fails on somebody else's half-written file and
+     the failure has nothing to do with the code being gated. It happened: a
+     clean tree reported a warning from a worktree component that does not exist
+     on this branch.
+
+     Same root cause as the Vitest exclusion in `vite.config.ts` (which was
+     collecting five copies of the suite and reporting 755 tests for a suite of
+     151) and the `.gitignore` entry: a directory that is inside the project but
+     is not the project.
+  */
+  { ignores: ['dist', 'coverage', '.claude/worktrees'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],

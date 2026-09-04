@@ -23,13 +23,82 @@
  * Requires the dev server on 5173 (pnpm dev), or pass --build to serve dist/.
  */
 import { chromium } from '@playwright/test'
+import { spawn } from 'node:child_process'
 import fs from 'node:fs'
+import net from 'node:net'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const OUT = path.join(ROOT, '.visual-diff')
-const BASE = process.env.VISUAL_BASE_URL ?? 'http://localhost:5173'
+
+/**
+ * BAR-179 — the gate serves the tree it is testing, rather than assuming a port.
+ *
+ * This defaulted to `http://localhost:5173` and probed whatever answered there.
+ * On a machine running more than one checkout — an agent worktree, a second
+ * session, a colleague's branch — that is somebody else's application, and the
+ * gate reports on it in this tree's name. It happened twice in one afternoon,
+ * and the verdict was not a mild skew: a clean tree was reported as
+ * `0 reading the data layer / 18 hardcoded / home HARD`, which is the exact
+ * shape of the defect this gate exists to catch, against code that did not have
+ * it. A gate that can fabricate its own headline finding is worse than no gate,
+ * because this project's history is documents asserting verifications that were
+ * never performed.
+ *
+ * So: with no explicit override, start a dev server from THIS directory on a
+ * free port, measure that, and shut it down. `VISUAL_BASE_URL` still wins — CI
+ * and a developer with a server already up both have reasons to point it
+ * somewhere — but it is now a deliberate act, announced in the output, rather
+ * than a silent default that is wrong exactly when the machine is busy.
+ */
+let BASE = process.env.VISUAL_BASE_URL ?? null
+
+async function freePort() {
+  return new Promise((resolve, reject) => {
+    const probe = net.createServer()
+    probe.on('error', reject)
+    probe.listen(0, '127.0.0.1', () => {
+      const { port } = probe.address()
+      probe.close(() => resolve(port))
+    })
+  })
+}
+
+async function waitForServer(url, timeoutMs = 90_000) {
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    try {
+      const response = await fetch(url)
+      if (response.ok) return
+    } catch {
+      // Not up yet.
+    }
+    if (Date.now() > deadline) throw new Error(`The dev server did not answer at ${url}`)
+    await new Promise((resolve) => setTimeout(resolve, 250))
+  }
+}
+
+/** The local vite binary, not `pnpm dev` — one less shell to be wrong about. */
+async function startOwnServer() {
+  const port = await freePort()
+  const bin = path.join(ROOT, 'node_modules', '.bin', 'vite')
+  if (!fs.existsSync(bin)) {
+    throw new Error('node_modules/.bin/vite is missing — run `corepack pnpm install` first')
+  }
+  const child = spawn(bin, ['--port', String(port), '--strictPort'], {
+    cwd: ROOT,
+    stdio: 'ignore',
+    detached: false,
+  })
+  child.on('error', (error) => {
+    console.error(`\nCould not start the dev server: ${error.message}`)
+    process.exit(1)
+  })
+  const url = `http://127.0.0.1:${port}`
+  await waitForServer(`${url}/`)
+  return { url, stop: () => { try { child.kill('SIGTERM') } catch { /* already gone */ } } }
+}
 
 /** The design's 22 screens, and the implementation route that serves each. */
 const SCREENS = [
@@ -164,6 +233,24 @@ async function shoot(page, url) {
 
 async function main() {
   fs.mkdirSync(OUT, { recursive: true })
+
+  // BAR-179. Establish what is being measured, and say so, before measuring it.
+  let ownServer = null
+  if (BASE) {
+    console.log(`\n  serving                ${BASE}  (VISUAL_BASE_URL — this gate cannot verify it is this tree)`)
+  } else {
+    ownServer = await startOwnServer()
+    BASE = ownServer.url
+    console.log(`\n  serving                ${BASE}  (started from ${ROOT})`)
+  }
+  try {
+    await run()
+  } finally {
+    ownServer?.stop()
+  }
+}
+
+async function run() {
   const browser = await chromium.launch()
   const page = await browser.newPage({
     viewport: { width: 390, height: 844 },
