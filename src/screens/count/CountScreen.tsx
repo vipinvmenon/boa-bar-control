@@ -20,18 +20,20 @@
  *     weighing partials, because "about a third left" across forty bottles is a
  *     hundreds-of-millilitres guess. Three modes per SKU: none for bottled beer,
  *     ml-by-weight against the SKU's tare for spirits, litres for kegs.
+ *   - BAR-169: a review step before the seal, and a way back to an earlier line.
  *
  * Every input starts at zero and is reset per line. Nothing on this screen reads
- * or displays an expected quantity.
+ * or displays an expected quantity — not on a line, and not in the review list,
+ * which shows only what the counter themselves typed.
  */
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { ScreenSkeleton } from '../../components/ScreenSkeleton'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
-import { ChevronLeft, EyeOff, Minus, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, EyeOff, Minus, Plus } from 'lucide-react'
 import { useRepository, useRepositoryMutation, useRepositoryQuery } from '../../data/RepositoryProvider'
 import { partialMlFromWeight, submitCount } from '../../services/count'
-import type { CountLineCommand } from '../../data/repository'
+import type { CountLine, CountLineCommand } from '../../data/repository'
 import { partialToMl } from '../../domain/units'
 import { useDraft } from '../../data/useDraft'
 
@@ -43,11 +45,27 @@ import { useDraft } from '../../data/useDraft'
  * restoring it means a count resumed after a reload SUPERSEDES nothing and
  * duplicates nothing — it finishes the same count. Minting a fresh one would make
  * the resumed sheet a second, competing count of the same location.
+ *
+ * BAR-169 changed how the entered lines are keyed, and the change is the whole
+ * reason the review step can tell "counted zero" from "never visited".
+ *
+ * They used to be keyed by `skuId`. The sheet is eighteen steps over a repeating
+ * SKU set, so eighteen counted steps collapsed into three keys: the map could
+ * never say how many steps had been walked, and an absent key meant both "not
+ * reached yet" and "this SKU is not on the sheet". Keyed by SHEET STEP the two
+ * are distinguishable — a step either has an entry or it does not — and the
+ * per-SKU shape the submit command needs is folded back out of it at seal time
+ * by `linesForSubmit`, which keeps the last entry for each SKU exactly as the
+ * old overwrite-by-key behaviour did.
+ *
+ * `lineIndex` gained one legal value: `totalLines` means the review step. It is
+ * in the draft rather than in React state so a reload at the review does not
+ * drop the counter back onto line eighteen.
  */
 type CountDraft = {
   actionId: string
   lineIndex: number
-  counted: Record<string, CountLineCommand>
+  entries: Record<string, CountLineCommand>
 }
 
 /** Validated, not cast: a draft written by an older build must not reach a submit. */
@@ -57,9 +75,44 @@ function isCountDraft(raw: unknown): raw is CountDraft {
   return (
     typeof d.actionId === 'string' &&
     typeof d.lineIndex === 'number' &&
-    !!d.counted &&
-    typeof d.counted === 'object'
+    !!d.entries &&
+    typeof d.entries === 'object'
   )
+}
+
+/** The steps that have been counted, in sheet order. */
+function countedSteps(entries: Record<string, CountLineCommand>): number[] {
+  return Object.keys(entries)
+    .map(Number)
+    .filter((step) => Number.isInteger(step) && step >= 0)
+    .sort((a, b) => a - b)
+}
+
+/**
+ * The per-SKU lines the submit command takes, from the per-step entries.
+ *
+ * The sheet repeats its SKU set, and `boa_bar_count_line` is unique on
+ * (count_session_id, sku_id) — so a SKU counted at more than one step contributes
+ * one line, and the LAST step wins. That is not a new rule: it is what keying the
+ * map by `skuId` did implicitly, made explicit and ordered so a corrected line
+ * cannot be beaten by the stale entry it replaced.
+ */
+function linesForSubmit(entries: Record<string, CountLineCommand>): CountLineCommand[] {
+  const bySku = new Map<string, CountLineCommand>()
+  for (const step of countedSteps(entries)) bySku.set(entries[String(step)]!.skuId, entries[String(step)]!)
+  return [...bySku.values()]
+}
+
+/** What the counter typed, in their own units. Never an expected figure. */
+function enteredLabel(entry: CountLineCommand | undefined, line: CountLine): string {
+  if (!entry) return 'NOT COUNTED'
+  const parts = [`${entry.fullContainers} FULL`]
+  if (line.partial !== 'none' && entry.partialMl > 0) {
+    parts.push(line.partial === 'litres'
+      ? `${(entry.partialMl / 1000).toFixed(1)} L OPEN`
+      : `${entry.partialMl} ML OPEN`)
+  }
+  return parts.join(' · ')
 }
 
 export function CountScreen() {
@@ -71,6 +124,17 @@ export function CountScreen() {
   const [partial, setPartial] = useState(0)
   const [grossWeightG, setGrossWeightG] = useState<number | null>(null)
   const [measurementError, setMeasurementError] = useState<string | null>(null)
+  /**
+   * BAR-169. True while a line is open because the counter tapped it in the
+   * review list, so saving it returns them to the review rather than marching
+   * them forward through every line after it.
+   *
+   * Deliberately not in the draft: a reload mid-correction restores the line and
+   * its entered value, and the counter walks forward normally from there. Kept
+   * simple because the alternative — persisting a UI intent — is a second thing
+   * that can be restored wrong.
+   */
+  const [returnToReview, setReturnToReview] = useState(false)
 
   /**
    * BAR-082 + BAR-072. The counted lines and the position in the sheet, kept in
@@ -88,10 +152,10 @@ export function CountScreen() {
   const draftKey = session.data?.locationId ? `count:${session.data.locationId}` : null
   const draft = useDraft<CountDraft>(
     draftKey,
-    { actionId: crypto.randomUUID(), lineIndex: 0, counted: {} },
+    { actionId: crypto.randomUUID(), lineIndex: 0, entries: {} },
     isCountDraft,
   )
-  const { actionId, lineIndex, counted } = draft.value
+  const { actionId, lineIndex, entries } = draft.value
 
   /**
    * BAR-161. Open the count as soon as the sheet is shown.
@@ -146,14 +210,16 @@ export function CountScreen() {
   }
 
   // The design's session is 18 lines over a repeating SKU set.
-  const line = s.lines[lineIndex % s.lines.length]!
-  const done = lineIndex
+  const lineAt = (step: number) => s.lines[step % s.lines.length]!
+  const reviewing = lineIndex >= s.totalLines
+  const line = lineAt(lineIndex)
+  const done = Math.min(lineIndex, s.totalLines)
   const isLast = done >= s.totalLines - 1
   const pct = Math.round((done / s.totalLines) * 100)
 
   let weighedPartialMl = 0
   let weightError: string | null = null
-  if (line.partial === 'ml' && grossWeightG !== null) {
+  if (!reviewing && line.partial === 'ml' && grossWeightG !== null) {
     if (line.tareWeightG === null) {
       weightError = 'This product has no tare weight. Do not record a weighed partial.'
     } else {
@@ -165,24 +231,33 @@ export function CountScreen() {
     }
   }
 
-  /**
-   * Record this line, then either advance or submit.
-   *
-   * The count is only navigated away from AFTER the write is accepted. Showing
-   * COUNT SUBMITTED before the outbox has the count would be a claim of success
-   * this app is not entitled to make (non-negotiable 6), and a count is not
-   * re-creatable — the stock has moved by the time anybody notices.
-   */
-  const saveNext = () => {
-    if (weightError) {
-      setMeasurementError(weightError)
-      return
-    }
+  const leaveCount = () =>
+    void (barId ? navigate({ to: '/bars/$barId', params: { barId } }) : navigate({ to: '/bars' }))
 
+  /**
+   * BAR-169. Open a step for entry and put back what was typed into it.
+   *
+   * An empty field on a line the counter has already counted would read as "your
+   * correction lost the original", so the stored entry is restored in the units
+   * it was entered in: litres for a keg, the retained scale reading for a spirit.
+   */
+  const openStep = (step: number, fromReview: boolean) => {
+    const entry = entries[String(step)]
+    const target = lineAt(step)
+    setMeasurementError(null)
+    setFull(entry?.fullContainers ?? 0)
+    setGrossWeightG(entry?.grossWeightG ?? null)
+    setPartial(entry && target.partial === 'litres' ? Math.round(entry.partialMl / 1000) : 0)
+    setReturnToReview(fromReview)
+    draft.setValue((current) => ({ ...current, lineIndex: step }))
+  }
+
+  /** The current line as it would be recorded, merged into the entries so far. */
+  const withCurrentLine = (): Record<string, CountLineCommand> => {
     const isWeighedPartial = line.partial === 'ml' && grossWeightG !== null
-    const next: Record<string, CountLineCommand> = {
-      ...counted,
-      [line.skuId]: {
+    return {
+      ...entries,
+      [String(lineIndex)]: {
         skuId: line.skuId,
         fullContainers: full,
         // Kegs are metered in litres. Spirits are weighed and converted against
@@ -191,24 +266,67 @@ export function CountScreen() {
         ...(isWeighedPartial ? { grossWeightG } : {}),
       },
     }
+  }
 
-    if (!isLast) {
-      // Persisted before the input is cleared, so the line just counted survives
-      // even if the tab dies between one line and the next.
-      draft.setValue((current) => ({ ...current, counted: next, lineIndex: current.lineIndex + 1 }))
-      // Reset per line. A carried-over value is a silent miscount.
-      setFull(0)
-      setPartial(0)
-      setGrossWeightG(null)
-      setMeasurementError(null)
+  /**
+   * Record this line, then move: to the review if it was the last, back to the
+   * review if the line was opened from there, otherwise on to the next line.
+   *
+   * BAR-169. What this used to do at the end of the sheet was seal the count.
+   * The footer button kept its size, its colour and its position and only changed
+   * its label, so eighteen taps on one unmoving target produced a sealed,
+   * witnessed record — and the ledger is append-only, so the only correction is a
+   * second count plus a flagged adjustment. Nothing here submits any more; the
+   * seal lives on the review step, on a different control in a different place.
+   */
+  const saveNext = () => {
+    if (weightError) {
+      setMeasurementError(weightError)
       return
     }
 
-    draft.setValue((current) => ({ ...current, counted: next }))
+    const next = withCurrentLine()
+    // Persisted before the input is cleared, so the line just counted survives
+    // even if the tab dies between one line and the next.
+    const target = returnToReview ? s.totalLines : lineIndex + 1
+    draft.setValue((current) => ({ ...current, entries: next, lineIndex: target }))
+    setReturnToReview(false)
 
+    if (target >= s.totalLines) return
+
+    // Reset per line — a carried-over value is a silent miscount — unless this
+    // step was already counted, in which case its own entry goes back in.
+    const entry = next[String(target)]
+    const targetLine = lineAt(target)
+    setFull(entry?.fullContainers ?? 0)
+    setGrossWeightG(entry?.grossWeightG ?? null)
+    setPartial(entry && targetLine.partial === 'litres' ? Math.round(entry.partialMl / 1000) : 0)
+    setMeasurementError(null)
+  }
+
+  /**
+   * BAR-169. Step back one line, keeping the line being left.
+   *
+   * Navigation was forward-only, and the only back control was the header
+   * chevron, which exits the whole count. So a miscount noticed at line twelve
+   * could not be fixed: staff either abandoned the count or knowingly sealed a
+   * figure they knew was wrong.
+   */
+  const goPrevious = () => {
+    if (lineIndex === 0) return
+    if (weightError) {
+      setMeasurementError(weightError)
+      return
+    }
+    const next = withCurrentLine()
+    draft.setValue((current) => ({ ...current, entries: next }))
+    openStep(lineIndex - 1, false)
+  }
+
+  const seal = () => {
     submit.mutate(
       {
-        lines: Object.values(next),
+        lines: linesForSubmit(entries),
         locationId: s.locationId,
         countKind: s.countKind,
         expectedLineCount: s.lines.length,
@@ -238,45 +356,197 @@ export function CountScreen() {
     )
   }
 
+  /*
+    BAR-165. Leaving a count in progress used to be silent, and it is not a
+    neutral act: the session stays open, which is what keeps this device blind to
+    the location (BAR-161), and the sheet is kept in Dexie. Somebody who taps back
+    at line five has no way to know their work is safe, or that the bar's position
+    will stay hidden from them until they come back and finish.
+
+    So it is stated, once, when there is something to lose. With no lines counted
+    there is nothing to say and the tap is immediate.
+  */
+  const counted = countedSteps(entries)
+  const backButton = (
+    <button
+      className="flow-back"
+      onClick={() => {
+        if (counted.length > 0 && !confirmLeave) {
+          setConfirmLeave(true)
+          return
+        }
+        leaveCount()
+      }}
+      aria-label="Back"
+    >
+      <ChevronLeft size={18} strokeWidth={2} aria-hidden="true" />
+    </button>
+  )
+
+  const leaveDialog = confirmLeave ? (
+    <ConfirmDialog
+      title="Leave count open?"
+      confirmLabel="Leave for now"
+      cancelLabel="Keep counting"
+      onCancel={() => setConfirmLeave(false)}
+      onConfirm={leaveCount}
+    >
+      <p>
+        This count stays open and your {counted.length} counted line{counted.length === 1 ? '' : 's'}{' '}
+        will be kept on this device. You can return and submit it later.
+      </p>
+    </ConfirmDialog>
+  ) : null
+
+  /**
+   * BAR-169 — the review step.
+   *
+   * Everything here is the counter's own input. That is what makes it compatible
+   * with non-negotiable 3: reading back what you yourself typed discloses
+   * nothing, while an expected figure, an earlier count or a variance shown at
+   * this moment would tell the counter what answer the system wanted — which is
+   * the one thing a blind count exists to prevent. There is no expected column
+   * here and there is no total to compare against.
+   */
+  if (reviewing) {
+    const zeroSteps = counted.filter((step) => {
+      const entry = entries[String(step)]!
+      return entry.fullContainers === 0 && entry.partialMl === 0
+    })
+    const notCounted = s.totalLines - counted.length
+
+    // Which step's entry each SKU will actually be sealed with. The sheet repeats
+    // its SKU set and the record holds one line per SKU, so an earlier step of a
+    // SKU counted again later is superseded — said out loud rather than left for
+    // somebody to discover in the variance report.
+    const sealedStepFor = new Map<string, number>()
+    for (const step of counted) sealedStepFor.set(entries[String(step)]!.skuId, step)
+
+    return (
+      <div className="flow-screen">
+        <header className="count-head">
+          <div className="count-head-row">
+            <div className="count-head-left">
+              {backButton}
+              <div>
+                <p className="count-head-title">REVIEW COUNT</p>
+                <p className="count-head-scope">{s.scopeLabel}</p>
+              </div>
+            </div>
+            <span className="count-progress">REVIEW</span>
+          </div>
+          <div className="count-meter">
+            <i style={{ width: '100%' }} />
+          </div>
+        </header>
+
+        <div className="flow-body count-review">
+          <p className="count-review-summary">
+            {counted.length} line{counted.length === 1 ? '' : 's'} counted · {zeroSteps.length} left at
+            zero{notCounted > 0 ? ` · ${notCounted} not counted` : ''}
+          </p>
+          <ul className="count-review-list">
+            {Array.from({ length: s.totalLines }, (_, step) => {
+              const entry = entries[String(step)]
+              const stepLine = lineAt(step)
+              const isZero = !!entry && entry.fullContainers === 0 && entry.partialMl === 0
+              const sealedStep = entry ? sealedStepFor.get(entry.skuId) ?? step : step
+              const superseded = sealedStep !== step
+              return (
+                <li key={step}>
+                  <button
+                    className={`count-review-row${entry ? '' : ' is-missing'}`}
+                    onClick={() => openStep(step, true)}
+                  >
+                    <span className="count-review-index">{String(step + 1).padStart(2, '0')}</span>
+                    <span className="count-review-name">
+                      {stepLine.name}
+                      {superseded && <span className="count-review-tag">RECOUNTED AT LINE {sealedStep + 1}</span>}
+                      {isZero && !superseded && <span className="count-review-tag is-zero">ZERO</span>}
+                    </span>
+                    <span className="count-review-value">{enteredLabel(entry, stepLine)}</span>
+                    <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+          <div className="advisory advisory-sage">
+            <EyeOff size={15} strokeWidth={1.9} aria-hidden="true" />
+            Blind count. This is what you entered — expected stock, previous counts and variance stay
+            hidden until a manager opens the variance screen.
+          </div>
+        </div>
+
+        <footer className="flow-foot">
+          {openError && (
+            <p className="flow-error" role="alert">
+              COUNT NOT OPENED · {openError} · This sheet cannot be submitted. Go back and start the
+              count again.
+            </p>
+          )}
+          {submit.isError && (
+            <p className="flow-error" role="alert">NOT SUBMITTED · {submit.error.message}</p>
+          )}
+          {/*
+            The seal is deliberately NOT where `Save & next` was. Seventeen taps
+            in the same place build motor memory, and the eighteenth used to land
+            on a control that sealed a witnessed record. This one is gold, not
+            green; it is half the width; it sits on the right, so a tap aimed at
+            the centre of the old button falls between the two; and it says what
+            it does.
+          */}
+          <div className="count-seal-actions">
+            <button
+              className="flow-cta-ghost"
+              onClick={() => openStep(s.totalLines - 1, false)}
+              disabled={submit.isPending}
+            >
+              Back to last line
+            </button>
+            <button
+              className="flow-cta-gold"
+              onClick={seal}
+              disabled={submit.isPending || !!openError}
+            >
+              {submit.isPending ? 'Sealing…' : 'Seal this count'}
+            </button>
+          </div>
+        </footer>
+        {leaveDialog}
+      </div>
+    )
+  }
+
   return (
     <div className="flow-screen">
       <header className="count-head">
         <div className="count-head-row">
           <div className="count-head-left">
-            {/*
-              BAR-165. Leaving a count in progress used to be silent, and it is
-              not a neutral act: the session stays open, which is what keeps this
-              device blind to the location (BAR-161), and the sheet is kept in
-              Dexie. Somebody who taps back at line five has no way to know their
-              work is safe, or that the bar's position will stay hidden from them
-              until they come back and finish.
-
-              So it is stated, once, when there is something to lose. With no
-              lines counted there is nothing to say and the tap is immediate.
-            */}
-            <button
-              className="flow-back"
-              onClick={() => {
-                if (Object.keys(counted).length > 0 && !confirmLeave) {
-                  setConfirmLeave(true)
-                  return
-                }
-                void (barId
-                  ? navigate({ to: '/bars/$barId', params: { barId } })
-                  : navigate({ to: '/bars' }))
-              }}
-              aria-label="Back"
-            >
-              <ChevronLeft size={18} strokeWidth={2} aria-hidden="true" />
-            </button>
+            {backButton}
             <div>
               <p className="count-head-title">{s.kindLabel}</p>
               <p className="count-head-scope">{s.scopeLabel}</p>
             </div>
           </div>
-          <span className="count-progress">
-            {done} OF {s.totalLines}
-          </span>
+          <div className="count-head-right">
+            {/*
+              BAR-169. Worded and placed so it cannot be confused with the header
+              chevron on the left, which leaves the count entirely. Two controls
+              that both read as "back" and do very different things is the defect
+              this task is fixing, so this one carries its own label and sits
+              beside the progress figure it moves.
+            */}
+            {lineIndex > 0 && (
+              <button className="count-prev" onClick={goPrevious}>
+                <ChevronLeft size={14} strokeWidth={2.4} aria-hidden="true" />
+                Previous
+              </button>
+            )}
+            <span className="count-progress">
+              {done} OF {s.totalLines}
+            </span>
+          </div>
         </div>
         <div className="count-meter">
           <i style={{ width: `${pct}%` }} />
@@ -397,7 +667,7 @@ export function CountScreen() {
         */}
         {draft.restored && (
           <p className="count-resumed" role="status">
-            RESUMED · {Object.keys(counted).length} line{Object.keys(counted).length === 1 ? '' : 's'} already counted on this device
+            RESUMED · {counted.length} line{counted.length === 1 ? '' : 's'} already counted on this device
           </p>
         )}
         {/*
@@ -412,18 +682,15 @@ export function CountScreen() {
             count again.
           </p>
         )}
-        {submit.isError && (
-          <p className="flow-error" role="alert">NOT SUBMITTED · {submit.error.message}</p>
-        )}
         <button
           className="flow-cta"
           onClick={saveNext}
-          disabled={submit.isPending || !!weightError || !!openError}
+          disabled={!!weightError || !!openError}
         >
-          {submit.isPending ? 'Recording…' : isLast ? 'Submit count' : 'Save & next'}
+          {returnToReview ? 'Save & back to review' : isLast ? 'Save & review' : 'Save & next'}
         </button>
       </footer>
-      {confirmLeave && <ConfirmDialog title="Leave count open?" confirmLabel="Leave for now" cancelLabel="Keep counting" onCancel={() => setConfirmLeave(false)} onConfirm={() => void (barId ? navigate({ to: '/bars/$barId', params: { barId } }) : navigate({ to: '/bars' }))}><p>This count stays open and your {Object.keys(counted).length} counted line{Object.keys(counted).length === 1 ? '' : 's'} will be kept on this device. You can return and submit it later.</p></ConfirmDialog>}
+      {leaveDialog}
     </div>
   )
 }
