@@ -23,6 +23,7 @@ import { useRepository, useRepositoryMutation, useRepositoryQuery } from '../../
 import { useAppStore } from '../../lib/app-store'
 import { ScreenSkeleton } from '../../components/ScreenSkeleton'
 import { requestTopUp, type RequestTopUpInput } from '../../services/top-up'
+import { ProductPicker } from '../../components/ProductPicker'
 
 export function BarScreen() {
   const { barId } = useParams({ from: '/bars/$barId' })
@@ -36,8 +37,9 @@ export function BarScreen() {
   const [urgency, setUrgency] = useState<'normal' | 'urgent'>('normal')
   const [note, setNote] = useState('')
   const [topUpActionId, setTopUpActionId] = useState(() => crypto.randomUUID())
+  const [pickerOpen, setPickerOpen] = useState(false)
   const topUpRef = useRef<HTMLElement>(null)
-  const topUpProductRef = useRef<HTMLSelectElement>(null)
+  const topUpProductRef = useRef<HTMLButtonElement>(null)
   const topUp = useRepositoryMutation((repository, input: Omit<RequestTopUpInput, 'repository'>) => (
     requestTopUp({ repository, ...input })
   ))
@@ -225,14 +227,25 @@ export function BarScreen() {
           <section className="panel top-up-panel" ref={topUpRef}>
             <span className="top-up-title">REQUEST TOP-UP</span>
 
-            <label className="field">
+            {/*
+              BAR-176. This was a native `<select>` — the app's fourth way of
+              choosing a SKU and the only one that was not the design's
+              `PRODUCT … CHANGE` row. It opens the same searchable sheet as
+              issue, waste and receipt now, in the field shape the select had so
+              it still reads as one row of this form.
+            */}
+            <div className="field">
               <span className="issue-label">PRODUCT</span>
-              <select ref={topUpProductRef} value={skuId} onChange={(event) => setSkuId(event.target.value)}>
-                {detail.inventory.map((line) => (
-                  <option key={line.skuId} value={line.skuId}>{line.name}</option>
-                ))}
-              </select>
-            </label>
+              <button
+                className="picker-trigger"
+                ref={topUpProductRef}
+                onClick={() => setPickerOpen(true)}
+                aria-haspopup="dialog"
+              >
+                <span>{detail.inventory.find((line) => line.skuId === skuId)?.name ?? 'Choose product'}</span>
+                <span className="issue-change">CHANGE</span>
+              </button>
+            </div>
 
             <label className="field">
               <span className="issue-label">CONTAINERS</span>
@@ -336,6 +349,34 @@ export function BarScreen() {
           </div>
         )}
       </div>
+
+      {/*
+        BAR-176. Rendered here, at the screen root, and NOT inside the top-up
+        panel it belongs to — found by driving the bar screen and measuring the
+        sheet. `.panel` carries `backdrop-filter`, and a non-`none`
+        backdrop-filter makes an element a containing block for absolutely
+        positioned descendants. Nested inside the panel the sheet was therefore
+        354×434 clipped to the form instead of covering the phone frame, and the
+        dismiss backdrop was a strip of the panel rather than the screen. Nothing
+        errored and it looked plausible in a screenshot, which is exactly the
+        failure mode this project has been caught by before.
+
+        No group headers here, unlike the other three surfaces:
+        `BarInventoryLine` carries a name and a ledger-derived movement summary,
+        with no spec or category, and BAR-176 may not change the data layer. The
+        sheet renders an ungrouped list when nothing hands it a group. Giving the
+        bar's inventory read model a category belongs to whoever owns it.
+      */}
+      {pickerOpen && (
+        <ProductPicker
+          scope="top-up"
+          options={detail.inventory.map((line) => ({ id: line.skuId, name: line.name }))}
+          selectedId={skuId === '' ? null : skuId}
+          onSelect={setSkuId}
+          onDismiss={() => setPickerOpen(false)}
+          returnFocusTo={topUpProductRef}
+        />
+      )}
     </div>
   )
 }

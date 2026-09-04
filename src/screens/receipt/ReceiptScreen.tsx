@@ -12,7 +12,7 @@
  * products and splitting one note across several receipts would break the
  * reconciliation the note exists for.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { ChevronLeft, Minus, Plus, Trash2 } from 'lucide-react'
 import { useRepositoryMutation, useRepositoryQuery } from '../../data/RepositoryProvider'
@@ -21,6 +21,7 @@ import { cancelQueuedCommand, clearDraft, readDraft, writeDraft } from '../../li
 import { useAppStore } from '../../lib/app-store'
 import { ScreenSkeleton } from '../../components/ScreenSkeleton'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { ProductPicker } from '../../components/ProductPicker'
 
 type Line = { skuId: string; containers: number }
 type ReceiptDraft = {
@@ -46,6 +47,8 @@ export function ReceiptScreen() {
   const [actionId, setActionId] = useState<string>(() => crypto.randomUUID())
   const [draftReady, setDraftReady] = useState(false)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const productTriggerRef = useRef<HTMLButtonElement>(null)
 
   const draftKey = data ? `receipt:draft:${data.locationId}` : null
 
@@ -107,12 +110,6 @@ export function ReceiptScreen() {
         <div className="flow-body"><ScreenSkeleton variant="flow" /></div>
       </div>
     )
-  }
-
-  const nextProduct = () => {
-    const index = data.products.findIndex((p) => p.skuId === product.skuId)
-    const next = data.products[(index + 1) % data.products.length]
-    if (next) setSkuId(next.skuId)
   }
 
   const addLine = () => {
@@ -199,7 +196,19 @@ export function ReceiptScreen() {
           />
         </label>
 
-        <button className="issue-product" onClick={nextProduct} aria-label="Change product">
+        {/*
+          BAR-176. A delivery note carries several products, so this trigger is
+          used once per line — it was also the worst case of the cycling CHANGE
+          button, since every line started from wherever the previous one left
+          off. The line-builder below is untouched: choose, set the quantity, add.
+        */}
+        <button
+          className="issue-product"
+          ref={productTriggerRef}
+          onClick={() => setPickerOpen(true)}
+          aria-haspopup="dialog"
+          aria-label="Change product"
+        >
           <span className="issue-label">PRODUCT</span>
           <span className="issue-product-row">
             <span>
@@ -312,6 +321,20 @@ export function ReceiptScreen() {
           <button className="flow-cta-ghost" onClick={() => setConfirmDiscard(true)}>Discard delivery</button>
         ) : null}
       </footer>
+      {pickerOpen && (
+        <ProductPicker
+          scope="receipt"
+          options={data.products.map((item) => ({
+            id: item.skuId,
+            name: item.name,
+            detail: item.spec,
+          }))}
+          selectedId={product.skuId}
+          onSelect={setSkuId}
+          onDismiss={() => setPickerOpen(false)}
+          returnFocusTo={productTriggerRef}
+        />
+      )}
       {confirmDiscard && <ConfirmDialog title="Discard delivery?" confirmLabel="Discard delivery" cancelLabel="Keep delivery" onCancel={() => setConfirmDiscard(false)} onConfirm={discard}><p>Clear the supplier, delivery note, and {lines.length} line{lines.length === 1 ? '' : 's'}? Nothing has been recorded, so nothing will be removed from the ledger.</p></ConfirmDialog>}
     </div>
   )

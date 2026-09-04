@@ -16,7 +16,7 @@
  * mid-count at this same location (non-negotiable 3). The quantity is bounded by
  * the database, which refuses more than the location holds.
  */
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { ChevronLeft, Minus, Plus } from 'lucide-react'
 import { useRepositoryMutation, useRepositoryQuery } from '../../data/RepositoryProvider'
@@ -24,6 +24,7 @@ import { recordWaste } from '../../services/waste'
 import { ScreenSkeleton } from '../../components/ScreenSkeleton'
 import { useAppStore } from '../../lib/app-store'
 import { cancelQueuedCommand } from '../../lib/offline-db'
+import { ProductPicker } from '../../components/ProductPicker'
 
 export function WasteScreen() {
   const navigate = useNavigate()
@@ -37,6 +38,8 @@ export function WasteScreen() {
   const [skuId, setSkuId] = useState<string | null>(null)
   const [containers, setContainers] = useState(1)
   const [reason, setReason] = useState<string | null>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const productTriggerRef = useRef<HTMLButtonElement>(null)
 
   // One id for this waste entry, reused across attempts (BAR-069).
   const [actionId] = useState(() => crypto.randomUUID())
@@ -68,12 +71,6 @@ export function WasteScreen() {
     )
   }
 
-  const nextProduct = () => {
-    const index = data.products.findIndex((p) => p.skuId === product.skuId)
-    const next = data.products[(index + 1) % data.products.length]
-    if (next) setSkuId(next.skuId)
-  }
-
   return (
     <div className="flow-screen">
       <header className="count-head">
@@ -96,7 +93,20 @@ export function WasteScreen() {
       </header>
 
       <div className="flow-body">
-        <button className="issue-product" onClick={nextProduct} aria-label="Change product">
+        {/*
+          BAR-176. Was a CHANGE button that advanced one SKU per tap, with the
+          catalogue never shown. It opens the shared searchable picker now; the
+          row the design draws (design-markup.html:625) is unchanged, and so is
+          what this screen does with the chosen SKU — the quantity and the reason
+          are deliberately left alone, as they were before.
+        */}
+        <button
+          className="issue-product"
+          ref={productTriggerRef}
+          onClick={() => setPickerOpen(true)}
+          aria-haspopup="dialog"
+          aria-label="Change product"
+        >
           <span className="issue-label">PRODUCT</span>
           <span className="issue-product-row">
             <span>
@@ -202,6 +212,21 @@ export function WasteScreen() {
           {submit.isPending ? 'Recording…' : `Record ${containers} as waste`}
         </button>
       </footer>
+
+      {pickerOpen && (
+        <ProductPicker
+          scope="waste"
+          options={data.products.map((item) => ({
+            id: item.skuId,
+            name: item.name,
+            detail: item.spec,
+          }))}
+          selectedId={product.skuId}
+          onSelect={setSkuId}
+          onDismiss={() => setPickerOpen(false)}
+          returnFocusTo={productTriggerRef}
+        />
+      )}
     </div>
   )
 }

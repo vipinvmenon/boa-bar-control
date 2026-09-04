@@ -1163,3 +1163,44 @@ select { appearance: none; -webkit-appearance: none; }
 
 /* BAR-072 — a restored count says so rather than resuming silently. */
 .count-resumed { margin: 0 0 8px; padding: 8px 12px; border: 1px solid rgba(212,175,55,.36); border-radius: var(--r-sm); background: rgba(212,175,55,.08); color: var(--gold); font: 700 9px/1.4 'Oswald', sans-serif; letter-spacing: .12em; }
+
+/*
+   BAR-176 — the shared product picker.
+
+   Built from what the app already has: `.confirm-modal`'s scrim values, the
+   `.panel`/`.confirm-dialog` fill and border, `.wh-search` for the field, and
+   the radius ladder. No new colour, radius or font size.
+
+   `position: absolute`, not `fixed`. The shell is the positioned ancestor and
+   clips to its own 44px frame, so the sheet rises from the bottom of the phone
+   rather than from the bottom of the browser window — which is where a fixed
+   sheet would sit, since the stage centres a 390×844 frame in the viewport.
+*/
+.picker-scrim { position: absolute; z-index: 20; inset: 0; display: flex; align-items: flex-end; background: rgba(5,5,8,.72); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.picker-sheet { width: 100%; max-height: 84%; padding: 14px 16px calc(16px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px; border-top: 1px solid rgba(166,201,180,.28); border-radius: var(--r-xl) var(--r-xl) 0 0; background: rgba(18,18,24,.96); box-shadow: 0 -24px 70px rgba(0,0,0,.65), inset 0 1px 0 rgba(242,239,226,.08); }
+.picker-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.picker-title { color: rgba(166,201,180,.72); font: 700 10px/1 'Oswald', sans-serif; letter-spacing: .2em; }
+/* Negative margin so the 44px target does not add 44px of sheet header. */
+.picker-close { width: 44px; height: 44px; margin: -10px -10px -10px 0; display: grid; place-items: center; border: 0; background: transparent; color: rgba(166,201,180,.7); }
+.picker-search { flex: none; }
+.picker-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; display: flex; flex-direction: column; gap: 12px; }
+.picker-list::-webkit-scrollbar { display: none; }
+.picker-group { display: flex; flex-direction: column; gap: 6px; }
+.picker-group-label { color: rgba(166,201,180,.62); font: 500 9px/1 'Oswald', sans-serif; letter-spacing: .18em; text-transform: uppercase; }
+/* 52px, above the 44px floor: this is a list read at speed, in the dark. */
+.picker-row { min-height: 52px; padding: 8px 13px; display: flex; align-items: center; text-align: left; border: 1px solid rgba(166,201,180,.16); border-radius: var(--r-sm); background: rgba(27,27,36,.62); color: inherit; }
+.picker-row.is-selected { border-color: var(--green); background: rgba(0,245,165,.1); }
+.picker-row-main { min-width: 0; display: grid; gap: 3px; }
+.picker-row-main strong { color: var(--bone); font: 600 14px/1.2 'Archivo', sans-serif; }
+.picker-row-main small { color: rgba(166,201,180,.62); font: 400 11px/1.3 'Archivo', sans-serif; }
+.picker-row.is-selected .picker-row-main strong { color: var(--green); }
+/*
+   The top-up form's trigger. Issue, waste and receipt open the picker from the
+   design's own `.issue-product` card; inside the top-up panel that card would be
+   a card within a card, so this is the field shape the replaced `<select>` had —
+   same height, padding, border and fill as `.field select` — carrying the same
+   CHANGE marker as the other three triggers.
+*/
+.picker-trigger { min-height: 44px; padding: 0 13px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid rgba(166,201,180,.22); border-radius: var(--r-sm); background: rgba(13,13,18,.55); color: var(--bone); font: 400 14px/1 'Archivo', sans-serif; text-align: left; }
+.picker-trigger > span:first-child { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.picker-trigger .issue-change { flex: none; }

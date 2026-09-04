@@ -5,13 +5,14 @@
  * design-script.jsx:216-241. All operational values come from `issueOptions()`;
  * this screen contains no fixture SKU, location or stock figure.
  */
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { ArrowRight, Minus, Plus } from 'lucide-react'
 import { useRepositoryQuery } from '../../data/RepositoryProvider'
 import { caseCountLabel, issuePresets, issueStep, quantityFor, type IssueUnit } from '../../domain/units'
 import { FlowFooter, FlowHeader } from '../custody/parts'
 import { ScreenSkeleton } from '../../components/ScreenSkeleton'
+import { ProductPicker } from '../../components/ProductPicker'
 
 function initialContainers(unitsPerCase: number, available: number): number {
   const fullCaseMaximum = Math.floor(available / unitsPerCase) * unitsPerCase
@@ -28,6 +29,8 @@ export function IssueScreen() {
   const [productId, setProductId] = useState<string | null>(search.skuId ?? null)
   const [unit, setUnit] = useState<IssueUnit>(search.unit ?? 'case')
   const [chosenContainers, setChosenContainers] = useState<number | null>(search.containers ?? null)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const productTriggerRef = useRef<HTMLButtonElement>(null)
 
   const options = issue.data
   const destination = options?.destinations.find((item) => item.id === destinationId)
@@ -88,9 +91,14 @@ export function IssueScreen() {
     if (next) setDestinationId(next.id)
   }
 
-  const chooseNextProduct = () => {
-    const index = options.products.findIndex((item) => item.skuId === product.skuId)
-    const next = options.products[(index + 1) % options.products.length]
+  /**
+   * BAR-176. The quantity handling here is unchanged — the previous
+   * one-SKU-per-tap CHANGE button reset the unit and the count in exactly this
+   * way, and whether that is right is BAR-177. Only how `next` is arrived at has
+   * changed: chosen from a searchable list rather than the next index round.
+   */
+  const chooseProduct = (skuId: string) => {
+    const next = options.products.find((item) => item.skuId === skuId)
     if (!next) return
     const hasFullCase = next.warehouseContainers >= next.unitsPerCase
     setProductId(next.skuId)
@@ -123,7 +131,13 @@ export function IssueScreen() {
           </button>
         </div>
 
-        <button className="issue-product" onClick={chooseNextProduct} aria-label="Change product">
+        <button
+          className="issue-product"
+          ref={productTriggerRef}
+          onClick={() => setPickerOpen(true)}
+          aria-haspopup="dialog"
+          aria-label="Change product"
+        >
           <span className="issue-label">PRODUCT</span>
           <span className="issue-product-row">
             <span>
@@ -215,6 +229,21 @@ export function IssueScreen() {
           Review issue
         </button>
       </FlowFooter>
+
+      {pickerOpen && (
+        <ProductPicker
+          scope="issue"
+          options={options.products.map((item) => ({
+            id: item.skuId,
+            name: item.name,
+            detail: item.issueSpec,
+          }))}
+          selectedId={product.skuId}
+          onSelect={chooseProduct}
+          onDismiss={() => setPickerOpen(false)}
+          returnFocusTo={productTriggerRef}
+        />
+      )}
     </div>
   )
 }
