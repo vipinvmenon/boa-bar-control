@@ -1054,6 +1054,21 @@ select { appearance: none; -webkit-appearance: none; }
 .team-row strong { display: block; color: var(--bone); font: 500 13px/1.2 'Oswald', sans-serif; letter-spacing: .06em; }
 .team-row small { color: rgba(166,201,180,.7); font: 400 10px/1.4 'Oswald', sans-serif; letter-spacing: .1em; }
 .team-self { color: rgba(166,201,180,.5); font: 700 9px/1 'Oswald', sans-serif; letter-spacing: .16em; }
+/*
+   BAR-170 — a staged role change, confirmed in the row it belongs to.
+
+   The 7px that used to separate rows moves to the wrapper, so a row and the
+   confirm it raised read as one block rather than as two rows. The gold border
+   is `.leave-guard`'s treatment: this app already uses gold for "you are about
+   to do something you cannot casually undo", and a role change is that.
+*/
+.team-member { margin-bottom: 7px; }
+.team-member .team-row { margin-bottom: 0; }
+.team-member .flow-error { margin: 7px 0 0; }
+.team-confirm { margin-top: 7px; padding: 12px 13px; display: grid; gap: 10px; border: 1px solid rgba(227,187,114,.4); border-radius: var(--r-md); background: rgba(227,187,114,.08); }
+.team-confirm p { color: rgba(242,239,226,.86); font: 400 12px/1.5 'Archivo', sans-serif; }
+.team-confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.team-confirm-actions button { min-height: 44px; }
 .team-ok { color: var(--green); font: 400 11px/1.5 'Archivo', sans-serif; }
 /*
    BAR-165. Why the button below is dead.
