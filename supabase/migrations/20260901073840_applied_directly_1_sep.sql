@@ -1,0 +1,33 @@
+-- PLACEHOLDER. Applied directly to the hosted database on 1 September 2026 and
+-- never committed. This file records that it happened; it intentionally contains
+-- no SQL.
+--
+-- WHY IT EXISTS. `supabase db push` refuses to run while any remote migration
+-- version has no local file ("Remote migration versions not found in local
+-- migrations directory"), and the CLI's suggested remedy is
+-- `migration repair --status reverted`, which DELETES the history rows. That
+-- would throw away the only record that these seven ever ran, on a system whose
+-- entire value is its audit trail. A placeholder satisfies the check and keeps
+-- the record.
+--
+-- WHAT THE WORK WAS. Almost certainly the 1 September batch that is also
+-- described by the tracked files 202609010001-202609010007 (top-up requests,
+-- non-negative upsert, accept status cast, count submit grant, internal RLS,
+-- internal deny policies, hardened private function paths). The evidence is
+-- circumstantial but consistent: seven entries, all timestamped 1 September, and
+-- every object those seven tracked files create was verified present on the
+-- remote (`supabase inspect db`, 3 September). Those seven are now marked
+-- applied, so the work IS represented in the tracked history.
+--
+-- WHAT IS NOT KNOWN. The exact SQL. If these carried anything the tracked files
+-- do not, that difference is live in the database and recorded nowhere. Reading
+-- `supabase_migrations.schema_migrations.statements` for this version is the way
+-- to find out, and needs direct SQL access.
+--
+-- This file is empty on purpose: it must never re-apply anything. It is already
+-- in the remote history and will never be run.
+
+-- An empty transaction. `check:sql` requires one begin/commit pair per migration,
+-- which is a fair rule; satisfying it honestly is better than exempting the file.
+begin;
+commit;
