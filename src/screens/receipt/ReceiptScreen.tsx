@@ -17,7 +17,8 @@ import { useNavigate } from '@tanstack/react-router'
 import { ChevronLeft, Minus, Plus, Trash2 } from 'lucide-react'
 import { useRepositoryMutation, useRepositoryQuery } from '../../data/RepositoryProvider'
 import { recordReceipt } from '../../services/receipt'
-import { clearDraft, readDraft, writeDraft } from '../../lib/offline-db'
+import { cancelQueuedCommand, clearDraft, readDraft, writeDraft } from '../../lib/offline-db'
+import { useAppStore } from '../../lib/app-store'
 import { ScreenSkeleton } from '../../components/ScreenSkeleton'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 
@@ -33,6 +34,7 @@ type ReceiptDraft = {
 
 export function ReceiptScreen() {
   const navigate = useNavigate()
+  const store = useAppStore()
   const options = useRepositoryQuery(['receiptOptions'], (r) => r.receiptOptions())
   const data = options.data
 
@@ -270,10 +272,37 @@ export function ReceiptScreen() {
           <p className="flow-error" role="alert">NOT RECORDED · {submit.error.message}</p>
         )}
         {blocker && !confirmDiscard ? <p className="flow-hint">{blocker}</p> : null}
+        {/*
+          BAR-168. Same defect as the waste screen: this recorded a delivery and
+          then simply left. A delivery note is entered over several minutes and
+          is the record a supplier invoice is reconciled against, so "did that
+          save?" is not a small question.
+
+          The undo here also puts the draft back. Cancelling the queued command
+          without restoring the lines would leave somebody who tapped Undo with
+          nothing to re-record, which is a worse outcome than not offering it —
+          and the action id goes back too, so re-recording stays one idempotent
+          receipt rather than risking a second one.
+        */}
         <button className="flow-cta" disabled={!canRecord} onClick={() => submit.mutate(
           { lines },
-          { onSuccess: () => {
+          { onSuccess: (result) => {
+            const recorded = { supplier, deliveryNote, skuId, containers, lines, actionId } satisfies ReceiptDraft
+            const summary = `${lines.length} LINE${lines.length === 1 ? '' : 'S'} · ${(supplier || 'DELIVERY').toUpperCase()}`
             if (draftKey) void clearDraft(draftKey)
+            if (result.status === 'queued') {
+              store.flash(`${summary} · QUEUED`, {
+                label: 'Undo',
+                run: () => void cancelQueuedCommand(result.outboxId).then((cancelled) => {
+                  if (cancelled && draftKey) void writeDraft(draftKey, recorded)
+                  store.flash(cancelled
+                    ? `${summary} · PUT BACK · NOTHING RECORDED`
+                    : `ALREADY SENT · ${summary} IS ON THE LEDGER`)
+                }),
+              })
+            } else {
+              store.flash(`${summary} · RECORDED`)
+            }
             void navigate({ to: '/warehouse' })
           } },
         )}>

@@ -180,6 +180,31 @@ export async function getCommand(id: string): Promise<QueuedCommand | undefined>
 }
 
 /**
+ * BAR-168 — take back a write that has not been sent yet.
+ *
+ * The undo window is not a policy decision, it is a fact about the outbox: while
+ * a command is still `pending` it exists only on this device, so removing it
+ * leaves no trace anywhere and nothing to compensate for. The moment the drain
+ * claims it (`syncing`) or the server accepts it (`done`), the movement is real
+ * and the only correction is a compensating one — which is a decision for a
+ * person, not for an undo button.
+ *
+ * Read and delete run in one transaction so the drain cannot claim the row
+ * between the two. Returns `false` rather than throwing when the window has
+ * closed, so the caller can say so plainly instead of showing a failure.
+ */
+export async function cancelQueuedCommand(id: string): Promise<boolean> {
+  const cancelled = await offlineDb.transaction('rw', offlineDb.outbox, async () => {
+    const row = await offlineDb.outbox.get(id)
+    if (!row || row.status !== 'pending') return false
+    await offlineDb.outbox.delete(id)
+    return true
+  })
+  if (cancelled) announce()
+  return cancelled
+}
+
+/**
  * Resolve a permanently rejected command without deleting its audit record.
  * This is the explicit human decision that unblocks later causal writes.
  */

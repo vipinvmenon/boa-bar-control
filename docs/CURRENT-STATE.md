@@ -3770,3 +3770,62 @@ Verified:
 - `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass. 151 unit tests, 321 class names all defined.
 - `corepack pnpm test:visual`: 16 implemented · 19 reading the data layer · 0 hardcoded · 0 errored · 6 missing. Unchanged by this task — the strip does not render in fixture mode, so no reference capture moves.
 - Driven in the browser at 375×812 on `/count` (a flow screen, which had no status at all before): `3 QUEUED · SENDING`; `OFFLINE · 3 QUEUED · SAVED ON THIS DEVICE`; `1 NOT SENT · TAP TO FIX` as a 44 px button that navigates to `/more`. Cleared to nothing when the queue emptied.
+
+### Session — 4 September 2026 · claude
+
+Completed: **BAR-168** — every write now says what it did, and a write that has
+not been sent yet can be taken back.
+
+Waste and receipt both navigated away on success and reported nothing at all.
+The outbox's idempotency key is minted per screen mount, so it stops a double
+tap but not somebody who re-enters the flow because they are unsure — and
+silence is precisely what makes them. That second waste entry was a real
+movement in an append-only ledger.
+
+The undo window is not a policy choice, it is a fact about the outbox: while a
+command is `pending` it exists only on this device, so deleting it leaves nothing
+anywhere and nothing to compensate for. `cancelQueuedCommand` reads and deletes
+in one Dexie transaction so the drain cannot claim the row in between, and
+returns `false` rather than throwing once the window has closed — the screen then
+says `ALREADY SENT · … IS ON THE LEDGER` instead of showing a failure. A `posted`
+write is never offered an undo, because there is not one: a correction there is a
+compensating movement, which is a person's decision.
+
+Also: the toast can carry one action, plain confirmations last 4.5 s and ones
+with an undo 7 s, and waste returns to the bar it was recorded at rather than the
+bars list.
+
+Files changed: `src/lib/offline-db.ts`, `src/lib/app-store.tsx`,
+`src/app/AppShell.tsx`, `src/screens/waste/WasteScreen.tsx`,
+`src/screens/receipt/ReceiptScreen.tsx`, `src/styles.css`, `docs/ROADMAP.md`,
+`docs/CURRENT-STATE.md`
+Architecture changes: none
+Known issues:
+
+- **Not seen against a live Supabase session or on a physical device.** The
+  fixture repository returns `posted`, so the queued-and-undo path was verified
+  by temporarily patching `fixture-repository.recordWaste` to enqueue a real
+  outbox command and return `queued`. The patch was reverted and the outbox
+  cleared before the gates were re-run; `grep -rn VERIFY-TEMP src` is clean.
+- `cancelQueuedCommand` has no unit test. The gate suite has no IndexedDB
+  environment, and the behaviour that matters — losing the race with the drain —
+  was checked by driving it (below) rather than by a test that would have had to
+  fake the store it is guarding.
+- In demo mode a fixture write flashes `… · RECORDED` under a banner that says
+  NOTHING IS RECORDED. The banner is red on every screen and unmistakable, so
+  this was left rather than special-cased, but it is a contradiction.
+- The remaining four audit P0s are open: the count seals with no review from the
+  same pixel tapped 17 times (BAR-169 next), no way to correct an earlier count
+  line, role changes commit on `select` change, and `canInvite` is gated on two
+  hardcoded email addresses.
+
+Recommended next: BAR-169 — a review step before a count is sealed, and a way to
+step back through counted lines. It is the last of the audit's P0s that can put a
+wrong figure into an immutable record.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass. 151 unit tests, 321 class names all defined.
+- `corepack pnpm test:visual`: 16 implemented · 19 reading the data layer · 0 hardcoded · 0 errored · 6 missing. Unchanged.
+- Driven at 375×812. Waste at `/bars/bar-3/waste`, queued: returns to **BAR 3**, toast `1 CORONA EXTRA · BREAKAGE · QUEUED` with an Undo. Tapping Undo took the outbox from 2 rows to 1 and reported `UNDONE · NOTHING RECORDED`. With the row forced to `syncing` first, the same tap left it in place and reported `ALREADY SENT · … IS ON THE LEDGER`. Posted: `1 CORONA EXTRA · SPILLAGE · RECORDED`, no action, `pointer-events: none` retained.
+- Receipt: `1 LINE · STOK · RECORDED`, returning to `/warehouse`.

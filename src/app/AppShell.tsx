@@ -132,7 +132,27 @@ export function AppShell() {
           was reporting about. It now sits at the foot, clear of the navigation,
           and clear of the taller footer on a flow screen.
         */}
-        {store.toast && <div className={`toast ${fullFlow ? 'is-flow' : ''}`} role="status">{store.toast}</div>}
+        {/*
+          BAR-168. The toast can now carry one action, which is only ever an
+          undo. It is `pointer-events: none` without one and tappable with one,
+          so a confirmation still cannot swallow a tap meant for the screen
+          underneath it.
+        */}
+        {store.toast && (
+          <div className={`toast ${fullFlow ? 'is-flow' : ''} ${store.toast.action ? 'has-action' : ''}`} role="status">
+            <span>{store.toast.message}</span>
+            {store.toast.action && (
+              <button
+                onClick={() => {
+                  store.toast?.action?.run()
+                  store.dismissToast()
+                }}
+              >
+                {store.toast.action.label}
+              </button>
+            )}
+          </div>
+        )}
       </div>
       <div className="stage-caption" aria-hidden="true">BOA BAR INVENTORY / 390 × 844 / {caption}</div>
     </div>

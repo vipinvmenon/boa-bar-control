@@ -22,9 +22,12 @@ import { ChevronLeft, Minus, Plus } from 'lucide-react'
 import { useRepositoryMutation, useRepositoryQuery } from '../../data/RepositoryProvider'
 import { recordWaste } from '../../services/waste'
 import { ScreenSkeleton } from '../../components/ScreenSkeleton'
+import { useAppStore } from '../../lib/app-store'
+import { cancelQueuedCommand } from '../../lib/offline-db'
 
 export function WasteScreen() {
   const navigate = useNavigate()
+  const store = useAppStore()
   // BAR-024. A scoped bar worker reaches `/waste` and uses their membership
   // location. A manager/admin reaches this flow from a bar workspace, whose
   // route carries the selected location because their membership is global.
@@ -156,11 +159,44 @@ export function WasteScreen() {
           nobody can explain (spec §8).
         */}
         {reason === null ? <p className="flow-hint">Choose a reason. It is what makes this accounted depletion rather than an unexplained loss.</p> : null}
+        {/*
+          BAR-168. This button used to navigate to the bars list and say nothing
+          at all — no message, no receipt, no indication of whether the movement
+          had left the phone. The idempotency key is minted per screen mount, so
+          it protects a double tap but NOT somebody who re-enters the flow
+          because they are unsure, which is exactly what silence produces. The
+          second waste entry was real.
+
+          So: name what was written, say whether it is posted or queued, and
+          return to the bar they were standing in rather than the list.
+        */}
         <button
           className="flow-cta is-short"
           disabled={reason === null || submit.isPending}
           onClick={() => reason && submit.mutate({ reason }, {
-            onSuccess: () => void navigate({ to: '/bars' }),
+            onSuccess: (result) => {
+              const summary = `${containers} ${product.name.toUpperCase()} · ${reason.toUpperCase()}`
+              if (result.status === 'queued') {
+                // Still on this device, so it can be taken back with no trace
+                // and nothing to compensate for.
+                store.flash(`${summary} · QUEUED`, {
+                  label: 'Undo',
+                  run: () => void cancelQueuedCommand(result.outboxId).then((cancelled) => {
+                    store.flash(cancelled
+                      ? `${summary} · UNDONE · NOTHING RECORDED`
+                      : `ALREADY SENT · ${summary} IS ON THE LEDGER`)
+                  }),
+                })
+              } else {
+                // On the ledger. No undo is offered, because there is not one —
+                // a correction here is a compensating movement, which is a
+                // decision for a person and not for a button.
+                store.flash(`${summary} · RECORDED`)
+              }
+              void (barId
+                ? navigate({ to: '/bars/$barId', params: { barId } })
+                : navigate({ to: '/bars' }))
+            },
           })}
         >
           {submit.isPending ? 'Recording…' : `Record ${containers} as waste`}

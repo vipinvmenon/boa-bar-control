@@ -72,15 +72,24 @@ type AppStore = {
   lastFailureKind?: string
   /** Exact server refusal for the newest retained dead letter (BAR-135). */
   lastFailure?: string
-  toast?: string
-  flash: (message: string) => void
+  toast?: Toast
+  /**
+   * BAR-168. A write that reports nothing is a write people record twice. The
+   * optional action is how a queued movement can be taken back inside its own
+   * window, so routine stock entry needs no confirmation dialogue at all.
+   */
+  flash: (message: string, action?: ToastAction) => void
+  dismissToast: () => void
 }
+
+export type ToastAction = { label: string; run: () => void }
+export type Toast = { id: number; message: string; action?: ToastAction }
 
 const AppStoreContext = createContext<AppStore | null>(null)
 
 export function AppStoreProvider({ children }: PropsWithChildren) {
   const auth = useAuth()
-  const [toast, setToast] = useState<string>()
+  const [toast, setToast] = useState<Toast>()
   const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine)
   const [queue, setQueue] = useState<{
     pending: number
@@ -134,12 +143,28 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
     }
   }, [])
 
-  const flash = useCallback((message: string) => {
-    setToast(message)
-    // 2600 ms, the design's own duration (BAR-041). Every toast expires, including
-    // ones raised while another is showing.
-    window.setTimeout(() => setToast((current) => (current === message ? undefined : current)), 2600)
+  /**
+   * BAR-168. Two durations, not one.
+   *
+   * 2600 ms was the design's duration (BAR-041) for a message that only had to be
+   * read. A message that has to be read *and acted on* — an undo — cannot expire
+   * in the time it takes to put a phone back in a pocket and take it out again,
+   * so it gets 7 s. A plain confirmation gets 4.5 s: still brief, but long enough
+   * to be read by somebody who is holding a crate.
+   *
+   * The id is what expires, so a toast raised while another is showing replaces
+   * it cleanly and neither timer can clear the wrong message.
+   */
+  const flash = useCallback((message: string, action?: ToastAction) => {
+    const id = Date.now() + Math.random()
+    setToast({ id, message, action })
+    window.setTimeout(
+      () => setToast((current) => (current?.id === id ? undefined : current)),
+      action ? 7_000 : 4_500,
+    )
   }, [])
+
+  const dismissToast = useCallback(() => setToast(undefined), [])
 
   const venueRole = auth.activeMembership?.role ?? null
 
@@ -164,8 +189,9 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       lastFailure: queue.lastFailure,
       toast,
       flash,
+      dismissToast,
     }),
-    [venueRole, auth.activeMembership?.venueName, auth.activeMembership?.locationId, offline, queue.pending, queue.failed, queue.authStopped, queue.authFailureId, queue.authFailureKind, queue.authFailure, queue.lastFailureId, queue.lastFailureKind, queue.lastFailure, toast, flash],
+    [venueRole, auth.activeMembership?.venueName, auth.activeMembership?.locationId, offline, queue.pending, queue.failed, queue.authStopped, queue.authFailureId, queue.authFailureKind, queue.authFailure, queue.lastFailureId, queue.lastFailureKind, queue.lastFailure, toast, flash, dismissToast],
   )
 
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>
