@@ -361,11 +361,15 @@ h1 { font: 400 31px/1 'Anton', sans-serif; letter-spacing: .035em; text-transfor
 .settings-status-row { cursor: default; align-items: flex-start; }
 .settings-status-row .sync-card-badge { max-width: none; padding-top: 2px; text-align: right; white-space: nowrap; }
 .settings-status-row .sync-card-badge { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; }
-.settings-status-row.has-failure { padding-top: 16px; padding-bottom: 12px; }
+/* The RESOLVE action below belongs to THIS row, so no divider between them:
+   `.more-row`'s 1px border-bottom landed on exactly the same pixel as the
+   button's own top border, which read as the two overlapping. */
+.settings-status-row.has-failure { padding-top: 16px; padding-bottom: 12px; border-bottom: 0; }
 .settings-status-row.has-failure .more-row-icon { color: var(--red); }
 .settings-status-note { display: block; margin-top: 5px; color: rgba(166,201,180,.44); font: 400 10px/1.3 'Archivo', sans-serif; }
 .settings-status-action { padding: 0 14px 12px; border-bottom: 1px solid rgba(166,201,180,.12); background: rgba(27,27,36,.68); }
-.settings-status-action .flow-cta-ghost { width: 100%; height: 42px; border-color: rgba(255,74,61,.38); color: var(--red); font-size: 11px; }
+/* 44px, not 42: this is an interactive control and BAR-078 sets the floor. */
+.settings-status-action .flow-cta-ghost { width: 100%; height: 44px; border-color: rgba(255,74,61,.38); color: var(--red); font-size: 11px; }
 .settings-signout-row .more-row-icon { color: var(--green); }
 .settings-confirm { display: grid; gap: 8px; padding: 14px; border: 1px solid rgba(255,74,61,.35); border-radius: var(--r-lg); background: rgba(255,74,61,.06); }
 .settings-confirm p { margin: 0 0 4px; color: rgba(166,201,180,.72); font: 400 12px/1.5 'Archivo', sans-serif; }
