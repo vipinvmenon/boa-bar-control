@@ -33,6 +33,33 @@ const TARGET_ROUTES: Record<string, string> = {
   accept: '/dockets',
 }
 
+/**
+ * BAR-184 — what a home alert card announces to a screen reader.
+ *
+ * The whole card is one button, which is right: everything on it is about the
+ * same decision. But with no explicit name, the accessible name is the
+ * concatenation of every text node inside it, run together without separators —
+ * `CRITICALRUN-OUT ~20:10Bar 3 · Kingfisher lowDepleting 38 bottles/hr12LEFT26
+ * MIN OF COVERISSUE`. Sighted users get the separation from the layout; the
+ * layout is exactly what a screen reader throws away.
+ *
+ * So the name is composed here, from the alert's own fields — never hardcoded,
+ * because the fixture and the live repository produce different alerts and a
+ * label written against one of them is the same defect this project has already
+ * shipped twice.
+ *
+ * The copy is used verbatim rather than re-cased. The design sets this text in
+ * caps and some of it is genuinely initialism — `30 MIN SLA` — so lowercasing
+ * the lot would guess at which caps a screen reader should spell out and get
+ * some of them wrong. Punctuation, not casing, is what was missing.
+ */
+function alertLabel(alert: Alert): string {
+  const detail = [alert.subtitle, `${alert.metric} ${alert.metricUnit}`, alert.meterNote, alert.ageLabel]
+    .filter(Boolean)
+    .join(', ')
+  return `${alert.actionLabel} — ${alert.level}: ${alert.title}. ${detail}.`
+}
+
 export function HomeScreen() {
   const navigate = useNavigate()
   const position = useRepositoryQuery(['position'], (r) => r.stockPosition())
@@ -142,7 +169,12 @@ export function HomeScreen() {
 
       <div className="alert-stack">
         {alerts.data?.map((alert) => (
-          <button className={`alert-card tone-${alert.tone}`} key={alert.id} onClick={() => openAlert(alert)}>
+          <button
+            className={`alert-card tone-${alert.tone}`}
+            key={alert.id}
+            aria-label={alertLabel(alert)}
+            onClick={() => openAlert(alert)}
+          >
             <div className="alert-top">
               <span className="alert-level">
                 <i className="alert-dot" />
@@ -165,7 +197,13 @@ export function HomeScreen() {
             </div>
             <div className="alert-bottom">
               <span>{alert.meterNote}</span>
-              <b className="alert-cta">
+              {/*
+                BAR-184. The pill looks like the button and is not one — the card
+                is. It is hidden from assistive technology entirely so it cannot
+                be mistaken for a second, nested target; the action it names is
+                already the first thing the card's own label says.
+              */}
+              <b className="alert-cta" aria-hidden="true">
                 {alert.actionLabel}
                 <ArrowRight size={13} strokeWidth={2.6} aria-hidden="true" />
               </b>

@@ -106,12 +106,25 @@ export function AppShell() {
             What is left is the one thing that is only true of the shell: whether
             this session is live at all.
           */}
-          <div className={`sync-line ${isDemo ? 'demo' : ''} ${store.offline ? 'offline' : ''}`}>
+          {/*
+            BAR-184. This line no longer repeats the demo warning. The red banner
+            at the top of the shell already says DEMO DATA · NOT LIVE · NOTHING IS
+            RECORDED, and home rendered the same two words again a few pixels
+            below it — the only screen in the app that warned twice. Two copies of
+            one warning do not double the warning; they teach people that the top
+            of the screen is boilerplate to be scrolled past, and this is the
+            warning that must still land at 2am.
+            The banner owns "is this real". What is left here is the one thing the
+            banner does not say: whether this device is reachable. In demo mode
+            that is reported as ONLINE / OFFLINE rather than LIVE, because LIVE is
+            the word this app uses for a real venue and demo is never that.
+          */}
+          <div className={`sync-line ${store.offline ? 'offline' : ''}`}>
             <span>
-              {isDemo ? <TriangleAlert size={13} /> : store.offline ? <WifiOff size={13} /> : <Wifi size={13} />}
-              {isDemo ? 'DEMO DATA' : store.offline ? 'OFFLINE' : 'LIVE'}
+              {store.offline ? <WifiOff size={13} /> : <Wifi size={13} />}
+              {store.offline ? 'OFFLINE' : isDemo ? 'ONLINE' : 'LIVE'}
             </span>
-            <small>{isDemo ? 'NOT LIVE' : ''}</small>
+            <small />
           </div>
         </header>}
 

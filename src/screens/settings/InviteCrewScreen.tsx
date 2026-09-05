@@ -71,11 +71,41 @@ export function InviteCrewScreen() {
           <section className="sync-card settings-invite-card">
             <div className="sync-card-top"><span className="sync-card-eyebrow"><UserPlus size={13} aria-hidden="true" /> NEW TEAM MEMBER</span></div>
             <p className="sync-card-copy">Send a secure invitation. They will set a password before entering the app.</p>
+            {/*
+              BAR-184. All four controls were placeholder-only, with an
+              `aria-label` carrying the whole meaning. That is a name for a
+              screen reader and nothing at all for everyone else: a placeholder
+              disappears the moment somebody types, so a half-filled form is four
+              boxes of text with no idea what any of them is. On a select it is
+              worse — a select has no placeholder, only a current value, so once
+              a bar was chosen nothing on screen said the field was a location
+              rather than a second role.
+
+              The pattern is `label.field` + `span.issue-label`, which the
+              receipt screen already uses for SUPPLIER and DELIVERY NOTE. Wrapping
+              in a `<label>` also associates the text with the control implicitly,
+              so no `htmlFor`/`id` pair can drift apart. Placeholders are kept only
+              where they are a format example, which is the name and the email;
+              the selects carry none, because their first option is not an example
+              of anything.
+            */}
             <form className="settings-invite-form" onSubmit={(event) => void invite(event)}>
-              <input aria-label="Team member name" required value={name} onChange={(event) => setName(event.target.value)} placeholder="Full name" />
-              <input aria-label="Team member email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email address" />
-              <select aria-label="Team member role" value={role} onChange={(event) => setRole(event.target.value as VenueRole)}><option value="crew">CREW</option><option value="warehouse">WAREHOUSE</option><option value="bar_lead">BAR LEAD</option><option value="auditor">AUDITOR</option></select>
-              <select aria-label="Team member location" value={locationId} onChange={(event) => setLocationId(event.target.value)}><option value="">Select bar / location</option>{(team.data?.locations ?? []).map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}</select>
+              <label className="field">
+                <span className="issue-label">FULL NAME</span>
+                <input required value={name} onChange={(event) => setName(event.target.value)} placeholder="Priya Nair" />
+              </label>
+              <label className="field">
+                <span className="issue-label">EMAIL ADDRESS</span>
+                <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="priya@example.com" />
+              </label>
+              <label className="field">
+                <span className="issue-label">ROLE</span>
+                <select value={role} onChange={(event) => setRole(event.target.value as VenueRole)}><option value="crew">CREW</option><option value="warehouse">WAREHOUSE</option><option value="bar_lead">BAR LEAD</option><option value="auditor">AUDITOR</option></select>
+              </label>
+              <label className="field">
+                <span className="issue-label">BAR / LOCATION</span>
+                <select value={locationId} onChange={(event) => setLocationId(event.target.value)}><option value="">No fixed location</option>{(team.data?.locations ?? []).map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}</select>
+              </label>
               <button className="ritual-button wide" type="submit" disabled={inviting}>{inviting ? 'Sending…' : 'Send invitation'}</button>
             </form>
             {message && <p className="flow-hint" role="status">{message}</p>}
