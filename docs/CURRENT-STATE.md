@@ -4062,3 +4062,76 @@ Verified:
 - `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass: 161 tests, 353 class names all defined.
 - `corepack pnpm test:visual`, serving its own server from this directory: 16 implemented · 19 reading the data layer · 0 hardcoded · 0 errored · 6 missing, exit 0 — unchanged.
 - Driven at 375×812. Staged 48 Kingfisher, 24 Old Monk and 48 Coca-Cola: `ON THIS DOCKET · 3 LINES · 120 CONTAINERS`, destination locked to BAR 3 with the reason stated, `REVIEW ISSUE · 3 LINES`. Review listed all three lines against WAREHOUSE → BAR 3; the create posted and the basket was gone from IndexedDB afterwards. Fixture D-0185 (two lines): both listed, `Accept all 2 products`, and taking 3 off Old Monk alone left Corona at 24 and reported SHORT BY 3 CONTAINERS, refusing to submit until a reason was chosen. D-0184 renders exactly as before.
+
+### Session — 5 September 2026 · claude (readability and accessibility batch)
+
+Completed: **BAR-181, BAR-182, BAR-183, BAR-184** from three agents in isolated
+worktrees. With BAR-180 earlier, **every P0 and every P1 from the 4 September
+audit is now closed**, along with most of the P2 block.
+
+- **BAR-181** One type scale. 26 distinct sizes became **8 tokens**
+  (11/13/15/18/22/30/44/56); no rule in the stylesheet states a raw pixel font
+  size any more, except the 16px iOS focus-zoom guard, which is a platform
+  threshold rather than typography. 13px floor for anything read as a sentence;
+  11px reserved for uppercase labels. Contrast: inactive nav 3.89 → **5.70:1**,
+  around forty sage values floored at .65 alpha to land 4.83–5.02:1 against the
+  surfaces they actually sit on, and `NOT LIVE` in the demo line 3.46 → 5.81:1 —
+  that last one found in the agent's own live sweep, not in the brief.
+  **ADR-017** records the deviation.
+- **BAR-182** Dialog tones assigned by consequence: sign-out and discard-delivery
+  are danger, leaving a count open is warning. A dialog where every option is red
+  teaches people to ignore red.
+- **BAR-183** `/reports` is one sentence and a link to `/variance`. The route
+  still resolves, so bookmarks land.
+- **BAR-184** Visible labels on the invite form, a one-sentence `aria-label` per
+  alert card composed from its own fields, and one demo warning instead of two.
+
+Files changed: `src/styles.css`, `src/components/…`, `src/screens/{more,count,receipt,reports,home,settings}/…`,
+`src/app/AppShell.tsx`, `docs/DECISIONS.md`, `docs/ROADMAP.md`
+Architecture changes: **ADR-017** — the type scale deviates from the design's
+9–10px labels. This is the broadest deviation recorded so far: `references/ui/*.png`
+no longer match on type size **on every screen**.
+
+Two things that were corrected rather than accepted:
+
+- **A green `ONLINE` in demo mode.** BAR-184 removed the duplicated DEMO DATA
+  from the home header — right — and replaced it with `ONLINE` in the sync
+  line's green. That is the shape BAR-139 exists to prevent: a reassuring green
+  indicator on a screen of fixture data. Connectivity is worthless information
+  when nothing is recorded, so demo mode now renders no sync line at all.
+- **"Keep the trigger mounted but disabled" does not work**, which the brief had
+  offered as acceptable. The browser blurs a focused element the instant it is
+  disabled, so the dialog remembers `<body>` as its opener and returns focus
+  there — the same defect, harder to see. The agent measured that before
+  changing course; the trigger now stays mounted and enabled.
+
+Known issues:
+
+- **No gate can catch a typography regression.** `test:visual` is a derivation
+  check, not a pixel comparison, so nothing will notice if a future change
+  scatters the scale again. The tokens are the only guard, and they are a
+  convention rather than an enforcement.
+- **My audit misdescribed BAR-180's mechanism** ("quantity survives a product
+  change"); the reset does happen and the default was the defect. Recorded here
+  because the audit document is still being worked from.
+- **My brief for BAR-183 asserted `/reports` was in the navigation. It was not** —
+  it appears only in the router and the visual-check script. The claim was never
+  verified before being written down.
+- Two P3 items remain open and were deliberately not folded into the type pass:
+  one less level of container nesting, and `backdrop-filter` limited to the
+  sticky header and bottom nav. Both change the visual identity rather than the
+  typography, which is outside what ADR-017 claims authority for.
+- Nothing in this batch ran against live Supabase or a physical device. The
+  operational status strip is suppressed in demo, so it could not be exercised
+  at all; the diff shows it untouched.
+
+Recommended next: the audit's copy pass (one vocabulary per concept, a glossary
+in PRODUCT.md), then the remaining P3 items. After that the audit is exhausted
+and the roadmap's own M5/M6 work resumes.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass on the merged result: 161 tests, 352 class names all defined.
+- `corepack pnpm test:visual`, serving its own server: 16 implemented · 19 reading the data layer · 0 hardcoded · 0 errored · 6 missing, exit 0.
+- Checked rather than accepted: 8 size tokens and **zero** raw pixel font sizes in the stylesheet; home shows `DEMO DATA` once, `NOT LIVE` once, no sync line, five nav items; all three alert cards carry a one-sentence `aria-label` and their CTA pills are `aria-hidden`. A 320px overflow sweep across eight routes found the document never scrolls sideways, and the only elements extending past the shell are chips inside the two deliberate horizontal scrollers (`wh-filters`, `activity-filters`).
+- Read the screens rather than the summary: `/warehouse` is the clearest win — `LAST MOVEMENT 12 MIN AGO` went from 10px at 2.9:1 to legible, and product names now lead their rows. `/count`'s blind-count advisory reads as a paragraph a counter would actually read. Nothing came out shouty; the growth is concentrated in the old 9–10px tier and the display figures were held or reduced.
