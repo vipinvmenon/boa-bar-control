@@ -17,9 +17,29 @@ import { isIssueBasket, type IssueBasket } from './draft'
 import { useDraft } from '../../data/useDraft'
 import { Trash2 } from 'lucide-react'
 
+/**
+ * BAR-180 — what the screen proposes before anybody has chosen.
+ *
+ * This was `min(2 cases, full-case maximum)`, which for any SKU holding two
+ * cases or fewer proposes issuing ALL of it. Corona Extra holds exactly 48 in
+ * the fixture, so opening the screen on it offered 48 and read
+ * `48 → 0 bottles`, with the 4 CS and 6 CS presets greyed out so the figure
+ * looked like a considered maximum rather than the whole position. One tap to
+ * review, one to issue, and the warehouse has none.
+ *
+ * Issuing the last two cases is a legitimate thing to do — it is just not a
+ * thing to do BY DEFAULT. So the proposal steps down one case when two cases
+ * would take everything, and the person can still raise it: the 2 CS preset is
+ * right there and enabled.
+ *
+ * With only one full case in stock there is no smaller full-case proposal to
+ * make, and the container unit is the way to issue less than that.
+ */
 function initialContainers(unitsPerCase: number, available: number): number {
   const fullCaseMaximum = Math.floor(available / unitsPerCase) * unitsPerCase
-  return Math.min(unitsPerCase * 2, fullCaseMaximum)
+  const twoCases = Math.min(unitsPerCase * 2, fullCaseMaximum)
+  const takesEverything = twoCases === fullCaseMaximum && fullCaseMaximum > unitsPerCase
+  return takesEverything ? fullCaseMaximum - unitsPerCase : twoCases
 }
 
 export function IssueScreen() {
@@ -276,6 +296,18 @@ export function IssueScreen() {
             {product.warehouseContainers} → {product.warehouseContainers - containers} {unitWord}
           </strong>
         </div>
+
+        {/*
+          BAR-180. The default no longer proposes the whole position, but a
+          person can still choose it deliberately — and should be able to. Said
+          out loud rather than prevented: this is a legitimate action with a
+          consequence worth noticing before the review screen, not an error.
+        */}
+        {containers > 0 && containers === product.warehouseContainers ? (
+          <p className="flow-hint">
+            This issues every {unitWord.replace(/s$/, '')} of {product.name} the warehouse holds.
+          </p>
+        ) : null}
 
         {/*
           BAR-177 / ADR-016. The line builder.
