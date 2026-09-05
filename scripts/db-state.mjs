@@ -189,6 +189,41 @@ try {
   }
 
   /*
+     Who can get in, and as what.
+
+     The first question anybody asks before inviting somebody is whether that
+     person already has access — and inviting a second time is not harmless: the
+     invite RPC upserts on (venue_id, user_id, role, location_id), so a second
+     invitation at a different role leaves BOTH memberships active, and the app
+     picks the first by its stable ordering rather than the one just granted.
+
+     Management roles are deliberately not grantable by invitation
+     (api/invite-user.ts refuses admin and manager, and so does the RPC), so this
+     is also how you check whether a promotion on the Team screen actually landed.
+  */
+  console.log('\n  WHO HAS ACCESS')
+  try {
+    const members = await client.query(
+      `select u.email, m.role::text as role, m.active,
+              coalesce(l.name, '—') as location
+         from public.boa_bar_membership m
+         join auth.users u on u.id = m.user_id
+         left join public.boa_bar_location l on l.id = m.location_id
+        order by (m.role::text in ('admin','manager')) desc, u.email, m.role::text`,
+    )
+    if (members.rowCount === 0) {
+      console.log('    nobody — the venue has no memberships')
+    } else {
+      for (const row of members.rows) {
+        const flag = row.active ? '    ' : ' -- '
+        console.log(`${flag}${String(row.email).padEnd(34)} ${row.role.padEnd(10)} ${row.location}${row.active ? '' : '   (inactive)'}`)
+      }
+    }
+  } catch (e) {
+    console.log(`    unreadable: ${e.message}`)
+  }
+
+  /*
      BAR-161 + BAR-166 — the counts that are still open, and why anybody cares.
 
      Opening a count BLINDS that location: the device that opened it can no
