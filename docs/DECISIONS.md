@@ -773,3 +773,60 @@ finding the type larger should read this ADR before "fixing" it.
 If the user rejects this ADR the revert is confined to `src/styles.css`. No
 component, service, repository or migration depends on any of it — the change is
 tokens and values inside one file.
+
+---
+
+## ADR-018 — Above 520px this is an application, not a picture of a phone
+
+**Status:** Accepted, 5 September 2026.
+
+**Provenance.** The 4 September UX audit, item UX-P1-10. Raised again by the user
+on 5 September looking at the bars screen on a laptop: "this page has a lot of
+blank space." Implemented the same day, before the first hand-over to a
+non-developer.
+
+### Context
+
+BAR-039's acceptance criteria say, in as many words, "mobile fills the viewport,
+desktop keeps the 390×844 frame." That was a reasonable call at the time: the
+design is a phone design, and a fixed frame was the only way to see it at its
+intended size while the app was being built.
+
+What it produces now, on the machine of anybody who is not building it:
+
+- a 390×844 rounded rectangle with a bezel and a drop shadow, floating in the
+  middle of a gradient field, using roughly a tenth of a laptop screen;
+- captioned `BOA BAR INVENTORY / 390 × 844 / BARS` — a caption written for a
+  mock-up, shipped to every desktop viewer of the real product;
+- and, because `.bars-body .bar-row-card` was `flex: 1 1 auto`, four bar cards
+  that grew to fill the tall frame — 120px of card around 74px of text, with the
+  slack centred inside each one.
+
+The last of those is the part that matters beyond taste. Four hollow cards read
+as *data missing*, not as *a list that has ended*. A manager glancing at a laptop
+would reasonably conclude the app had failed to load the bars.
+
+### Decision
+
+Above 520px the shell becomes a single column of `min(100%, 560px)` at full
+height, with hairline edges instead of a bezel, no ambient gradient, and no
+caption. The caption element is removed at every size.
+
+It stays **one column**. This is a phone product and a manager at a desk is doing
+the same one-handed job; a multi-column desktop layout would be a different
+design, not a wider one, and nothing in `references/design-source/` describes it.
+
+Separately, list cards size to their content rather than dividing the available
+height.
+
+### Consequence
+
+`references/ui/*.png` were captured at 390×844 and still describe the phone
+layout exactly, which is what staff use. They no longer describe what a desktop
+browser shows, because a desktop browser no longer shows a phone.
+
+Below 520px **nothing changes**: the media query is bounded, and the phone
+layout, its captures and its behaviour are untouched.
+
+This supersedes the desktop half of BAR-039's acceptance criteria. The mobile
+half stands.

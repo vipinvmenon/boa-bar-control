@@ -205,8 +205,51 @@ h1 { font: 400 var(--t-2xl)/1 'Anton', sans-serif; letter-spacing: .035em; text-
 @media (max-width: 520px) {
   .app-stage, .auth-stage { width: 100%; height: 100dvh; min-height: 100dvh; padding: 0; place-items: stretch; }
   .app-shell, .auth-frame { width: 100%; height: 100%; min-height: 0; max-height: none; border: 0; border-radius: 0; box-shadow: none; }
-  .stage-caption { display: none; }
 }
+
+/*
+   BAR-185 / ADR-018 — above 520px this is an application, not a picture of a
+   phone.
+
+   BAR-039 deliberately kept a 390×844 frame on desktop, and for a while that was
+   the right call: it was the only way to see the design at its intended size.
+   What it produces now is a phone simulator floating on a gradient, captioned
+   with its own pixel dimensions — roughly a tenth of a laptop screen in use, and
+   the emptiness reads as something being broken rather than as an app with a
+   short list.
+
+   It stays ONE COLUMN, because this is a phone product and a manager on a laptop
+   is doing the same one-handed job at a desk. What changes is that the column
+   takes a comfortable measure, fills the height it is given, and drops the bezel,
+   the ambient gradient and the caption. Below 520px nothing here applies and the
+   phone layout is untouched.
+*/
+@media (min-width: 521px) {
+  .app-stage, .auth-stage {
+    height: 100dvh;
+    min-height: 100dvh;
+    padding: 0;
+    justify-content: flex-start;
+    /* The ambient field was stage dressing for a mock. A working tool sits on
+       its own ground. */
+    background-image: none;
+  }
+  .app-shell, .auth-frame {
+    width: min(100%, 560px);
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    border: 0;
+    border-left: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+/* Design-tool scaffolding. `BOA BAR INVENTORY / 390 × 844 / BARS` is a caption
+   for a mock-up, and it shipped to every desktop viewer of the real app. */
+.stage-caption { display: none; }
 
 @media (prefers-reduced-motion: no-preference) {
   .toast { animation: rise .18s ease-out; }
@@ -278,7 +321,21 @@ h1 { font: 400 var(--t-2xl)/1 'Anton', sans-serif; letter-spacing: .035em; text-
    does not bake the venue's shape into the stylesheet.
 */
 .bars-body { gap: 10px; }
-.bars-body .bar-row-card { flex: 1 1 auto; min-height: 96px; justify-content: center; gap: 14px; }
+/*
+   BAR-185. The cards size to their content; they do not divide the screen.
+
+   This was `flex: 1 1 auto`, so four bar cards grew to fill whatever height the
+   list had. On a phone that is nearly invisible — the list roughly fills the
+   screen anyway — but on any taller viewport each card inflated (120px for 74px
+   of content) and `justify-content: center` pushed the slack inside it, above
+   and below the text. Four hollow cards, which reads as data missing rather than
+   as a list that has ended.
+
+   A card is now the size of what it says. The space left over collects once, at
+   the end of the list, where empty space means "that is all the bars" instead of
+   "something failed to load".
+*/
+.bars-body .bar-row-card { flex: none; min-height: 88px; justify-content: center; gap: 14px; }
 /* BAR-165 — the venue-wide figures the bars list never carried, in the same
    three-cell strip the warehouse header uses. */
 .bars-totals { flex: none; padding: 12px 16px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; border-bottom: 1px solid rgba(166,201,180,.16); }
