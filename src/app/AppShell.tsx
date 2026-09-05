@@ -114,18 +114,25 @@ export function AppShell() {
             one warning do not double the warning; they teach people that the top
             of the screen is boilerplate to be scrolled past, and this is the
             warning that must still land at 2am.
-            The banner owns "is this real". What is left here is the one thing the
-            banner does not say: whether this device is reachable. In demo mode
-            that is reported as ONLINE / OFFLINE rather than LIVE, because LIVE is
-            the word this app uses for a real venue and demo is never that.
+            The banner owns "is this real"; this line owns "is this device
+            reachable".
+
+            In demo mode it renders NOTHING, rather than the green ONLINE that
+            first replaced the duplicate warning. Connectivity is worthless
+            information when nothing is being recorded, and BAR-139 exists
+            because a reassuring green indicator once appeared on a screen full
+            of fixture data. Removing the duplicate warning must not put a
+            different green word back in its place.
           */}
-          <div className={`sync-line ${store.offline ? 'offline' : ''}`}>
-            <span>
-              {store.offline ? <WifiOff size={13} /> : <Wifi size={13} />}
-              {store.offline ? 'OFFLINE' : isDemo ? 'ONLINE' : 'LIVE'}
-            </span>
-            <small />
-          </div>
+          {!isDemo && (
+            <div className={`sync-line ${store.offline ? 'offline' : ''}`}>
+              <span>
+                {store.offline ? <WifiOff size={13} /> : <Wifi size={13} />}
+                {store.offline ? 'OFFLINE' : 'LIVE'}
+              </span>
+              <small />
+            </div>
+          )}
         </header>}
 
         <main className={`app-main ${fullFlow ? 'full-flow' : ''} ${isHome ? 'home-main' : 'section-main'}`}>
