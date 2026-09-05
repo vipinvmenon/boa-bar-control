@@ -955,10 +955,15 @@ h1 { font: 400 31px/1 'Anton', sans-serif; letter-spacing: .035em; text-transfor
 .field input { min-height: 44px; padding: 0 13px; border: 1px solid rgba(166,201,180,.22); border-radius: var(--r-sm); background: rgba(13,13,18,.55); color: var(--bone); font: 400 14px/1 'Archivo', sans-serif; }
 .field input::placeholder { color: rgba(166,201,180,.4); }
 .field input:focus { outline: none; border-color: rgba(166,201,180,.5); }
-.receipt-line { margin-bottom: 7px; padding: 11px 13px; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(166,201,180,.2); border-radius: var(--r-md); background: rgba(27,27,36,.82); }
-.receipt-line strong { display: block; color: var(--bone); font: 500 13px/1.2 'Oswald', sans-serif; letter-spacing: .06em; }
-.receipt-line small { color: rgba(166,201,180,.7); font: 400 11px/1.4 'Archivo', sans-serif; }
-.receipt-line button { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid rgba(255,74,61,.3); border-radius: var(--r-pill); background: transparent; color: var(--red); }
+/*
+   BAR-177. Was `.receipt-line`, used only by the delivery screen. The issue
+   screen now stages lines the same way, and a class named after one screen is
+   how a shared thing ends up drawn twice.
+*/
+.line-row { margin-bottom: 7px; padding: 11px 13px; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(166,201,180,.2); border-radius: var(--r-md); background: rgba(27,27,36,.82); }
+.line-row strong { display: block; color: var(--bone); font: 500 13px/1.2 'Oswald', sans-serif; letter-spacing: .06em; }
+.line-row small { color: rgba(166,201,180,.7); font: 400 11px/1.4 'Archivo', sans-serif; }
+.line-row button { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid rgba(255,74,61,.3); border-radius: var(--r-pill); background: transparent; color: var(--red); }
 
 /* ---------------------------------------------------------------------------
    BAR-092 — the paper fallback.
@@ -1216,3 +1221,8 @@ select { appearance: none; -webkit-appearance: none; }
 .picker-trigger { min-height: 44px; padding: 0 13px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid rgba(166,201,180,.22); border-radius: var(--r-sm); background: rgba(13,13,18,.55); color: var(--bone); font: 400 14px/1 'Archivo', sans-serif; text-align: left; }
 .picker-trigger > span:first-child { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .picker-trigger .issue-change { flex: none; }
+
+/* BAR-177 / ADR-016 — staging a docket line. */
+.issue-add { margin-top: 4px; }
+.issue-staged { margin-top: 4px; display: grid; gap: 6px; }
+.issue-staged > .issue-label { margin-bottom: 2px; }

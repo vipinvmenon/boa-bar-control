@@ -603,3 +603,79 @@ implementation in these respects, and the fidelity gate's `more` row is correctl
 `static-ok` rather than a pixel comparison. Anyone reading a difference between the
 reference captures and the app on these points should read this ADR before
 "fixing" it.
+
+---
+
+## ADR-016 — A docket may carry several products, and the issue screen builds one
+
+**Status:** Accepted, 4 September 2026.
+
+**Provenance, stated exactly.** This deviates from the approved design, so it is
+worth being precise about where the authority comes from rather than implying
+more than happened. The user commissioned a UX audit of the running application
+on 4 September; its checklist item UX-P1-03 specifies giving the issue screen the
+same line builder the receipt screen already has. The deviation was flagged to
+the user in writing before any of it was implemented, and the user directed the
+work to continue. Reverting is a UI-only change — see Consequence.
+
+### Context
+
+`references/design-source/` draws ISSUE STOCK as one product, one quantity, one
+`REVIEW ISSUE` button. Reproduced faithfully, that is what the app had.
+
+Everything underneath has always been multi-line, and this was verified before
+the task was scoped rather than assumed afterwards:
+
+- `boa_bar_create_docket` and `boa_bar_accept_docket` both iterate
+  `p_payload->'lines'` as an array and refuse an empty one (migration
+  `202608270002`, 27 August).
+- `CreateDocketCommand.lines` is `DocketLineCommand[]`.
+- `services/issue.ts` validates `z.array(lineSchema).min(1)` and rejects a
+  duplicate SKU, because `boa_bar_docket_line` is unique on
+  (docket_id, sku_id).
+- `boa_bar_docket_line` is a table. A docket with several products is the
+  schema's ordinary case, not an extension of it.
+
+So the single-product docket was a property of one screen, and of nothing else.
+
+### The operational cost of reproducing the design here
+
+A restock to a bar is six to ten SKUs. With one product per docket that is six to
+ten runs of Issue → Review → Docket for the warehouse hand, and six to ten
+separate acceptances for the bar lead — who is the busiest person on site on the
+night, and whose acceptance is the two-party control the entire custody model
+rests on. The design's own receipt screen (not a design screen, but the closest
+precedent in the app) already models the multi-line case correctly with
+`ADD TO DELIVERY`.
+
+The audit's judgement, which this ADR accepts: the design is right about the
+*screen* and wrong about the *scale*, because it was drawn against a demo with
+one product moving.
+
+### Decision
+
+1. The issue screen gains a line builder: `ADD TO DOCKET`, a list of staged lines
+   with per-line removal, and a footer stating the total. The design's
+   `PRODUCT / CHANGE` row and quantity stepper are unchanged above it.
+2. Review and Docket render every line.
+3. Accept bounds each line at its own issued quantity (already shipped in the
+   read half of BAR-177).
+4. A single-line docket renders exactly as the design draws it, everywhere. The
+   deviation is only visible once somebody adds a second product.
+
+### Consequence
+
+`references/ui/issue.png` and `references/ui/review.png` no longer match the
+implementation when more than one line is staged. They match exactly when one is.
+
+The fidelity gate is a derivation check, not a pixel comparison
+(`scripts/visual-check.mjs`), so this does not move a gate number — which means
+the gate will not catch a regression here. Anyone reading a difference between
+the reference captures and the app on this point should read this ADR before
+"fixing" it.
+
+If the user rejects this ADR, the revert is confined to
+`src/screens/issue/IssueScreen.tsx`, `src/screens/issue/draft.ts` and
+`src/screens/custody/ReviewScreen.tsx`. Nothing in the database, the services,
+the repository or the custody read model depends on it: those were multi-line
+before this decision and remain so after it.

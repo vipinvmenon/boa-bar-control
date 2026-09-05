@@ -261,7 +261,7 @@ export function ReceiptScreen() {
           are never the same idempotent write.
         */}
         {lines.map((line) => (
-          <div className="receipt-line" key={line.skuId}>
+          <div className="line-row" key={line.skuId}>
             <span>
               <strong>{nameFor(line.skuId)}</strong>
               <small>{line.containers} {unitFor(line.skuId)}</small>

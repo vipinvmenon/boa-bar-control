@@ -13,6 +13,9 @@ import { caseCountLabel, issuePresets, issueStep, quantityFor, type IssueUnit } 
 import { FlowFooter, FlowHeader } from '../custody/parts'
 import { ScreenSkeleton } from '../../components/ScreenSkeleton'
 import { ProductPicker } from '../../components/ProductPicker'
+import { isIssueBasket, type IssueBasket } from './draft'
+import { useDraft } from '../../data/useDraft'
+import { Trash2 } from 'lucide-react'
 
 function initialContainers(unitsPerCase: number, available: number): number {
   const fullCaseMaximum = Math.floor(available / unitsPerCase) * unitsPerCase
@@ -31,6 +34,21 @@ export function IssueScreen() {
   const [chosenContainers, setChosenContainers] = useState<number | null>(search.containers ?? null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const productTriggerRef = useRef<HTMLButtonElement>(null)
+
+  /**
+   * BAR-177 / ADR-016. The staged docket, kept on the device.
+   *
+   * Declared before the loading guard below, because hooks must run in the same
+   * order on every render. A null key while the options load means `useDraft`
+   * holds its initial value and writes nothing.
+   */
+  const basketKey = issue.data ? `issue:basket:${issue.data.fromLocationId}` : null
+  const basket = useDraft<IssueBasket>(
+    basketKey,
+    { actionId, toLocationId: null, lines: [] },
+    isIssueBasket,
+  )
+  const staged = basket.value.lines
 
   const options = issue.data
   const destination = options?.destinations.find((item) => item.id === destinationId)
@@ -85,11 +103,52 @@ export function IssueScreen() {
     })
   }
 
+  /**
+   * BAR-177 / ADR-016. A docket goes to exactly one place, so once a line is
+   * staged the destination is fixed. Locked rather than made to clear the
+   * basket: silently discarding four staged lines because somebody tapped the
+   * destination tile is a worse outcome than refusing the tap and saying why.
+   */
+  const destinationLocked = staged.length > 0
   const chooseNextDestination = () => {
+    if (destinationLocked) return
     const index = options.destinations.findIndex((item) => item.id === destination.id)
     const next = options.destinations[(index + 1) % options.destinations.length]
     if (next) setDestinationId(next.id)
   }
+
+  /**
+   * Stage the current product and quantity.
+   *
+   * The same product twice is ambiguous on a paper docket — is it 12 or 24? — and
+   * `boa_bar_docket_line` is unique on (docket_id, sku_id), so `services/issue.ts`
+   * rejects a duplicate outright. Adding to the existing line is what the receipt
+   * screen does with the same constraint, and it is what somebody counting a
+   * trolley actually means.
+   */
+  const addLine = () => {
+    basket.setValue((current) => {
+      const existing = current.lines.find((line) => line.skuId === product.skuId)
+      return {
+        ...current,
+        actionId,
+        toLocationId: destination.id,
+        lines: existing
+          ? current.lines.map((line) =>
+            line.skuId === product.skuId ? { ...line, containers: line.containers + containers } : line)
+          : [...current.lines, { skuId: product.skuId, containers }],
+      }
+    })
+  }
+
+  const removeLine = (skuId: string) => {
+    basket.setValue((current) => ({ ...current, lines: current.lines.filter((line) => line.skuId !== skuId) }))
+  }
+
+  const nameFor = (skuId: string) => options.products.find((item) => item.skuId === skuId)?.name ?? skuId
+  const unitFor = (skuId: string) =>
+    options.products.find((item) => item.skuId === skuId)?.containerUnitPlural.toLowerCase() ?? ''
+  const stagedTotal = staged.reduce((sum, line) => sum + line.containers, 0)
 
   /**
    * BAR-176. The quantity handling here is unchanged — the previous
@@ -125,11 +184,21 @@ export function IssueScreen() {
             <strong>{options.fromName}</strong>
           </div>
           <ArrowRight size={18} strokeWidth={2} aria-hidden="true" />
-          <button className="issue-route-to" onClick={chooseNextDestination} aria-label="Change destination">
+          <button
+            className="issue-route-to"
+            onClick={chooseNextDestination}
+            disabled={destinationLocked}
+            aria-label={destinationLocked ? `Destination fixed to ${destination.name} while lines are staged` : 'Change destination'}
+          >
             <span>TO</span>
             <strong>{destination.name}</strong>
           </button>
         </div>
+        {destinationLocked ? (
+          <p className="flow-hint">
+            This docket is going to {destination.name}. Remove the staged lines to send one somewhere else.
+          </p>
+        ) : null}
 
         <button
           className="issue-product"
@@ -207,26 +276,71 @@ export function IssueScreen() {
             {product.warehouseContainers} → {product.warehouseContainers - containers} {unitWord}
           </strong>
         </div>
+
+        {/*
+          BAR-177 / ADR-016. The line builder.
+
+          The design draws one product and one REVIEW ISSUE button, and a
+          single-product issue still works exactly that way — this button is
+          additive, and with nothing staged the screen behaves as the design
+          draws it. A restock is six to ten SKUs, and one docket per SKU means
+          the bar lead accepts six to ten times.
+        */}
+        <button className="flow-cta-ghost issue-add" onClick={addLine} disabled={!canReview}>
+          Add to docket
+        </button>
+
+        {staged.length > 0 ? (
+          <section className="issue-staged">
+            <span className="issue-label">
+              ON THIS DOCKET · {staged.length} {staged.length === 1 ? 'LINE' : 'LINES'} · {stagedTotal} CONTAINERS
+            </span>
+            {staged.map((line) => (
+              <div className="line-row" key={line.skuId}>
+                <div>
+                  <strong>{nameFor(line.skuId)}</strong>
+                  <small>{line.containers} {unitFor(line.skuId)}</small>
+                </div>
+                <button onClick={() => removeLine(line.skuId)} aria-label={`Remove ${nameFor(line.skuId)}`}>
+                  <Trash2 size={16} strokeWidth={1.9} aria-hidden="true" />
+                </button>
+              </div>
+            ))}
+            <p className="flow-hint">
+              Everything on this list goes to {destination.name} as one docket, accepted once.
+            </p>
+          </section>
+        ) : null}
       </div>
 
       <FlowFooter>
+        {/*
+          BAR-177. With nothing staged this is the design's button and the URL
+          carries the single line, which is also how a home alert seeds an issue
+          and how the fidelity gate reaches the review screen. With lines staged
+          it reviews the basket, and says how many so that a quantity somebody
+          set but did not add cannot be silently dropped without the count
+          disagreeing with what they see.
+        */}
         <button
           className="flow-cta"
-          disabled={!canReview}
+          disabled={staged.length === 0 && !canReview}
           onClick={() => void navigate({
             to: '/issue/review',
-            search: {
-              actionId,
-              topUpRequestId: search.topUpRequestId,
-              fromLocationId: options.fromLocationId,
-              toLocationId: destination.id,
-              skuId: product.skuId,
-              containers,
-              unit,
-            },
+            search: staged.length > 0
+              ? { actionId, topUpRequestId: search.topUpRequestId, fromLocationId: options.fromLocationId, toLocationId: destination.id }
+              : {
+                actionId,
+                topUpRequestId: search.topUpRequestId,
+                fromLocationId: options.fromLocationId,
+                toLocationId: destination.id,
+                skuId: product.skuId,
+                containers,
+                unit,
+              },
           })}
         >
-          Review issue
+          {staged.length > 0 ? `Review issue · ${staged.length} ${staged.length === 1 ? 'line' : 'lines'}` : 'Review issue'}
         </button>
       </FlowFooter>
 
