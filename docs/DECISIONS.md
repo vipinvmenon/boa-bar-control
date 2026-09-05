@@ -679,3 +679,97 @@ If the user rejects this ADR, the revert is confined to
 `src/screens/custody/ReviewScreen.tsx`. Nothing in the database, the services,
 the repository or the custody read model depends on it: those were multi-line
 before this decision and remain so after it.
+
+---
+
+## ADR-017 — One type scale, a 13px reading floor, and text that passes contrast
+
+**Status:** Accepted, 5 September 2026.
+
+**Provenance, stated exactly.** This deviates from the approved design, so it is
+worth being precise about where the authority comes from rather than implying
+more than happened. The user commissioned a UX audit of the running application
+on 4 September; its checklist items **UX-P2-01** (the type scale) and
+**UX-P2-02** (contrast) are what this ADR implements. The deviation was put to
+the user, and the user asked for the work to proceed. The justification is a
+single one: legibility for staff outdoors, at night, at arm's length. Nothing
+here is an agent's aesthetic preference.
+
+### Context — what was measured in the running app
+
+- `src/styles.css` carried **26 distinct font sizes** across 240 font
+  declarations. **129 of those declarations were 9px, 10px or 11px**, most of
+  them uppercase Oswald tracked out at 0.14–0.2em.
+- The consequence is structural, not cosmetic. When every string on a screen is
+  small, uppercase and tracked, none of them leads, and hierarchy has to be
+  carried by container borders instead of by type. That is why the product reads
+  as an admin console, and it is the biggest readability risk on the night.
+- `.nav-item` — the only control present on every route — was 9px at
+  `rgba(166,201,180,.55)` on `--ink`, which measures **3.89:1**, below the
+  4.5:1 minimum. Around forty further sage text colours sat between .35 and .64.
+
+The design's own labels are 9–10px. So this is a change to the UI contract, not
+a bug fix, which is why it is an ADR.
+
+### Decision
+
+**1. A seven-step ladder, as tokens, beside the radius ladder.**
+
+`--t-xs: 11` · `--t-sm: 13` · `--t-md: 15` · `--t-lg: 18` · `--t-xl: 22` ·
+`--t-2xl: 30` · `--t-3xl: 44`, plus one display size above them, `--t-hero: 56`,
+for the blind-count figure. Every font declaration in the stylesheet now names a
+token; no rule states a pixel size. The one exception is the 16px inside the
+`max-width: 520px` block, which is not typography but iOS Safari's
+focus-zoom threshold. The next person adds a step by naming it in `:root`,
+deliberately, rather than by typing a number.
+
+**2. A 13px floor for text a user has to read.**
+
+`--t-xs` (11px) is the only step below the floor and it is reserved for
+uppercase Oswald labels, eyebrows, badges and unit markers. Names, figures,
+descriptions, hints, status values and control labels start at `--t-sm`.
+Labels and eyebrows moved from 9–10px to 11px; body copy from 11–12px to 13px.
+
+**3. Sage text clears 4.5:1 everywhere.**
+
+Every `rgba(166,201,180, α)` used as a `color` is floored at **α = .65**, which
+measures 4.83–5.02:1 against every surface in this file (the page ground, the
+`.panel` fill, the row fill, the card gradient, the dialog fill). Inactive
+navigation is raised further, to **.72 — 5.70:1** — because it is on screen on
+every route. `.sync-line.demo small` went from `rgba(255,74,61,.72)` (3.46:1)
+to the full `--red` token (5.81:1).
+
+Two exemptions, both deliberate: the `rgba(166,201,180,.45)` inside the
+`:disabled` block, because BAR-178 established that a disabled control must
+*look* disabled and disabled controls sit outside the contrast requirement; and
+the confirm dialog's two action labels, which stay at `--t-xs` because 13px
+uppercase Oswald wraps inside a 44px button in a 340px dialog.
+
+**4. The status dot's infinite pulse is reserved for green.** From the audit's
+P3 list, and the only P3 item that fell out of this work naturally. A gold or
+red dot pulsing at the "live" rhythm asserts the opposite of what it means.
+
+### What is deliberately NOT changed
+
+Hue, spacing rhythm, radii and the semantic green/gold/red are untouched. The
+dark festival identity is good and is not what the audit criticised. The other
+two P3 items — one less level of container nesting, and `backdrop-filter` kept
+only on the sticky header and bottom navigation — are **not** done here: both
+change the visual identity rather than the typography, and neither fell out of
+this pass. They remain open.
+
+### Consequence
+
+`references/ui/*.png` no longer match the implementation **on type size**, on
+every screen. This is the broadest deviation recorded so far, and unlike ADR-015
+and ADR-016 it is not confined to one screen or one state.
+
+**The fidelity gate is a derivation check, not a pixel comparison
+(`scripts/visual-check.mjs`), so no gate will catch a regression here.** Its
+numbers do not move: 16 implemented · 0 hardcoded · 0 errored · 6 missing,
+before and after. Anyone comparing the reference captures to the running app and
+finding the type larger should read this ADR before "fixing" it.
+
+If the user rejects this ADR the revert is confined to `src/styles.css`. No
+component, service, repository or migration depends on any of it — the change is
+tokens and values inside one file.
