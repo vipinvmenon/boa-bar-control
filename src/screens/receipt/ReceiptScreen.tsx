@@ -317,7 +317,27 @@ export function ReceiptScreen() {
         )}>
           {submit.isPending ? 'Recording…' : `Record delivery · ${lines.length} line${lines.length === 1 ? '' : 's'}`}
         </button>
-        {hasDraft && !confirmDiscard ? (
+        {/*
+          BAR-182. This was `hasDraft && !confirmDiscard`, so opening the dialog
+          unmounted its own trigger. ConfirmDialog's focus-return then found a
+          detached node, correctly declined to focus it, and focus fell to
+          <body> — Escape left a keyboard or screen-reader user at the top of
+          the document with the delivery they were part-way through somewhere
+          below them. It now stays mounted for the life of the dialog.
+
+          It also stays *enabled*, which is the non-obvious half. Disabling it
+          on open was tried first and fails for a reason worth recording: the
+          browser blurs a focused element the moment it is disabled, so by the
+          time ConfirmDialog's mount effect reads `document.activeElement` to
+          remember its opener, the answer is already <body>. The dialog then
+          returns focus faithfully — to <body>. Same broken outcome, one layer
+          further down, and harder to see.
+
+          Leaving it enabled costs nothing: `.confirm-modal` covers the screen,
+          so it cannot be clicked, and the dialog's focus trap means it cannot
+          be tabbed to either.
+        */}
+        {hasDraft ? (
           <button className="flow-cta-ghost" onClick={() => setConfirmDiscard(true)}>Discard delivery</button>
         ) : null}
       </footer>
@@ -335,7 +355,8 @@ export function ReceiptScreen() {
           returnFocusTo={productTriggerRef}
         />
       )}
-      {confirmDiscard && <ConfirmDialog title="Discard delivery?" confirmLabel="Discard delivery" cancelLabel="Keep delivery" onCancel={() => setConfirmDiscard(false)} onConfirm={discard}><p>Clear the supplier, delivery note, and {lines.length} line{lines.length === 1 ? '' : 's'}? Nothing has been recorded, so nothing will be removed from the ledger.</p></ConfirmDialog>}
+      {/* BAR-182. danger: a supplier, a note and N lines typed by hand off a paper delivery note are destroyed, and nothing has been recorded, so there is nothing to re-read them back from. */}
+      {confirmDiscard && <ConfirmDialog title="Discard delivery?" tone="danger" confirmLabel="Discard delivery" cancelLabel="Keep delivery" onCancel={() => setConfirmDiscard(false)} onConfirm={discard}><p>Clear the supplier, delivery note, and {lines.length} line{lines.length === 1 ? '' : 's'}? Nothing has been recorded, so nothing will be removed from the ledger.</p></ConfirmDialog>}
     </div>
   )
 }

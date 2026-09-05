@@ -125,7 +125,8 @@ export function MoreScreen() {
       </div></section>
 
       {signOutError ? <p className="flow-error" role="alert">NOT SIGNED OUT · {signOutError}</p> : null}
-      {confirmSignOut && <ConfirmDialog title="Sign out of BOA?" confirmLabel="Sign out" cancelLabel="Keep me signed in" onCancel={() => setConfirmSignOut(false)} onConfirm={() => void signOut()} busy={signingOut}><p>Cached SKU data and any count in progress will be cleared from this device. Queued work will be kept.</p></ConfirmDialog>}
+      {/* BAR-182. danger: this wipes the cache and any count in progress off a phone that is passed between crew, and the counted lines are not recoverable from the server. */}
+      {confirmSignOut && <ConfirmDialog title="Sign out of BOA?" tone="danger" confirmLabel="Sign out" cancelLabel="Keep me signed in" onCancel={() => setConfirmSignOut(false)} onConfirm={() => void signOut()} busy={signingOut}><p>Cached SKU data and any count in progress will be cleared from this device. Queued work will be kept.</p></ConfirmDialog>}
     </div>
   </div>
 }

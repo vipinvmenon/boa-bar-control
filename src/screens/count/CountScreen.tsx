@@ -383,9 +383,13 @@ export function CountScreen() {
     </button>
   )
 
+  // BAR-182. warning, not danger: leaving destroys nothing — the count stays open
+  // and the counted lines stay in Dexie on this device. Red here would be a lie,
+  // and a dialog where every option is red teaches people to click through red.
   const leaveDialog = confirmLeave ? (
     <ConfirmDialog
       title="Leave count open?"
+      tone="warning"
       confirmLabel="Leave for now"
       cancelLabel="Keep counting"
       onCancel={() => setConfirmLeave(false)}
