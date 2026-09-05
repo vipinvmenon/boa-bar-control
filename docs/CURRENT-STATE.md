@@ -4001,3 +4001,64 @@ Verified:
 - `corepack pnpm test:visual` on the merged result, serving its own server from this directory: 16 implemented · 19 reading the data layer · 4 legitimately static · 0 hardcoded · 0 errored · 6 missing, exit 0.
 - The undo guard is mutation-checked: removing the status check from `cancelQueuedCommand` fails exactly three tests — `syncing`, `done` and `failed` — and passes the other seven.
 - Re-verified by driving the merged tree rather than trusting the reports: the waste screen's product row opens the sheet, typing `monk` narrows it to one 52 px row, selecting changes the product to `Old Monk · Spirit · 750 ml bottle`, the sheet closes and focus returns to the trigger.
+
+### Session — 4 September 2026 · claude (BAR-177)
+
+Completed: **BAR-177 — multi-line dockets**, in two commits, read path first.
+That ordering was the decision that mattered and is worth keeping in mind for
+anything similar: N lines the screens can display but nothing can create is
+invisible; N lines created but displayed as one is silent data loss.
+
+**What scoping it turned up.** The roadmap recorded this as UI-only, and the
+write half is. The custody **read** model was not: `Custody` carried seven
+scalar fields and `live-repository.ts` filled them from `lines[0]`. A comment
+there recorded a multi-line docket displaying only its first line as an open
+question about screens the design does not have. It was not a question — the
+receiving lead would have seen one product, accepted it, and left the rest in
+transit, held by nobody's position and mentioned by no screen again. So the task
+could not be split write-first, only read-first.
+
+`Custody.lines: CustodyLine[]` now. Accept bounds each line at its own issued
+quantity — a docket-wide bound would let a surplus on one product hide a
+shortfall on another, and "the docket is 6 down" is not something the ledger,
+the excise return or the next morning's investigation can use.
+
+**ADR-016** records the deviation from the approved design, which draws one
+product and one button. Its provenance is written there exactly rather than
+implied: audit item UX-P1-03, flagged in writing before implementation, work
+directed to continue. The revert is confined to three screen files.
+
+Files changed: `src/data/repository.ts`, `src/data/fixture/design-data.ts`,
+`src/data/live/live-repository.ts`, `src/screens/custody/{AcceptScreen,DocketScreen,ReceivedScreen,ReviewScreen}.tsx`,
+`src/screens/issue/{IssueScreen.tsx,draft.ts}`, `src/screens/receipt/ReceiptScreen.tsx`,
+`src/styles.css`, `docs/DECISIONS.md`
+Architecture changes: ADR-016.
+
+Known issues:
+
+- **The fixture's `createDocket` does not persist**, so the docket screen after
+  a create still renders the canned D-0184 rather than what was just built.
+  Multi-line display and per-line acceptance are proven against fixture D-0185
+  instead. An end-to-end create-then-display is only provable against a real
+  database.
+- **`describeQuantity` renders "1 CASES" and "0.50 CASES".** Visible now that a
+  line can be a fraction of a case (Old Monk, 6 of 12). Pre-existing, in shared
+  code the review screen also uses, so it was left rather than changed under an
+  unrelated task.
+- Nothing here ran against live Supabase or a device. The live repository's
+  per-line mapping is proven by types and by reading the query, not by rows.
+- The design's `issue.png` and `review.png` no longer match once a second line
+  is staged; they match exactly with one. The fidelity gate is a derivation
+  check, not a pixel comparison, so it will not catch a regression here.
+
+Recommended next: UX-P1-02 — resetting the quantity when the product changes.
+BAR-176 deliberately left it alone so the two changes stayed separable, and it
+is the last of the audit's issue-screen findings. After that the audit's P2
+block: the type scale and contrast pass, which is one CSS commit that improves
+every screen at once.
+
+Verified:
+
+- `corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test && corepack pnpm build` pass: 161 tests, 353 class names all defined.
+- `corepack pnpm test:visual`, serving its own server from this directory: 16 implemented · 19 reading the data layer · 0 hardcoded · 0 errored · 6 missing, exit 0 — unchanged.
+- Driven at 375×812. Staged 48 Kingfisher, 24 Old Monk and 48 Coca-Cola: `ON THIS DOCKET · 3 LINES · 120 CONTAINERS`, destination locked to BAR 3 with the reason stated, `REVIEW ISSUE · 3 LINES`. Review listed all three lines against WAREHOUSE → BAR 3; the create posted and the basket was gone from IndexedDB afterwards. Fixture D-0185 (two lines): both listed, `Accept all 2 products`, and taking 3 off Old Monk alone left Corona at 24 and reported SHORT BY 3 CONTAINERS, refusing to submit until a reason was chosen. D-0184 renders exactly as before.
