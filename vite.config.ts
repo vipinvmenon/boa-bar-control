@@ -13,7 +13,7 @@ export default defineConfig({
       filename: 'sw.ts',
       registerType: 'prompt',
       injectRegister: null,
-      includeAssets: ['assets/boa-logo-2026.png'],
+      includeAssets: ['assets/boa-logo-2026.png', 'assets/apple-touch-icon.png', 'assets/boa-icon-192.png', 'assets/boa-icon-maskable-512.png'],
       manifest: {
         name: 'BOA Bar Control',
         short_name: 'Bar Control',
@@ -24,8 +24,20 @@ export default defineConfig({
         background_color: '#0D0D12',
         theme_color: '#0D0D12',
         orientation: 'portrait-primary',
+        /*
+           BAR-186. Three icons, not one marked as both.
+
+           A single icon declared `any maskable` is a known trap: Android treats
+           it as maskable and crops to an inner safe zone (about 80%), and this
+           wordmark spans roughly 90% of its width — so the B and the E were
+           being cut off on an Android home screen. `any` and `maskable` are
+           different pictures here, so they are different files: the maskable one
+           is the same mark padded down into the safe zone.
+        */
         icons: [
-          { src: '/assets/boa-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+          { src: '/assets/boa-icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/assets/boa-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/assets/boa-icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
         ]
       },
       injectManifest: {
