@@ -187,6 +187,45 @@ try {
   } catch (e) {
     console.log(`    unreadable: ${e.message}`)
   }
+
+  /*
+     BAR-161 + BAR-166 — the counts that are still open, and why anybody cares.
+
+     Opening a count BLINDS that location: the device that opened it can no
+     longer read the position it is counting, which is the whole point. There is
+     no way to close one without submitting it (BAR-166 is unbuilt), so a count
+     opened on the wrong bar leaves that bar looking empty to that user until
+     somebody submits it.
+
+     That is invisible from inside the app — the screen simply shows nothing — so
+     it is reported here, where an operator can see it before concluding the data
+     is missing. No expected figure is printed: an open session's whole purpose is
+     that its expected position stays sealed (non-negotiable 3).
+  */
+  console.log('\n  OPEN COUNTS — each one blinds its location until submitted')
+  try {
+    const open = await client.query(
+      `select cs.id, l.name as location_name, cs.count_kind, cs.status, cs.opened_at,
+              count(cl.id)::integer as line_count
+         from public.boa_bar_count_session cs
+         join public.boa_bar_location l on l.id = cs.location_id
+         left join public.boa_bar_count_line cl on cl.count_session_id = cs.id
+        where cs.submitted_at is null
+        group by cs.id, l.name, cs.count_kind, cs.status, cs.opened_at
+        order by cs.opened_at desc`,
+    )
+    if (open.rowCount === 0) {
+      console.log('    none — every count session has been submitted')
+    } else {
+      for (const row of open.rows) {
+        const opened = row.opened_at ? row.opened_at.toISOString() : 'unknown'
+        console.log(`    ${row.location_name} · ${row.count_kind} · ${row.status} · ${row.line_count} lines · opened ${opened}`)
+        console.log(`      session ${row.id}`)
+      }
+    }
+  } catch (e) {
+    console.log(`    unreadable: ${e.message}`)
+  }
   console.log('')
 } finally {
   await client.end()

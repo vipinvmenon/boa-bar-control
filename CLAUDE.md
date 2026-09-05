@@ -144,7 +144,10 @@ supabase/
 
 The event is 10 October 2026. The schema is executed and locked down, and writes
 go through command RPCs. 16 of 22 screens are built and read the data layer;
-6 are missing and 2 need rewriting. The live repository exists but has never run
-a query — the database holds no venue, SKU or membership, so nothing has been
-proven against real data, and no service calls the write RPCs yet. Start with
-`docs/CURRENT-STATE.md`; do not trust this paragraph over it.
+6 are missing. **The database is seeded and the live path has run** — as of
+5 September it holds 1 venue, 9 locations, 11 SKUs, 15 memberships, 4 users,
+6 movements and 7 count sessions, one of them a submitted 11-line mid-event
+count from 2 September. This paragraph said the opposite for days after it
+stopped being true, which is why `node scripts/db-state.mjs` exists: ask the
+database, do not ask a document. Start with `docs/CURRENT-STATE.md`; do not trust
+this paragraph over it.

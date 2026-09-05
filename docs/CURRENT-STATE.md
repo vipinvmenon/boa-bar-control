@@ -1990,6 +1990,15 @@ then BAR-156.
 pass. `test:visual` unchanged and stable — 16 routes, 15 reading the data layer,
 **0 hardcoded, 0 errored**, 6 missing.
 
+**SUPERSEDED, 5 September 2026 — this paragraph was true when written and was
+still being read as current a week later.** The migration has since been applied,
+the venue is seeded, and the live path has run: `scripts/db-state.mjs` on
+5 September reports 1 venue, 9 locations, 11 SKUs, 15 memberships, 4 auth users,
+6 movements and 7 count sessions, including a submitted 11-line mid-event count
+at Bar 1 from 2 September. Ask the database, not this file. The original text
+follows, kept because the reasoning about what "unproven" meant still applies to
+anything the seed does not exercise.
+
 **NOT verified — read this before trusting anything above.** The live repository
 has never executed a single query. The migration is unapplied, and the database
 holds no venue, no SKU, no location and no membership, so there is nothing for it
