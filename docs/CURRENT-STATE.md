@@ -4066,8 +4066,17 @@ Verified:
 ### Session — 5 September 2026 · claude (readability and accessibility batch)
 
 Completed: **BAR-181, BAR-182, BAR-183, BAR-184** from three agents in isolated
-worktrees. With BAR-180 earlier, **every P0 and every P1 from the 4 September
-audit is now closed**, along with most of the P2 block.
+worktrees.
+
+**Correction, made the same day by checking rather than by recalling.** This
+entry first claimed every P0 and every P1 from the 4 September audit was closed.
+That was wrong, and it is exactly the kind of claim this document exists to stop
+being made. All five P0s are closed. **Three P1s are open:** UX-P1-07 (every list
+is a dead end — blocked on the `sku` and `mv` screens, which do not exist),
+UX-P1-10 (above 520px the app still renders as a 390×844 phone mock on a gradient
+stage, caption and all), and UX-P1-11 (no persistent location context — BAR-167
+built the status strip but not the chip that says which bar the next write is
+attributed to). Most of the P2 block is closed.
 
 - **BAR-181** One type scale. 26 distinct sizes became **8 tokens**
   (11/13/15/18/22/30/44/56); no rule in the stylesheet states a raw pixel font
